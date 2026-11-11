@@ -2,8 +2,12 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { formatShortSpanishDate } from '../components/tasks/TaskList';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import {
+  addMonths,
   addWeeks,
+  DAY_SHORT_NAMES_ES,
+  formatMonthYearEs,
   formatWeekRangeEs,
+  getMonthCalendarGrid,
   getWeekDaysMondayToSunday,
   timeToMinutes,
 } from '../lib/dates';
@@ -18,6 +22,7 @@ import type {
 export interface CalendarPageProps {
   onSelectCourse: (courseId: string | null) => void;
   initialDate?: Date;
+  initialViewMode?: 'month' | 'week';
 }
 
 interface CalendarClassBlock {
@@ -37,46 +42,56 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   low: 'Baja',
 };
 
+const WEEKDAY_ORDER: readonly DayOfWeek[] = [1, 2, 3, 4, 5, 6, 7];
+
 export function CalendarPage({
   onSelectCourse,
   initialDate,
+  initialViewMode = 'month',
 }: CalendarPageProps) {
   const dialogTitleId = useId();
   const taskDialogRef = useRef<HTMLDialogElement | null>(null);
 
+  const [viewMode, setViewMode] = useState<'month' | 'week'>(initialViewMode);
   const [referenceDate, setReferenceDate] = useState<Date>(
     () => initialDate ?? new Date()
   );
   const [activeCourses, setActiveCourses] = useState<CourseWithSchedules[]>([]);
-  const [weekTasks, setWeekTasks] = useState<TaskWithCourse[]>([]);
+  const [periodTasks, setPeriodTasks] = useState<TaskWithCourse[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const monthDays = useMemo(
+    () => getMonthCalendarGrid(referenceDate),
+    [referenceDate]
+  );
 
   const weekDays = useMemo(
     () => getWeekDaysMondayToSunday(referenceDate),
     [referenceDate]
   );
 
-  const weekStartIso = weekDays[0].dateIso;
-  const weekEndIso = weekDays[6].dateIso;
+  const visibleDays = viewMode === 'month' ? monthDays : weekDays;
+  const periodStartIso = visibleDays[0].dateIso;
+  const periodEndIso = visibleDays[visibleDays.length - 1].dateIso;
 
   const loadCalendarData = useCallback(async () => {
     const [loadedCourses, loadedTasks] = await Promise.all([
       cursadaClient.listCourses({ status: 'active' }),
-      cursadaClient.listTasks({ dueFrom: weekStartIso, dueTo: weekEndIso }),
+      cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
     ]);
     setActiveCourses(loadedCourses);
-    setWeekTasks(loadedTasks);
-  }, [weekStartIso, weekEndIso]);
+    setPeriodTasks(loadedTasks);
+  }, [periodStartIso, periodEndIso]);
 
   useEffect(() => {
     let active = true;
     void Promise.all([
       cursadaClient.listCourses({ status: 'active' }),
-      cursadaClient.listTasks({ dueFrom: weekStartIso, dueTo: weekEndIso }),
+      cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
     ]).then(([loadedCourses, loadedTasks]) => {
       if (!active) return;
       setActiveCourses(loadedCourses);
-      setWeekTasks(loadedTasks);
+      setPeriodTasks(loadedTasks);
     });
 
     const handleDataChanged = () => {
@@ -88,11 +103,11 @@ export function CalendarPage({
       active = false;
       window.removeEventListener(DATA_CHANGED_EVENT, handleDataChanged);
     };
-  }, [loadCalendarData, weekStartIso, weekEndIso]);
+  }, [loadCalendarData, periodStartIso, periodEndIso]);
 
   const selectedTask = useMemo(
-    () => weekTasks.find((t) => t.id === selectedTaskId) ?? null,
-    [weekTasks, selectedTaskId]
+    () => periodTasks.find((t) => t.id === selectedTaskId) ?? null,
+    [periodTasks, selectedTaskId]
   );
 
   useEffect(() => {
@@ -117,6 +132,11 @@ export function CalendarPage({
     }
   }, [selectedTask]);
 
+  const monthLabel = useMemo(
+    () => `${formatMonthYearEs(referenceDate)} · Vista mensual`,
+    [referenceDate]
+  );
+
   const weekRangeLabel = useMemo(
     () => formatWeekRangeEs(referenceDate),
     [referenceDate]
@@ -124,10 +144,10 @@ export function CalendarPage({
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, TaskWithCourse[]>();
-    for (const day of weekDays) {
+    for (const day of visibleDays) {
       map.set(day.dateIso, []);
     }
-    for (const task of weekTasks) {
+    for (const task of periodTasks) {
       if (!task.dueDate) continue;
       const list = map.get(task.dueDate);
       if (list) {
@@ -135,7 +155,7 @@ export function CalendarPage({
       }
     }
     return map;
-  }, [weekDays, weekTasks]);
+  }, [visibleDays, periodTasks]);
 
   const blocksByDay = useMemo(() => {
     const map = new Map<DayOfWeek, CalendarClassBlock[]>([
@@ -180,12 +200,16 @@ export function CalendarPage({
     return map;
   }, [activeCourses]);
 
-  function handlePrevWeek(): void {
-    setReferenceDate((prev) => addWeeks(prev, -1));
+  function handlePrev(): void {
+    setReferenceDate((prev) =>
+      viewMode === 'month' ? addMonths(prev, -1) : addWeeks(prev, -1)
+    );
   }
 
-  function handleNextWeek(): void {
-    setReferenceDate((prev) => addWeeks(prev, 1));
+  function handleNext(): void {
+    setReferenceDate((prev) =>
+      viewMode === 'month' ? addMonths(prev, 1) : addWeeks(prev, 1)
+    );
   }
 
   function handleToday(): void {
@@ -215,109 +239,139 @@ export function CalendarPage({
       <header className="page-header">
         <div className="page-header-titles">
           <div className="page-date-row">
-            <span className="page-date-text" data-testid="calendar-week-range">
-              {weekRangeLabel}
+            <span className="page-date-text" data-testid="calendar-period-label">
+              {viewMode === 'month' ? monthLabel : weekRangeLabel}
             </span>
-            <span className="page-week-pill">Lunes a Domingo</span>
+            <span
+              className="page-week-pill"
+              data-testid="calendar-week-range"
+              title={weekRangeLabel}
+            >
+              {viewMode === 'month' ? formatMonthYearEs(referenceDate) : weekRangeLabel}
+            </span>
           </div>
           <h1 id="main-title" tabIndex={-1} className="page-title">
             Calendario
           </h1>
           <p className="page-subtitle">
-            Horario semanal de cursada y entregas de la semana. Hacé clic en una clase para ir a su
-            materia o marcá y abrí tus entregas directamente desde cada día.
+            {viewMode === 'month'
+              ? 'Vista mensual de cursada y entregas del mes. Hacé clic en una clase para ir a su materia o abrí cada entrega para ver su detalle.'
+              : 'Vista semanal detallada de bloques horarios y entregas de Lunes a Domingo.'}
           </p>
         </div>
 
-        <div className="basic-header-actions">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handlePrevWeek}
+        <div className="basic-header-actions calendar-header-controls">
+          <div
+            className="task-status-segmented"
+            role="group"
+            aria-label="Modo de vista del calendario"
           >
-            Semana anterior
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleToday}
-          >
-            Hoy
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleNextWeek}
-          >
-            Semana siguiente
-          </button>
+            <button
+              type="button"
+              className={`task-filter-pill ${viewMode === 'month' ? 'is-active' : ''}`}
+              aria-pressed={viewMode === 'month'}
+              onClick={() => setViewMode('month')}
+            >
+              Mensual
+            </button>
+            <button
+              type="button"
+              className={`task-filter-pill ${viewMode === 'week' ? 'is-active' : ''}`}
+              aria-pressed={viewMode === 'week'}
+              onClick={() => setViewMode('week')}
+            >
+              Semanal
+            </button>
+          </div>
+
+          <div className="basic-header-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handlePrev}
+            >
+              {viewMode === 'month' ? 'Mes anterior' : 'Semana anterior'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleToday}
+            >
+              Hoy
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleNext}
+            >
+              {viewMode === 'month' ? 'Mes siguiente' : 'Semana siguiente'}
+            </button>
+          </div>
         </div>
       </header>
 
-      <section
-        className="surface-panel calendar-skeleton-panel calendar-week-grid-panel"
-        aria-label="Grilla semanal de cursada"
-      >
-        <div className="calendar-skeleton-header">
-          {weekDays.map((day) => {
-            const dayTasks = tasksByDate.get(day.dateIso) ?? [];
-            return (
-              <div
-                key={day.dateIso}
-                className={`calendar-col-head ${day.isToday ? 'is-today' : ''}`}
-                data-date={day.dateIso}
-              >
-                <div className="calendar-col-head-top">
-                  <span className="week-day-short" title={day.dayName}>
-                    {day.dayShort}
-                  </span>
-                  <span className="week-day-num">{day.dayNumber}</span>
-                </div>
-                {dayTasks.length > 0 ? (
-                  <span className="calendar-col-tasks-count">
-                    {dayTasks.length} {dayTasks.length === 1 ? 'entrega' : 'entregas'}
-                  </span>
-                ) : null}
+      {viewMode === 'month' ? (
+        <section
+          className="surface-panel calendar-skeleton-panel calendar-month-panel"
+          aria-label="Calendario mensual de cursada"
+        >
+          <div className="calendar-skeleton-header calendar-month-weekdays">
+            {WEEKDAY_ORDER.map((dayOfWeek) => (
+              <div key={dayOfWeek} className="calendar-col-head calendar-month-weekday-head">
+                <span className="week-day-short">{DAY_SHORT_NAMES_ES[dayOfWeek]}</span>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
-        <div className="calendar-skeleton-body">
-          {weekDays.map((day) => {
-            const dayBlocks = blocksByDay.get(day.dayOfWeek) ?? [];
-            const dayTasks = tasksByDate.get(day.dateIso) ?? [];
-            const emptyLabel =
-              day.dayOfWeek === 6
-                ? 'Sábado libre'
-                : day.dayOfWeek === 7
-                  ? 'Domingo libre'
-                  : 'Sin clases';
+          <div className="calendar-month-grid">
+            {monthDays.map((day) => {
+              const dayBlocks = day.isCurrentMonth
+                ? (blocksByDay.get(day.dayOfWeek) ?? [])
+                : [];
+              const dayTasks = tasksByDate.get(day.dateIso) ?? [];
 
-            return (
-              <div
-                key={day.dateIso}
-                className={`calendar-day-col ${day.isToday ? 'is-today' : ''}`}
-                data-date={day.dateIso}
-                data-day-of-week={day.dayOfWeek}
-              >
-                {dayTasks.length > 0 ? (
-                  <div
-                    className="calendar-day-tasks-overlay"
-                    data-testid={`calendar-tasks-${day.dateIso}`}
-                    aria-label={`Entregas del ${day.dayName} ${day.dayNumber}`}
-                  >
-                    {dayTasks.map((task) => {
-                      const isCompleted = task.status === 'done';
-                      return (
-                        <div
-                          key={task.id}
-                          className={`calendar-task-card ${isCompleted ? 'is-completed' : ''}`}
-                          data-course-color={task.courseColor}
-                          data-task-id={task.id}
-                          data-status={task.status}
-                        >
-                          <div className="calendar-task-card-header">
+              return (
+                <div
+                  key={day.dateIso}
+                  className={`calendar-day-col calendar-month-cell ${
+                    day.isToday ? 'is-today' : ''
+                  } ${!day.isCurrentMonth ? 'is-outside-month' : ''}`}
+                  data-date={day.dateIso}
+                  data-day-of-week={day.dayOfWeek}
+                >
+                  <div className="calendar-month-cell-header">
+                    <span
+                      className={`calendar-month-day-number ${
+                        day.isToday ? 'is-today' : ''
+                      }`}
+                    >
+                      {Number(day.dayNumber)}
+                    </span>
+                    {dayTasks.length > 0 ? (
+                      <span className="calendar-month-task-indicator">
+                        {dayTasks.length} {dayTasks.length === 1 ? 'entrega' : 'entregas'}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {dayTasks.length > 0 ? (
+                    <div
+                      className="calendar-day-tasks-overlay"
+                      data-testid={`calendar-tasks-${day.dateIso}`}
+                      aria-label={`Entregas del ${day.dayName} ${day.dayNumber}`}
+                    >
+                      {dayTasks.map((task) => {
+                        const isCompleted = task.status === 'done';
+                        return (
+                          <div
+                            key={task.id}
+                            className={`calendar-task-card is-compact ${
+                              isCompleted ? 'is-completed' : ''
+                            }`}
+                            data-course-color={task.courseColor}
+                            data-task-id={task.id}
+                            data-status={task.status}
+                          >
                             <input
                               type="checkbox"
                               className="calendar-task-checkbox"
@@ -325,70 +379,162 @@ export function CalendarPage({
                               aria-label={`Marcar entrega ${task.title}`}
                               onChange={() => void handleToggleTask(task.id)}
                             />
-                            <span
-                              className={`calendar-task-status-badge ${
-                                isCompleted ? 'is-done' : 'is-pending'
-                              }`}
+                            <button
+                              type="button"
+                              className="calendar-task-title-btn"
+                              title={`${task.title} (${task.courseName})`}
+                              onClick={() => setSelectedTaskId(task.id)}
                             >
+                              {task.title}
+                            </button>
+                            <span className="visually-hidden">
                               {isCompleted ? 'Completada' : 'Entrega'}
                             </span>
                           </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
 
-                          <button
-                            type="button"
-                            className="calendar-task-title-btn"
-                            onClick={() => setSelectedTaskId(task.id)}
+                  {dayBlocks.length > 0 ? (
+                    <div className="calendar-month-classes-stack">
+                      {dayBlocks.map((block) => (
+                        <button
+                          key={`${day.dateIso}-${block.scheduleId}`}
+                          type="button"
+                          className="calendar-block calendar-block-button calendar-block-compact"
+                          data-course-color={block.courseColor}
+                          data-course-id={block.courseId}
+                          title={`${block.courseName} · ${block.startTime}–${block.endTime}${
+                            block.location ? ` · ${block.location}` : ''
+                          }`}
+                          onClick={() => onSelectCourse(block.courseId)}
+                        >
+                          <span className="calendar-block-time">{block.startTime}</span>
+                          <strong className="calendar-block-title">
+                            {block.courseName}
+                          </strong>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <section
+          className="surface-panel calendar-skeleton-panel calendar-week-grid-panel"
+          aria-label="Grilla semanal de cursada"
+        >
+          <div className="calendar-skeleton-header">
+            {weekDays.map((day) => (
+              <div
+                key={day.dateIso}
+                className={`calendar-col-head ${day.isToday ? 'is-today' : ''}`}
+                data-date={day.dateIso}
+              >
+                <span className="week-day-short" title={day.dayName}>
+                  {day.dayShort}
+                </span>
+                <span className="week-day-num">{day.dayNumber}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="calendar-skeleton-body">
+            {weekDays.map((day) => {
+              const dayBlocks = blocksByDay.get(day.dayOfWeek) ?? [];
+              const dayTasks = tasksByDate.get(day.dateIso) ?? [];
+              const emptyLabel =
+                day.dayOfWeek === 6
+                  ? 'Sábado libre'
+                  : day.dayOfWeek === 7
+                    ? 'Domingo libre'
+                    : 'Sin clases';
+
+              return (
+                <div
+                  key={day.dateIso}
+                  className={`calendar-day-col ${day.isToday ? 'is-today' : ''}`}
+                  data-date={day.dateIso}
+                  data-day-of-week={day.dayOfWeek}
+                >
+                  {dayTasks.length > 0 ? (
+                    <div
+                      className="calendar-day-tasks-overlay"
+                      data-testid={`calendar-tasks-${day.dateIso}`}
+                      aria-label={`Entregas del ${day.dayName} ${day.dayNumber}`}
+                    >
+                      {dayTasks.map((task) => {
+                        const isCompleted = task.status === 'done';
+                        return (
+                          <div
+                            key={task.id}
+                            className={`calendar-task-card is-compact ${
+                              isCompleted ? 'is-completed' : ''
+                            }`}
+                            data-course-color={task.courseColor}
+                            data-task-id={task.id}
+                            data-status={task.status}
                           >
-                            {task.title}
-                          </button>
-
-                          <div className="calendar-task-course-row">
-                            <span
-                              className="course-dot"
-                              data-course-color={task.courseColor}
-                              aria-hidden="true"
+                            <input
+                              type="checkbox"
+                              className="calendar-task-checkbox"
+                              checked={isCompleted}
+                              aria-label={`Marcar entrega ${task.title}`}
+                              onChange={() => void handleToggleTask(task.id)}
                             />
-                            <span className="calendar-task-course-name">
-                              {task.courseName}
+                            <button
+                              type="button"
+                              className="calendar-task-title-btn"
+                              title={`${task.title} (${task.courseName})`}
+                              onClick={() => setSelectedTaskId(task.id)}
+                            >
+                              {task.title}
+                            </button>
+                            <span className="visually-hidden">
+                              {isCompleted ? 'Completada' : 'Entrega'}
                             </span>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                        );
+                      })}
+                    </div>
+                  ) : null}
 
-                {dayBlocks.length === 0 ? (
-                  <span className="calendar-empty-slot">{emptyLabel}</span>
-                ) : (
-                  dayBlocks.map((block) => (
-                    <button
-                      key={block.scheduleId}
-                      type="button"
-                      className="calendar-block calendar-block-button"
-                      data-course-color={block.courseColor}
-                      data-course-id={block.courseId}
-                      onClick={() => onSelectCourse(block.courseId)}
-                    >
-                      <span className="calendar-block-time">
-                        {block.startTime} – {block.endTime}
-                      </span>
-                      <strong className="calendar-block-title">
-                        {block.courseName}
-                      </strong>
-                      {block.location ? (
-                        <span className="calendar-block-location">
-                          {block.location}
+                  {dayBlocks.length === 0 && dayTasks.length === 0 ? (
+                    <span className="calendar-empty-slot">{emptyLabel}</span>
+                  ) : (
+                    dayBlocks.map((block) => (
+                      <button
+                        key={block.scheduleId}
+                        type="button"
+                        className="calendar-block calendar-block-button"
+                        data-course-color={block.courseColor}
+                        data-course-id={block.courseId}
+                        onClick={() => onSelectCourse(block.courseId)}
+                      >
+                        <span className="calendar-block-time">
+                          {block.startTime} – {block.endTime}
                         </span>
-                      ) : null}
-                    </button>
-                  ))
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+                        <strong className="calendar-block-title">
+                          {block.courseName}
+                        </strong>
+                        {block.location ? (
+                          <span className="calendar-block-location">
+                            {block.location}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div
         className="calendar-legend"

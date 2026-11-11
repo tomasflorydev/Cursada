@@ -1,658 +1,738 @@
-/* Styles for CoursesPage, CourseDetailView, and CalendarPage (Owned by Agent A in Etapa 1) */
+/* Styles for CoursesPage, CourseDetailView, and CalendarPage */
+
+@layer components {
+  /* Native <dialog> scroll containment & modal layout */
+  dialog:modal {
+    overscroll-behavior: contain;
+  }
+
+  dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background-color: rgba(15, 20, 28, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .cursada-modal-dialog {
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    width: min(680px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+  }
+
+  .cursada-modal-dialog.cursada-confirm-dialog {
+    width: min(480px, calc(100vw - 32px));
+  }
+
+  .cursada-modal-dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cursada-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 26px 28px;
+    overflow-y: auto;
+  }
+
+  .cursada-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block-end: 14px;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .cursada-modal-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--text-primary);
+  }
+
+  .cursada-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-block-start: 16px;
+    border-block-start: 1px solid var(--border-subtle);
+  }
+
+  /* Danger buttons */
+  .danger-button {
+    min-block-size: 34px;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--status-urgent-text);
+    background-color: var(--status-urgent-bg);
+    color: var(--status-urgent-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .danger-button:hover {
+    filter: brightness(0.96);
+  }
+
+  .danger-outline-button {
+    min-block-size: 34px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-surface);
+    color: var(--status-urgent-text);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .danger-outline-button:hover {
+    background-color: var(--status-urgent-bg);
+    border-color: var(--status-urgent-text);
+  }
+
+  .ghost-action-button.is-danger {
+    color: var(--status-urgent-text);
+  }
+
+  .ghost-action-button.is-danger:hover {
+    background-color: var(--status-urgent-bg);
+    color: var(--status-urgent-text);
+  }
+
+  /* Course Form */
+  .course-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .course-form-alert {
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background-color: var(--status-urgent-bg);
+    color: var(--status-urgent-text);
+    border: 1px solid var(--status-urgent-text);
+    font-size: 0.83rem;
+    font-weight: 500;
+  }
 
-/* Native <dialog> scroll containment & modal layout */
-dialog:modal {
-  overscroll-behavior: contain;
-}
-
-dialog::backdrop {
-  overflow: hidden;
-  overscroll-behavior: contain;
-  background-color: rgba(15, 20, 28, 0.45);
-  backdrop-filter: blur(2px);
-}
-
-.cursada-modal-dialog {
-  margin: auto;
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  width: min(680px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
-}
-
-.cursada-modal-dialog.cursada-confirm-dialog {
-  width: min(480px, calc(100vw - 32px));
-}
-
-.cursada-modal-dialog[open] {
-  display: flex;
-  flex-direction: column;
-}
-
-.cursada-modal-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 26px 28px;
-  overflow-y: auto;
-}
-
-.cursada-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-block-end: 14px;
-  border-block-end: 1px solid var(--border-subtle);
-}
-
-.cursada-modal-title {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: var(--text-primary);
-}
-
-.cursada-modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-block-start: 16px;
-  border-block-start: 1px solid var(--border-subtle);
-}
-
-/* Danger buttons */
-.danger-button {
-  min-block-size: 34px;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--status-urgent-text);
-  background-color: var(--status-urgent-bg);
-  color: var(--status-urgent-text);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.danger-button:hover {
-  filter: brightness(0.96);
-}
-
-.danger-outline-button {
-  min-block-size: 34px;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  background-color: var(--bg-surface);
-  color: var(--status-urgent-text);
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.danger-outline-button:hover {
-  background-color: var(--status-urgent-bg);
-  border-color: var(--status-urgent-text);
-}
-
-.ghost-action-button.is-danger {
-  color: var(--status-urgent-text);
-}
-
-.ghost-action-button.is-danger:hover {
-  background-color: var(--status-urgent-bg);
-  color: var(--status-urgent-text);
-}
-
-/* Course Form */
-.course-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.course-form-alert {
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  background-color: var(--status-urgent-bg);
-  color: var(--status-urgent-text);
-  border: 1px solid var(--status-urgent-text);
-  font-size: 0.83rem;
-  font-weight: 500;
-}
-
-.course-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.course-form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.course-form-field-full {
-  grid-column: 1 / -1;
-}
-
-.course-form-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.course-form-input,
-.course-form-select {
-  width: 100%;
-  min-block-size: 36px;
-  padding: 7px 11px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  background-color: var(--bg-canvas);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 0.86rem;
-}
-
-.course-form-input:focus-visible,
-.course-form-select:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 1px;
-  border-color: var(--accent-primary);
-}
-
-.course-color-selector-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.course-color-selector-row .course-form-select {
-  max-width: 220px;
-}
-
-.course-color-swatches {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.course-color-swatch {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-color: var(--bg-surface-subtle);
-  cursor: pointer;
-  padding: 0;
-}
-
-.course-color-swatch.is-selected {
-  border-color: var(--text-primary);
-  background-color: var(--bg-surface-active);
-}
-
-.course-schedules-fieldset {
-  margin: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background-color: var(--bg-surface-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.course-schedules-legend {
-  padding-inline: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.course-schedules-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.course-schedules-hint {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.course-schedules-empty {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  padding-block: 6px;
-}
-
-.course-schedules-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.course-schedule-row {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr 0.9fr 1.4fr auto;
-  gap: 10px;
-  align-items: end;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-  background-color: var(--bg-surface);
-}
-
-.course-schedule-remove-col {
-  display: flex;
-  align-items: center;
-  padding-block-end: 2px;
-}
-
-.course-remove-schedule-btn {
-  color: var(--status-urgent-text);
-  white-space: nowrap;
-}
-
-/* Delete Course Confirmation */
-.delete-course-dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--text-secondary);
-}
-
-.delete-course-warning-main {
-  color: var(--text-primary);
-}
-
-.delete-course-warning-impact {
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  background-color: var(--status-warn-bg);
-  color: var(--status-warn-text);
-  font-size: 0.84rem;
-}
-
-/* Courses Overview & Cards */
-.courses-group-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.courses-empty-state {
-  padding: 24px 28px;
-}
-
-.courses-empty-state.is-subtle {
-  background-color: var(--bg-surface-subtle);
-}
-
-.course-empty-text {
-  font-size: 0.86rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.course-overview-card.is-archived {
-  opacity: 0.88;
-  background-color: var(--bg-surface-subtle);
-}
-
-.course-status-pill {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.course-status-pill.is-active {
-  background-color: var(--status-done-bg);
-  color: var(--status-done-text);
-}
-
-.course-status-pill.is-archived {
-  background-color: var(--bg-surface-active);
-  color: var(--text-secondary);
-}
-
-.course-card-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-block-start: auto;
-  padding-block-start: 12px;
-  border-block-start: 1px solid var(--border-subtle);
-}
-
-.course-card-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* Course Detail View & Tabs */
-.course-detail-badges-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.course-detail-actions {
-  flex-wrap: wrap;
-}
-
-.course-tabs-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px;
-  border-radius: var(--radius-md);
-  background-color: var(--bg-surface-subtle);
-  border: 1px solid var(--border-subtle);
-  overflow-x: auto;
-}
-
-.course-tab-button {
-  min-block-size: 34px;
-  padding: 6px 14px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.83rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.course-tab-button:hover:not(.is-active) {
-  color: var(--text-primary);
-  background-color: var(--bg-surface-active);
-}
-
-.course-tab-button.is-active {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-
-.course-summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 24px;
-  align-items: start;
-}
-
-.course-meta-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-block-start: 12px;
-}
-
-.course-meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-block-end: 10px;
-  border-block-end: 1px solid var(--border-subtle);
-  font-size: 0.85rem;
-}
-
-.course-meta-row:last-child {
-  border-block-end: none;
-  padding-block-end: 0;
-}
-
-.course-schedules-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-block-start: 12px;
-}
-
-.course-schedule-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  background-color: var(--course-bg);
-  color: var(--course-text);
-  border-inline-start: 3px solid var(--course-dot);
-  border-block: 1px solid var(--course-border);
-  border-inline-end: 1px solid var(--course-border);
-}
-
-.course-schedule-card-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.course-schedule-day {
-  font-weight: 600;
-  font-size: 0.86rem;
-}
-
-.course-schedule-time {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.course-schedule-card-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 0.78rem;
-  opacity: 0.9;
-}
-
-.course-schedule-formatted {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-}
-
-/* Interactive Calendar Block Button */
-.calendar-block-button {
-  width: 100%;
-  text-align: start;
-  cursor: pointer;
-  transition: transform 100ms ease, box-shadow 100ms ease;
-}
-
-.calendar-block-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
-}
-
-.calendar-block-title {
-  font-weight: 600;
-  font-size: 0.8rem;
-}
-
-.calendar-block-location {
-  font-size: 0.73rem;
-  opacity: 0.92;
-}
-
-.calendar-legend-pill {
-  border: 1px solid var(--course-border);
-  cursor: pointer;
-}
-
-.calendar-legend-pill:hover {
-  filter: brightness(0.97);
-}
-
-/* Calendar Day Header & Task Deliveries Overlay (Task 2.2) */
-.calendar-col-head {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.calendar-col-head-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.calendar-col-tasks-count {
-  display: inline-flex;
-  align-self: flex-start;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background-color: var(--accent-soft);
-  color: var(--accent-primary);
-}
-
-.calendar-day-tasks-overlay {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-block-end: 8px;
-  border-block-end: 1px dashed var(--border-subtle);
-}
-
-.calendar-task-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 9px 10px;
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-surface-subtle);
-  border: 1px solid var(--course-border);
-  border-inline-start: 3px solid var(--course-dot);
-  font-size: 0.76rem;
-  line-height: 1.35;
-}
-
-.calendar-task-card.is-completed {
-  opacity: 0.78;
-}
-
-.calendar-task-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.calendar-task-checkbox {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: var(--course-dot);
-}
-
-.calendar-task-status-badge {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 999px;
-}
-
-.calendar-task-status-badge.is-pending {
-  background-color: var(--course-bg);
-  color: var(--course-text);
-}
-
-.calendar-task-status-badge.is-done {
-  background-color: var(--status-done-bg);
-  color: var(--status-done-text);
-}
-
-.calendar-task-title-btn {
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-primary);
-  font: inherit;
-  font-weight: 600;
-  text-align: start;
-  cursor: pointer;
-  line-height: 1.35;
-}
-
-.calendar-task-title-btn:hover {
-  color: var(--accent-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.calendar-task-card.is-completed .calendar-task-title-btn {
-  text-decoration: line-through;
-  color: var(--text-muted);
-}
-
-.calendar-task-course-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-}
-
-.calendar-task-course-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.calendar-task-dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.calendar-task-dialog-desc {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.55;
-}
-
-@media (max-width: 960px) {
-  .course-summary-grid,
   .course-form-grid {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .course-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .course-form-field-full {
+    grid-column: 1 / -1;
+  }
+
+  .course-form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .course-form-input,
+  .course-form-select {
+    width: 100%;
+    min-block-size: 36px;
+    padding: 7px 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.86rem;
+  }
+
+  .course-form-input:focus-visible,
+  .course-form-select:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 1px;
+    border-color: var(--accent-primary);
+  }
+
+  .course-color-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .course-color-selector-row .course-form-select {
+    max-width: 220px;
+  }
+
+  .course-color-swatches {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .course-color-swatch {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-color: var(--bg-surface-subtle);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .course-color-swatch.is-selected {
+    border-color: var(--text-primary);
+    background-color: var(--bg-surface-active);
+  }
+
+  .course-schedules-fieldset {
+    margin: 0;
+    padding: 16px 18px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-surface-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .course-schedules-legend {
+    padding-inline: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .course-schedules-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .course-schedules-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .course-schedules-empty {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    padding-block: 6px;
+  }
+
+  .course-schedules-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .course-schedule-row {
-    grid-template-columns: 1fr 1fr;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr 0.9fr 1.4fr auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-surface);
+  }
+
+  .course-schedule-remove-col {
+    display: flex;
+    align-items: center;
+    padding-block-end: 2px;
+  }
+
+  .course-remove-schedule-btn {
+    color: var(--status-urgent-text);
+    white-space: nowrap;
+  }
+
+  /* Delete Course Confirmation */
+  .delete-course-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .delete-course-warning-main {
+    color: var(--text-primary);
+  }
+
+  .delete-course-warning-impact {
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background-color: var(--status-warn-bg);
+    color: var(--status-warn-text);
+    font-size: 0.84rem;
+  }
+
+  /* Courses Overview & Cards (Stretched-link pattern from modern-web-guidance) */
+  .courses-group-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .courses-empty-state {
+    padding: 28px 30px;
+  }
+
+  .courses-empty-state.is-subtle {
+    background-color: var(--bg-surface-subtle);
+  }
+
+  .course-empty-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .course-overview-card {
+    position: relative;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .course-overview-card:has(.card-link) .card-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  .course-overview-card:has(.card-link) .card-link:focus-visible {
+    outline: none;
+  }
+
+  .course-overview-card:has(.card-link:focus-visible) {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
+
+  .course-overview-card:has(.card-link:hover) {
+    border-color: var(--border-strong);
+  }
+
+  .course-overview-card.is-archived {
+    opacity: 0.88;
+    background-color: var(--bg-surface-subtle);
+  }
+
+  .course-status-pill {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  .course-status-pill.is-active {
+    background-color: var(--status-done-bg);
+    color: var(--status-done-text);
+  }
+
+  .course-status-pill.is-archived {
+    background-color: var(--bg-surface-active);
+    color: var(--text-secondary);
+  }
+
+  /* Course Detail View & Tabs */
+  .course-detail-badges-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .course-detail-actions {
+    flex-wrap: wrap;
+  }
+
+  .course-tabs-bar {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--radius-md);
+    background-color: var(--bg-surface-subtle);
+    border: 1px solid var(--border-subtle);
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .course-tab-button {
+    min-block-size: 32px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  .course-tab-button:hover:not(.is-active) {
+    color: var(--text-primary);
+  }
+
+  .course-tab-button.is-active {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  .course-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .course-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-block-start: 14px;
+  }
+
+  .course-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block-end: 12px;
+    border-block-end: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+  }
+
+  .course-meta-row:last-child {
+    border-block-end: none;
+    padding-block-end: 0;
+  }
+
+  .course-schedules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-block-start: 14px;
+  }
+
+  .course-schedule-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background-color: var(--course-bg);
+    color: var(--course-text);
+    border-inline-start: 3px solid var(--course-dot);
+    border-block: 1px solid var(--course-border);
+    border-inline-end: 1px solid var(--course-border);
+  }
+
+  .course-schedule-card-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .course-schedule-day {
+    font-weight: 600;
+    font-size: 0.86rem;
+  }
+
+  .course-schedule-time {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .course-schedule-card-sub {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.78rem;
+    opacity: 0.9;
+  }
+
+  .course-schedule-formatted {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  /* ==========================================================================
+     CALENDARIO MENSUAL Y SEMANAL
+     ========================================================================== */
+  .calendar-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .calendar-month-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    border-block-end: 1px solid var(--border-subtle);
+    background-color: var(--bg-surface-subtle);
+  }
+
+  .calendar-month-weekday-head {
+    justify-content: center;
+    padding: 12px 14px;
+  }
+
+  .calendar-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .calendar-month-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-block-size: 124px;
+    padding: 10px 10px 12px;
+    border-block-end: 1px solid var(--border-subtle);
+    border-inline-end: 1px solid var(--border-subtle);
+    background-color: var(--bg-surface);
+    min-width: 0;
+  }
+
+  .calendar-month-cell:nth-child(7n) {
+    border-inline-end: none;
+  }
+
+  .calendar-month-cell:nth-last-child(-n + 7) {
+    border-block-end: none;
+  }
+
+  .calendar-month-cell.is-outside-month {
+    background-color: var(--bg-canvas);
+    opacity: 0.55;
+  }
+
+  .calendar-month-cell.is-today {
+    background-color: var(--status-today-bg);
+  }
+
+  .calendar-month-cell-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-block-end: 2px;
+  }
+
+  .calendar-month-day-number {
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    padding-inline: 5px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+
+  .calendar-month-day-number.is-today {
+    background-color: var(--accent-primary);
+    color: var(--accent-primary-text);
+  }
+
+  .calendar-month-task-indicator {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background-color: var(--accent-soft);
+    color: var(--accent-primary);
+    white-space: nowrap;
+  }
+
+  .calendar-month-classes-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  /* Interactive Calendar Block Button */
+  .calendar-block-button {
+    width: 100%;
+    text-align: start;
+    cursor: pointer;
+    transition: filter 120ms ease, transform 100ms ease;
+  }
+
+  .calendar-block-button:hover {
+    filter: brightness(0.97);
+  }
+
+  .calendar-block-compact {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    font-size: 0.73rem;
+    line-height: 1.3;
+    min-width: 0;
+  }
+
+  .calendar-block-compact .calendar-block-time {
+    font-size: 0.67rem;
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  .calendar-block-compact .calendar-block-title {
+    font-size: 0.73rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .calendar-block-title {
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+
+  .calendar-block-location {
+    font-size: 0.73rem;
+    opacity: 0.92;
+  }
+
+  .calendar-legend-pill {
+    border: 1px solid var(--course-border);
+    cursor: pointer;
+  }
+
+  .calendar-legend-pill:hover {
+    filter: brightness(0.97);
+  }
+
+  /* Task Deliveries Overlay (Task 2.2) */
+  .calendar-day-tasks-overlay {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .calendar-task-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-surface-subtle);
+    border: 1px solid var(--course-border);
+    border-inline-start: 3px solid var(--course-dot);
+    font-size: 0.73rem;
+    line-height: 1.3;
+    min-width: 0;
+  }
+
+  .calendar-task-card.is-completed {
+    opacity: 0.72;
+  }
+
+  .calendar-task-checkbox {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--course-dot);
+  }
+
+  .calendar-task-title-btn {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .calendar-task-title-btn:hover {
+    color: var(--accent-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .calendar-task-card.is-completed .calendar-task-title-btn {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+
+  .calendar-task-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .calendar-task-dialog-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  @media (max-width: 960px) {
+    .course-summary-grid,
+    .course-form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .course-schedule-row {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 }

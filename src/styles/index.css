@@ -1,10 +1,44 @@
+@layer reset, tokens, base, layout, components, utilities;
+
 @import './courses-calendar.css';
 @import './tasks.css';
 
-@layer reset, tokens, base, layout, components, utilities;
-
 @layer reset {
-  :where(html, body, div, span, h1, h2, h3, h4, p, ul, ol, li, article, aside, header, main, nav, section, button, input, label) {
+  :where(
+    html,
+    body,
+    div,
+    span,
+    h1,
+    h2,
+    h3,
+    h4,
+    p,
+    ul,
+    ol,
+    li,
+    dl,
+    dt,
+    dd,
+    article,
+    aside,
+    header,
+    footer,
+    main,
+    nav,
+    section,
+    form,
+    fieldset,
+    legend,
+    details,
+    summary,
+    dialog,
+    button,
+    input,
+    select,
+    textarea,
+    label
+  ) {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -14,7 +48,7 @@
     list-style: none;
   }
 
-  :where(button, input) {
+  :where(button, input, select, textarea) {
     font: inherit;
     color: inherit;
   }

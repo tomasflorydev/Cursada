@@ -61,6 +61,10 @@ export interface WeekDayInfo {
   isToday: boolean;
 }
 
+export interface MonthDayInfo extends WeekDayInfo {
+  isCurrentMonth: boolean;
+}
+
 export function toIsoDateString(date: Date): string {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -93,6 +97,57 @@ export function addDays(date: Date, days: number): Date {
 
 export function addWeeks(date: Date, weeks: number): Date {
   return addDays(date, weeks * 7);
+}
+
+export function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+export function formatMonthYearEs(referenceDate: Date): string {
+  const monthName = MONTH_NAMES_ES[referenceDate.getMonth()] ?? '';
+  const capitalized =
+    monthName.length > 0
+      ? monthName.charAt(0).toUpperCase() + monthName.slice(1)
+      : '';
+  return `${capitalized} ${referenceDate.getFullYear()}`;
+}
+
+export function getMonthCalendarGrid(
+  referenceDate: Date,
+  todayReference: Date = new Date()
+): MonthDayInfo[] {
+  const year = referenceDate.getFullYear();
+  const month = referenceDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month + 1, 0);
+
+  const startMonday = getStartOfWeekMonday(firstOfMonth);
+  const lastMonday = getStartOfWeekMonday(lastOfMonth);
+  const endSunday = addDays(lastMonday, 6);
+
+  const todayIso = toIsoDateString(todayReference);
+  const days: MonthDayInfo[] = [];
+
+  let cursor = startMonday;
+  while (cursor <= endSunday) {
+    const jsDay = cursor.getDay();
+    const dayOfWeek = (jsDay === 0 ? 7 : jsDay) as DayOfWeek;
+    const dateIso = toIsoDateString(cursor);
+    days.push({
+      date: cursor,
+      dateIso,
+      dayOfWeek,
+      dayName: DAY_NAMES_ES[dayOfWeek],
+      dayShort: DAY_SHORT_NAMES_ES[dayOfWeek],
+      dayNumber: String(cursor.getDate()).padStart(2, '0'),
+      monthShort: MONTH_SHORT_NAMES_ES[cursor.getMonth()],
+      isToday: dateIso === todayIso,
+      isCurrentMonth: cursor.getMonth() === month && cursor.getFullYear() === year,
+    });
+    cursor = addDays(cursor, 1);
+  }
+
+  return days;
 }
 
 export function getWeekDaysMondayToSunday(

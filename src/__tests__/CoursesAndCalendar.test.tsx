@@ -126,9 +126,9 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
     });
   });
 
-  it('renders Monday-to-Sunday weekly calendar, navigates between weeks, and selects a course on class click', async () => {
+  it('renders monthly calendar by default, navigates between months and weeks, and selects a course on class click', async () => {
     const onSelectCourse = vi.fn();
-    // Reference date: Wednesday, November 11, 2026 (Week: Nov 9 to Nov 15, 2026)
+    // Reference date: Wednesday, November 11, 2026
     const initialDate = new Date(2026, 10, 11);
 
     render(
@@ -137,44 +137,59 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
 
     const ddsMatches = await screen.findAllByText('Diseño de Sistemas');
     expect(ddsMatches.length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
-      '9 al 15 de noviembre de 2026'
+    expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
+      'Noviembre 2026 · Vista mensual'
     );
 
-    // Check 7 columns with data-date attributes from Monday (2026-11-09) to Sunday (2026-11-15)
-    const grid = screen.getByLabelText('Grilla semanal de cursada');
-    expect(grid.querySelector('.calendar-day-col[data-date="2026-11-09"]')).not.toBeNull();
-    expect(grid.querySelector('.calendar-day-col[data-date="2026-11-15"]')).not.toBeNull();
+    // Check monthly grid has November days (e.g. 2026-11-01 to 2026-11-30)
+    const monthGrid = screen.getByLabelText('Calendario mensual de cursada');
+    expect(monthGrid.querySelector('.calendar-day-col[data-date="2026-11-01"]')).not.toBeNull();
+    expect(monthGrid.querySelector('.calendar-day-col[data-date="2026-11-30"]')).not.toBeNull();
+
+    // Navigate to next month -> Diciembre 2026
+    fireEvent.click(screen.getByRole('button', { name: /Mes siguiente/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
+        'Diciembre 2026 · Vista mensual'
+      );
+    });
+
+    // Return to Hoy -> Noviembre 2026
+    fireEvent.click(screen.getByRole('button', { name: /^Hoy$/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
+        'Noviembre 2026 · Vista mensual'
+      );
+    });
+
+    // Click on "Base de Datos II" block inside Wednesday Nov 11 cell in monthly grid
+    const wedNov11Cell = monthGrid.querySelector(
+      '.calendar-day-col[data-date="2026-11-11"]'
+    ) as HTMLElement;
+    const bd2MonthBlock = within(wedNov11Cell).getByRole('button', {
+      name: /Base de Datos II/i,
+    });
+    fireEvent.click(bd2MonthBlock);
+    expect(onSelectCourse).toHaveBeenCalledWith('bd-2');
+
+    // Switch to Weekly view and verify Monday-to-Sunday navigation
+    fireEvent.click(screen.getByRole('button', { name: 'Semanal' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
+        '9 al 15 de noviembre de 2026'
+      );
+    });
+
+    const weekGrid = screen.getByLabelText('Grilla semanal de cursada');
+    expect(weekGrid.querySelector('.calendar-day-col[data-date="2026-11-09"]')).not.toBeNull();
+    expect(weekGrid.querySelector('.calendar-day-col[data-date="2026-11-15"]')).not.toBeNull();
 
     // Navigate to next week -> 16 al 22 de noviembre de 2026
     fireEvent.click(screen.getByRole('button', { name: /Semana siguiente/i }));
-    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
-      '16 al 22 de noviembre de 2026'
-    );
-    expect(grid.querySelector('.calendar-day-col[data-date="2026-11-16"]')).not.toBeNull();
-
-    // Navigate to previous week twice -> 2 al 8 de noviembre de 2026
-    fireEvent.click(screen.getByRole('button', { name: /Semana anterior/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Semana anterior/i }));
-    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
-      '2 al 8 de noviembre de 2026'
-    );
-
-    // Return to Hoy -> 9 al 15 de noviembre de 2026
-    fireEvent.click(screen.getByRole('button', { name: /^Hoy$/i }));
-    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
-      '9 al 15 de noviembre de 2026'
-    );
-
-    // Click on "Base de Datos II" block inside Wednesday column (dayOfWeek = 3)
-    const wednesdayCol = grid.querySelector(
-      '.calendar-day-col[data-day-of-week="3"]'
-    ) as HTMLElement;
-    const bd2Block = within(wednesdayCol).getByRole('button', {
-      name: /Base de Datos II/i,
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
+        '16 al 22 de noviembre de 2026'
+      );
     });
-    fireEvent.click(bd2Block);
-
-    expect(onSelectCourse).toHaveBeenCalledWith('bd-2');
   });
 });

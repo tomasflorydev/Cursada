@@ -61,7 +61,7 @@ export function TasksPage({ onSelectCourse, onTasksChanged }: TasksPageProps) {
         <div className="page-header-titles">
           <div className="page-date-row">
             <span className="page-date-text">Gestión de entregas</span>
-            <span className="tasks-summary-pill">
+            <span className="page-week-pill">
               {pendingCount} {pendingCount === 1 ? 'pendiente' : 'pendientes'}
             </span>
             {overdueCount > 0 ? (

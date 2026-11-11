@@ -17,19 +17,68 @@ export interface CoursesPageProps {
   onCoursesChanged?: () => void;
 }
 
+const KNOWN_SHORT_CODES: Record<string, string> = {
+  'ing-soft-1': 'IS1',
+  'diseno-sistemas': 'DDS',
+  'bd-2': 'BD2',
+  'proba-estadistica': 'PyE',
+  paradigmas: 'PdeP',
+};
+
+function getCourseShortCode(course: CourseWithSchedules): string {
+  if (KNOWN_SHORT_CODES[course.id]) {
+    return KNOWN_SHORT_CODES[course.id];
+  }
+  const stopWords = new Set(['de', 'del', 'la', 'el', 'y', 'e', 'en', 'para']);
+  const tokens = course.name
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !stopWords.has(w.toLowerCase()));
+  if (tokens.length === 0) {
+    return course.name.slice(0, 3).toUpperCase();
+  }
+  return tokens
+    .slice(0, 4)
+    .map((w) => (/^[IVX0-9]+$/i.test(w) ? w.toUpperCase() : w[0].toUpperCase()))
+    .join('');
+}
+
+function formatCourseLocationSummary(course: CourseWithSchedules): string {
+  const locations = Array.from(
+    new Set(
+      course.schedules
+        .map((s) => s.location.trim())
+        .filter((loc) => loc.length > 0)
+    )
+  );
+  if (locations.length === 0) {
+    return 'Sin aula asignada';
+  }
+  return locations.join(' · ');
+}
+
 export function CoursesPage({
   selectedCourseId,
   onSelectCourse,
   onCoursesChanged,
 }: CoursesPageProps) {
   const [courses, setCourses] = useState<CourseWithSchedules[]>([]);
+  const [pendingByCourse, setPendingByCourse] = useState<Record<string, number>>({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
 
   const loadCourses = useCallback(async () => {
-    const loaded = await cursadaClient.listCourses({ status: 'all' });
+    const [loaded, pendingTasks] = await Promise.all([
+      cursadaClient.listCourses({ status: 'all' }),
+      cursadaClient.listTasks({ status: 'pending' }),
+    ]);
+    const counts: Record<string, number> = {};
+    for (const task of pendingTasks) {
+      counts[task.courseId] = (counts[task.courseId] ?? 0) + 1;
+    }
     setCourses(loaded);
+    setPendingByCourse(counts);
   }, []);
 
   useEffect(() => {
@@ -100,6 +149,9 @@ export function CoursesPage({
   function renderCourseCard(course: CourseWithSchedules) {
     const isArchived = course.status === 'archived';
     const scheduleSummary = formatSchedulesSummary(course.schedules);
+    const locationSummary = formatCourseLocationSummary(course);
+    const pendingCount = pendingByCourse[course.id] ?? 0;
+    const shortCode = getCourseShortCode(course);
 
     return (
       <article
@@ -114,24 +166,22 @@ export function CoursesPage({
               data-course-color={course.color}
               aria-hidden="true"
             />
-            {course.term}
+            {shortCode}
           </span>
-          <span
-            className={`course-status-pill ${isArchived ? 'is-archived' : 'is-active'}`}
-          >
-            {isArchived ? 'Archivada' : 'En curso'}
+          <span className="course-grade-pill">
+            {isArchived ? `Archivada · ${course.term}` : course.term}
           </span>
         </div>
 
-        <h3 className="course-card-title">
+        <h2 className="course-card-title">
           <button
             type="button"
-            className="inline-course-link"
+            className="inline-course-link card-link"
             onClick={() => onSelectCourse(course.id)}
           >
             {course.name}
           </button>
-        </h3>
+        </h2>
         <p className="course-card-professor">
           {course.professor ? `Prof. ${course.professor}` : 'Profesor sin asignar'}
         </p>
@@ -142,49 +192,16 @@ export function CoursesPage({
             <span className="course-detail-value">{scheduleSummary}</span>
           </div>
           <div className="course-detail-row">
-            <span className="course-detail-label">Bloques semanales</span>
+            <span className="course-detail-label">Aula / Modalidad</span>
+            <span className="course-detail-value">{locationSummary}</span>
+          </div>
+          <div className="course-detail-row">
+            <span className="course-detail-label">Pendientes</span>
             <span className="course-detail-value">
-              {course.schedules.length}{' '}
-              {course.schedules.length === 1 ? 'bloque' : 'bloques'}
+              {pendingCount} {pendingCount === 1 ? 'tarea' : 'tareas'}
             </span>
           </div>
         </div>
-
-        <footer className="course-card-actions">
-          <button
-            type="button"
-            className="ghost-action-button"
-            onClick={() => onSelectCourse(course.id)}
-          >
-            Abrir ficha
-          </button>
-          <div className="course-card-actions-right">
-            <button
-              type="button"
-              className="ghost-action-button"
-              aria-label={`Editar ${course.name}`}
-              onClick={() => handleOpenEdit(course)}
-            >
-              Editar
-            </button>
-            <button
-              type="button"
-              className="ghost-action-button"
-              aria-label={`${isArchived ? 'Activar' : 'Archivar'} ${course.name}`}
-              onClick={() => void handleToggleArchive(course)}
-            >
-              {isArchived ? 'Activar' : 'Archivar'}
-            </button>
-            <button
-              type="button"
-              className="ghost-action-button is-danger"
-              aria-label={`Eliminar ${course.name}`}
-              onClick={() => void handleRequestDelete(course.id)}
-            >
-              Eliminar
-            </button>
-          </div>
-        </footer>
       </article>
     );
   }
@@ -208,8 +225,8 @@ export function CoursesPage({
                 Materias
               </h1>
               <p className="page-subtitle">
-                Gestioná las materias del cuatrimestre actual, sus bloques horarios de cursada y el
-                archivo de cuatrimestres anteriores.
+                Materias del cuatrimestre actual. Hacé clic en cualquier materia para abrir su ficha,
+                horarios y entregas.
               </p>
             </div>
             <div className="basic-header-actions">
@@ -223,56 +240,38 @@ export function CoursesPage({
             </div>
           </header>
 
-          <section aria-labelledby="active-courses-heading" className="courses-group-section">
-            <div className="section-heading-bar">
-              <div className="section-heading-left">
-                <h2 id="active-courses-heading" className="section-title">
-                  Materias en curso
-                </h2>
-                <span className="section-counter">{activeCourses.length}</span>
-              </div>
+          {activeCourses.length === 0 ? (
+            <div className="surface-panel courses-empty-state">
+              <p className="course-empty-text">
+                No tenés materias activas en este cuatrimestre. Creá una con el botón &ldquo;Nueva
+                materia&rdquo;.
+              </p>
             </div>
-
-            {activeCourses.length === 0 ? (
-              <div className="surface-panel courses-empty-state">
-                <p className="course-empty-text">
-                  No tenés materias activas en este cuatrimestre. Creá una con el botón &ldquo;Nueva
-                  materia&rdquo;.
-                </p>
-              </div>
-            ) : (
-              <div className="courses-cards-grid">
-                {activeCourses.map((course) => renderCourseCard(course))}
-              </div>
-            )}
-          </section>
-
-          <section
-            aria-labelledby="archived-courses-heading"
-            className="courses-group-section courses-archived-section"
-          >
-            <div className="section-heading-bar">
-              <div className="section-heading-left">
-                <h2 id="archived-courses-heading" className="section-title">
-                  Archivo · Cuatrimestres anteriores
-                </h2>
-                <span className="section-counter">{archivedCourses.length}</span>
-              </div>
+          ) : (
+            <div className="courses-cards-grid">
+              {activeCourses.map((course) => renderCourseCard(course))}
             </div>
+          )}
 
-            {archivedCourses.length === 0 ? (
-              <div className="surface-panel courses-empty-state is-subtle">
-                <p className="course-empty-text">
-                  No hay materias archivadas. Cuando termines una cursada, podés archivarla para
-                  conservar sus notas, tareas y fuentes en tu historial.
-                </p>
+          {archivedCourses.length > 0 ? (
+            <section
+              aria-labelledby="archived-courses-heading"
+              className="courses-group-section courses-archived-section"
+            >
+              <div className="section-heading-bar">
+                <div className="section-heading-left">
+                  <h2 id="archived-courses-heading" className="section-title">
+                    Archivo · Cuatrimestres anteriores
+                  </h2>
+                  <span className="section-counter">{archivedCourses.length}</span>
+                </div>
               </div>
-            ) : (
+
               <div className="courses-cards-grid">
                 {archivedCourses.map((course) => renderCourseCard(course))}
               </div>
-            )}
-          </section>
+            </section>
+          ) : null}
         </div>
       )}
 

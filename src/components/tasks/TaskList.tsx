@@ -342,7 +342,7 @@ export function TaskList({
         <div className="task-toolbar-right">
           {!courseId ? (
             <div className="task-course-filter-field">
-              <label htmlFor="task-course-filter" className="task-filter-label">
+              <label htmlFor="task-course-filter" className="visually-hidden">
                 Filtrar por materia
               </label>
               <select
