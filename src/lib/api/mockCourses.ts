@@ -1,11 +1,67 @@
 import type {
   ClassSchedule,
+  ClassScheduleInput,
+  CourseColor,
   CourseDeleteImpact,
   CourseStatus,
   CourseWithSchedules,
   CreateCourseInput,
   UpdateCourseInput,
 } from '../../types/domain';
+
+const VALID_COURSE_COLORS: readonly CourseColor[] = [
+  'blue',
+  'emerald',
+  'violet',
+  'amber',
+  'rose',
+  'cyan',
+  'orange',
+  'slate',
+];
+
+const VALID_COURSE_STATUSES: readonly CourseStatus[] = ['active', 'archived'];
+
+const TIME_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function parseTimeToMinutes(time: string): number {
+  const match = TIME_HH_MM_REGEX.exec(time);
+  if (!match) {
+    throw new Error(`Formato de horario inválido "${time}". Usá HH:MM (00:00 a 23:59)`);
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function validateMockScheduleInput(sched: ClassScheduleInput): void {
+  if (
+    typeof sched.dayOfWeek !== 'number' ||
+    !Number.isInteger(sched.dayOfWeek) ||
+    sched.dayOfWeek < 1 ||
+    sched.dayOfWeek > 7
+  ) {
+    throw new Error(
+      `Día de semana inválido "${String(sched.dayOfWeek)}". Debe estar entre 1 (Lunes) y 7 (Domingo)`
+    );
+  }
+
+  const startMinutes = parseTimeToMinutes(sched.startTime);
+  const endMinutes = parseTimeToMinutes(sched.endTime);
+
+  if (startMinutes >= endMinutes) {
+    throw new Error(
+      `La hora de inicio (${sched.startTime}) debe ser anterior a la hora de fin (${sched.endTime})`
+    );
+  }
+}
+
+function sortSchedules(schedules: ClassSchedule[]): ClassSchedule[] {
+  return [...schedules].sort((a, b) => {
+    if (a.dayOfWeek !== b.dayOfWeek) {
+      return a.dayOfWeek - b.dayOfWeek;
+    }
+    return a.startTime.localeCompare(b.startTime);
+  });
+}
 
 interface CourseTaskHooks {
   countTasksByCourse: (courseId: string) => number;
@@ -149,6 +205,9 @@ export async function mockListCourses(opts?: {
   status?: CourseStatus | 'all';
 }): Promise<CourseWithSchedules[]> {
   const statusFilter = opts?.status ?? 'all';
+  if (statusFilter !== 'all' && !VALID_COURSE_STATUSES.includes(statusFilter)) {
+    throw new Error(`Invalid course status: ${String(statusFilter)}`);
+  }
   const filtered =
     statusFilter === 'all'
       ? coursesStore
@@ -164,25 +223,39 @@ export async function mockGetCourse(id: string): Promise<CourseWithSchedules | n
 export async function mockCreateCourse(
   input: CreateCourseInput
 ): Promise<CourseWithSchedules> {
-  const name = input.name.trim();
-  const term = input.term.trim();
+  const name = (input.name ?? '').trim();
+  const term = (input.term ?? '').trim();
+  const status = input.status ?? 'active';
+
   if (!name) {
     throw new Error('El nombre de la materia es obligatorio');
   }
   if (!term) {
     throw new Error('El cuatrimestre es obligatorio');
   }
+  if (!VALID_COURSE_COLORS.includes(input.color)) {
+    throw new Error(`Color de materia inválido: ${String(input.color)}`);
+  }
+  if (!VALID_COURSE_STATUSES.includes(status)) {
+    throw new Error(`Estado de materia inválido: ${String(status)}`);
+  }
+
+  for (const sched of input.schedules ?? []) {
+    validateMockScheduleInput(sched);
+  }
 
   const id = `course-${++nextCourseSeq}`;
   const now = new Date().toISOString();
-  const schedules: ClassSchedule[] = (input.schedules ?? []).map((s, idx) => ({
-    id: s.id ?? `sched-${nextCourseSeq}-${idx + 1}`,
-    courseId: id,
-    dayOfWeek: s.dayOfWeek,
-    startTime: s.startTime,
-    endTime: s.endTime,
-    location: (s.location ?? '').trim(),
-  }));
+  const schedules = sortSchedules(
+    (input.schedules ?? []).map((s, idx) => ({
+      id: s.id ?? `sched-${nextCourseSeq}-${idx + 1}`,
+      courseId: id,
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      location: (s.location ?? '').trim(),
+    }))
+  );
 
   const created: CourseWithSchedules = {
     id,
@@ -190,7 +263,7 @@ export async function mockCreateCourse(
     color: input.color,
     professor: (input.professor ?? '').trim(),
     term,
-    status: input.status ?? 'active',
+    status,
     createdAt: now,
     updatedAt: now,
     schedules,
@@ -211,26 +284,52 @@ export async function mockUpdateCourse(
 
   const current = coursesStore[index];
   const now = new Date().toISOString();
+  const name = input.name !== undefined ? input.name.trim() : current.name;
+  const term = input.term !== undefined ? input.term.trim() : current.term;
+  const color = input.color ?? current.color;
+  const status = input.status ?? current.status;
+
+  if (!name) {
+    throw new Error('El nombre de la materia es obligatorio');
+  }
+  if (!term) {
+    throw new Error('El cuatrimestre es obligatorio');
+  }
+  if (!VALID_COURSE_COLORS.includes(color)) {
+    throw new Error(`Color de materia inválido: ${String(color)}`);
+  }
+  if (!VALID_COURSE_STATUSES.includes(status)) {
+    throw new Error(`Estado de materia inválido: ${String(status)}`);
+  }
+
+  if (input.schedules !== undefined) {
+    for (const sched of input.schedules) {
+      validateMockScheduleInput(sched);
+    }
+  }
+
   const schedules: ClassSchedule[] =
     input.schedules !== undefined
-      ? input.schedules.map((s, idx) => ({
-          id: s.id ?? `sched-${id}-${Date.now()}-${idx}`,
-          courseId: id,
-          dayOfWeek: s.dayOfWeek,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          location: (s.location ?? '').trim(),
-        }))
+      ? sortSchedules(
+          input.schedules.map((s, idx) => ({
+            id: s.id ?? `sched-${id}-${Date.now()}-${idx}`,
+            courseId: id,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            location: (s.location ?? '').trim(),
+          }))
+        )
       : current.schedules;
 
   const updated: CourseWithSchedules = {
     ...current,
-    name: input.name !== undefined ? input.name.trim() : current.name,
-    color: input.color ?? current.color,
+    name,
+    color,
     professor:
       input.professor !== undefined ? input.professor.trim() : current.professor,
-    term: input.term !== undefined ? input.term.trim() : current.term,
-    status: input.status ?? current.status,
+    term,
+    status,
     updatedAt: now,
     schedules,
   };

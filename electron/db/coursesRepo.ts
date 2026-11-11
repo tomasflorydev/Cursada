@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
   ClassSchedule,
+  ClassScheduleInput,
   CourseColor,
   CourseDeleteImpact,
   CourseStatus,
@@ -10,6 +11,63 @@ import type {
   DayOfWeek,
   UpdateCourseInput,
 } from '../types.js';
+
+export const VALID_COURSE_COLORS: readonly CourseColor[] = [
+  'blue',
+  'emerald',
+  'violet',
+  'amber',
+  'rose',
+  'cyan',
+  'orange',
+  'slate',
+];
+
+export const VALID_COURSE_STATUSES: readonly CourseStatus[] = ['active', 'archived'];
+
+const TIME_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function parseTimeToMinutes(time: string): number {
+  const match = TIME_HH_MM_REGEX.exec(time);
+  if (!match) {
+    throw new Error(`Invalid time format "${time}". Expected HH:MM (00:00 to 23:59)`);
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+export function validateCourseColor(color: string): asserts color is CourseColor {
+  if (!VALID_COURSE_COLORS.includes(color as CourseColor)) {
+    throw new Error(`Invalid course color: "${color}"`);
+  }
+}
+
+export function validateCourseStatus(status: string): asserts status is CourseStatus {
+  if (!VALID_COURSE_STATUSES.includes(status as CourseStatus)) {
+    throw new Error(`Invalid course status: "${status}"`);
+  }
+}
+
+export function validateScheduleInput(sched: ClassScheduleInput): void {
+  if (
+    typeof sched.dayOfWeek !== 'number' ||
+    !Number.isInteger(sched.dayOfWeek) ||
+    sched.dayOfWeek < 1 ||
+    sched.dayOfWeek > 7
+  ) {
+    throw new Error(
+      `Invalid dayOfWeek "${String(sched.dayOfWeek)}". Must be an integer between 1 (Lunes) and 7 (Domingo)`
+    );
+  }
+
+  const startMinutes = parseTimeToMinutes(sched.startTime);
+  const endMinutes = parseTimeToMinutes(sched.endTime);
+
+  if (startMinutes >= endMinutes) {
+    throw new Error(
+      `Invalid schedule time range: startTime (${sched.startTime}) must be strictly before endTime (${sched.endTime})`
+    );
+  }
+}
 
 interface CourseRow {
   id: string;
@@ -47,6 +105,10 @@ export function listCourses(
   opts?: { status?: CourseStatus | 'all' }
 ): CourseWithSchedules[] {
   const statusFilter = opts?.status ?? 'all';
+  if (statusFilter !== 'all') {
+    validateCourseStatus(statusFilter);
+  }
+
   const courses = (
     statusFilter === 'all'
       ? db.prepare('SELECT * FROM courses ORDER BY created_at ASC').all()
@@ -112,13 +174,22 @@ export function createCourse(
 ): CourseWithSchedules {
   const id = randomUUID();
   const now = new Date().toISOString();
-  const name = input.name.trim();
-  const term = input.term.trim();
+  const name = (input.name ?? '').trim();
+  const term = (input.term ?? '').trim();
+  const status = input.status ?? 'active';
+
   if (!name) {
     throw new Error('Course name cannot be empty');
   }
   if (!term) {
     throw new Error('Course term cannot be empty');
+  }
+  validateCourseColor(input.color);
+  validateCourseStatus(status);
+
+  const schedules = input.schedules ?? [];
+  for (const sched of schedules) {
+    validateScheduleInput(sched);
   }
 
   db.exec('BEGIN IMMEDIATE;');
@@ -132,7 +203,7 @@ export function createCourse(
       input.color,
       (input.professor ?? '').trim(),
       term,
-      input.status ?? 'active',
+      status,
       now,
       now
     );
@@ -142,7 +213,7 @@ export function createCourse(
        VALUES (?, ?, ?, ?, ?, ?)`
     );
 
-    for (const sched of input.schedules ?? []) {
+    for (const sched of schedules) {
       insertSchedule.run(
         sched.id ?? randomUUID(),
         id,
@@ -183,6 +254,21 @@ export function updateCourse(
   const professor =
     input.professor !== undefined ? input.professor.trim() : existing.professor;
   const status = input.status ?? existing.status;
+
+  if (!name) {
+    throw new Error('Course name cannot be empty');
+  }
+  if (!term) {
+    throw new Error('Course term cannot be empty');
+  }
+  validateCourseColor(color);
+  validateCourseStatus(status);
+
+  if (input.schedules !== undefined) {
+    for (const sched of input.schedules) {
+      validateScheduleInput(sched);
+    }
+  }
 
   db.exec('BEGIN IMMEDIATE;');
   try {
