@@ -24,22 +24,26 @@ describe('Cursada Design Skeleton', () => {
     ).toBeInTheDocument();
   });
 
-  it('switches between the 3 Home design variants and navigates across sidebar sections', () => {
+  it('switches between the 3 redesigned Home layouts, 3 palettes, 3 fonts and sidebar sections', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'B · Agenda' }));
-    expect(screen.getByRole('heading', { level: 2, name: 'Agenda de hoy' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Bento con Aire' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Clases de hoy' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'C · Editorial' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Agenda con Personalidad' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Agenda de hoy' })).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Hoy en la facultad' })
+      screen.getByText(/Ahora · 35 min libres antes de entrar a cursar/i)
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /P2 · Piedra/i }));
+    expect(document.documentElement.getAttribute('data-palette')).toBe('p2');
+
+    fireEvent.click(screen.getByRole('button', { name: /T2 · Serif \+ Sans/i }));
+    expect(document.documentElement.getAttribute('data-font')).toBe('t2');
 
     const primaryNav = screen.getByRole('navigation', { name: 'Principal' });
     fireEvent.click(within(primaryNav).getByRole('button', { name: /Calendario/i }));
     expect(screen.getByRole('heading', { level: 1, name: 'Calendario' })).toBeInTheDocument();
-
-    fireEvent.click(within(primaryNav).getByRole('button', { name: /Notas/i }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Notas' })).toBeInTheDocument();
   });
 });

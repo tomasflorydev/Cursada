@@ -6,7 +6,11 @@ export type NavSectionId =
   | 'notas'
   | 'materias';
 
-export type HomeLayoutVariant = 'bento' | 'agenda' | 'editorial';
+export type HomeLayoutVariant = 'github' | 'bento' | 'agenda';
+
+export type PaletteVariant = 'p1' | 'p2' | 'p3';
+
+export type TypographyVariant = 't1' | 't2' | 't3';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
