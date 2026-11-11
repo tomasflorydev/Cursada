@@ -9,7 +9,7 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 ### Tarea 1.1: Esqueleto de la app, base de datos SQLite y backups automáticos
 - **Qué incluye**: Inicialización de Electron + React + Vite + TypeScript (`com.cursada.app`), ventana macOS con semáforos integrados (`titleBarStyle: 'hiddenInset'`), layout base estilo macOS con barra lateral fija, soporte de modo claro/oscuro según el sistema, conexión SQLite con `node:sqlite`, migraciones automáticas versionadas, servicio de backups automáticos y pantalla de Ajustes con botón de backup manual.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo abrir la aplicación **Cursada** y ver la barra lateral en español con la navegación principal (**Inicio**, **Calendario**, **Tareas**, **Exámenes**, **Materias** y **Ajustes**).
+  - Puedo abrir la aplicación **Cursada** y ver la barra lateral en español con la navegación principal (**Inicio**, **Calendario**, **Tareas**, **Exámenes**, **Notas**, **Materias** y **Ajustes**).
   - Si cambio mi Mac entre modo claro y modo oscuro, la interfaz de Cursada adapta sus colores automáticamente manteniendo legibilidad y estética nativa.
   - Puedo abrir **Ajustes → Datos y Backups**, hacer clic en **"Crear backup ahora"** y ver confirmada la fecha y ubicación del backup generado.
 
@@ -22,7 +22,7 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
   - Puedo eliminar una materia previa confirmación de seguridad.
 
 ### Tarea 1.3: Vista de Calendario con horario semanal de clases
-- **Qué incluye**: Grilla semanal interactiva (por defecto Lunes a Sábado, con navegación entre semanas y botón "Hoy") donde se dibujan los bloques horarios de todas las materias activas con su respectivo color, horario y aula.
+- **Qué incluye**: Grilla semanal interactiva de **Lunes a Domingo** (7 días, con navegación entre semanas y botón "Hoy") donde se dibujan los bloques horarios de todas las materias activas con su respectivo color, horario y aula/modalidad.
 - **Criterios de aceptación (como usuario)**:
   - Puedo abrir la sección **Calendario** y ver todos mis bloques de cursada ubicados en el día y franja horaria correspondiente con el color de cada materia.
   - Puedo hacer clic en un bloque de clase dentro del calendario y navegar directamente a la página de esa materia.
@@ -56,24 +56,26 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
   - Puedo ver cuántos días faltan para cada próximo examen y ver el examen destacado en el **Calendario** semanal en la fecha correspondiente.
   - Después de rendir, puedo editar el examen para cargar la nota obtenida (ej. `8.5`) y ver el historial de exámenes rendidos y promedio en la materia.
 
-### Tarea 3.2: Pantalla de Inicio (Dashboard del Estudiante)
-- **Qué incluye**: Construcción de la pantalla principal **Inicio** con los cuatro bloques clave:
-  1. **Clases de hoy** (ordenadas por hora, indicando cuál es la próxima o cuál está en curso).
-  2. **Tareas por vencer** (vencidas, para hoy y próximos 7 días, con checkbox rápido).
-  3. **Próximos exámenes** (con cuenta regresiva de días y temas).
-  4. **Vista resumen de la semana** (compromisos día por día de la semana actual).
+### Tarea 3.2: Pantalla de Inicio (Conexión de datos en vivo con Bento con Aire)
+- **Qué incluye**: Conexión de la pantalla principal **Inicio** (diseñada con el layout confirmado **Bento con Aire** en `DESIGN.md`) con los datos persistidos en SQLite:
+  1. **Nivel 1 (Columnas asimétricas)**:
+     - **Tareas por vencer**: Tareas pendientes ordenadas por urgencia (vencidas, para hoy y próximos 7 días, con checkbox funcional de completado inmediato y badge de materia).
+     - **Próximos exámenes**: Fichas con cuenta regresiva en días, fecha, temas a evaluar y ubicación.
+  2. **Nivel 2 (Ancho completo)**:
+     - **Pulso de la semana**: Grilla horizontal de 7 días (Lunes a Domingo) calculada dinámicamente con la cantidad de clases, entregas y exámenes de cada día, destacando la fecha actual.
+  *(El bloque aislado de "clases de hoy" fue descartado por decisión de diseño para evitar redundancias y mantener la calma visual, integrándose el horario completo en la sección Calendario).*
 - **Criterios de aceptación (como usuario)**:
-  - Al abrir la app en **Inicio**, veo de un vistazo qué clases tengo hoy, qué tareas vencen pronto, cuáles son mis próximos exámenes y cómo viene mi semana completa.
-  - Puedo completar una tarea pendiente directamente desde la pantalla de **Inicio** sin tener que cambiar de sección.
+  - Al abrir la app en **Inicio**, veo de un vistazo mis tareas pendientes por vencer, mis próximos exámenes y el balance de carga de mi semana completa en el **Pulso de la semana**.
+  - Puedo completar o reabrir una tarea pendiente directamente desde la pantalla de **Inicio** con un solo clic y el cambio se persiste en SQLite.
 
 ---
 
 ## Fase 4: Notas por Materia + Exportación a Markdown
 
-### Tarea 4.1: Editor Markdown con Preview en vivo y guardado automático
-- **Qué incluye**: Pestaña **Notas** dentro de cada materia con lista de notas, buscador instantáneo (FTS5 sin distinción de tildes), fijado de notas importantes y editor Markdown (CodeMirror 6) con modos **Editar / Dividido / Lectura**, soporte GFM (tablas, listas de tareas, bloques de código) y guardado automático.
+### Tarea 4.1: Editor Markdown con Preview en vivo, guardado automático y vista global de Notas
+- **Qué incluye**: Sección global **Notas** en la barra lateral para acceder a todos los apuntes del cuatrimestre, más la pestaña **Notas** dentro de cada materia, con buscador instantáneo (FTS5 sin distinción de tildes), fijado de notas importantes y editor Markdown (CodeMirror 6) con modos **Editar / Dividido / Lectura**, soporte GFM (tablas, listas de tareas, bloques de código) y guardado automático.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo entrar a una materia, crear una nota nueva y escribir en Markdown viendo el resultado formateado en tiempo real en el panel de preview.
+  - Puedo acceder a mis notas tanto desde la sección global **Notas** de la barra lateral como desde la pestaña de cada materia, crear una nota nueva y escribir en Markdown viendo el resultado formateado en tiempo real en el panel de preview.
   - Mientras escribo, mis cambios se guardan automáticamente sin tocar ningún botón, y si cierro y reabro la app todo el texto está intacto.
   - Puedo buscar una palabra (con o sin tilde) en el buscador de notas y encontrar al instante las notas que la contienen.
 

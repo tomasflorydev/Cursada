@@ -2,7 +2,8 @@
 
 ## Estado Actual
 - **Fase actual**: Diseño Base Finalizado y Aprobado (`DESIGN.md`). Listo para dar inicio a la **Fase 1** (Esqueleto de la app, base de datos SQLite y CRUD de materias con horarios).
-- **Última actualización**: 2026-11-10
+- **Última actualización**: 2026-11-11
+- **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
 ## Decisiones de Diseño Base Confirmadas
 1. **Layout de Inicio**: **Bento con Aire** (estructurado en 2 niveles: tareas por vencer y próximos exámenes en columnas asimétricas, más el pulso de la semana al pie; sin bloque de clases de hoy en inicio).
