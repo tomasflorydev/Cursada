@@ -1,11 +1,19 @@
 import React from 'react';
-import type { NavSectionId, SampleCourse, ThemeMode } from '../types/design';
+import type { CourseColor, CourseStatus, NavSectionId, ThemeMode } from '../types';
 import { CURRENT_TERM_LABEL } from '../lib/sampleData';
+
+export interface SidebarCourseItem {
+  id: string;
+  name: string;
+  color: CourseColor;
+  status?: CourseStatus;
+  term?: string;
+}
 
 interface SidebarProps {
   activeSection: NavSectionId;
   selectedCourseId: string | null;
-  courses: SampleCourse[];
+  courses: SidebarCourseItem[];
   pendingTasksCount: number;
   upcomingExamsCount: number;
   themeMode: ThemeMode;
@@ -32,6 +40,9 @@ export function Sidebar({
   onSelectCourse,
   onChangeThemeMode,
 }: SidebarProps) {
+  const activeCourses = courses.filter((c) => c.status !== 'archived');
+  const archivedCourses = courses.filter((c) => c.status === 'archived');
+
   const mainNavItems: NavItemConfig[] = [
     {
       id: 'inicio',
@@ -94,6 +105,19 @@ export function Sidebar({
         </svg>
       ),
     },
+    {
+      id: 'ajustes',
+      label: 'Ajustes',
+      icon: (
+        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.65">
+          <circle cx="10" cy="10" r="2.6" />
+          <path
+            d="M10 3.2v1.6M10 15.2v1.6M3.2 10h1.6M15.2 10h1.6M5.2 5.2l1.1 1.1M13.7 13.7l1.1 1.1M14.8 5.2l-1.1 1.1M6.3 13.7l-1.1 1.1"
+            strokeLinecap="round"
+          />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -142,10 +166,10 @@ export function Sidebar({
       <nav className="sidebar-courses-section" aria-label="Materias en curso">
         <div className="sidebar-section-header">
           <span className="sidebar-section-title">Cursada actual</span>
-          <span className="sidebar-section-count">{courses.length}</span>
+          <span className="sidebar-section-count">{activeCourses.length}</span>
         </div>
         <ul className="sidebar-course-list">
-          {courses.map((course) => {
+          {activeCourses.map((course) => {
             const isSelected = activeSection === 'materias' && selectedCourseId === course.id;
             return (
               <li key={course.id}>
@@ -162,6 +186,37 @@ export function Sidebar({
             );
           })}
         </ul>
+
+        {archivedCourses.length > 0 ? (
+          <details className="sidebar-archive-details">
+            <summary className="sidebar-archive-summary">
+              <span>Archivo / Cuatrimestres anteriores</span>
+              <span className="sidebar-section-count">{archivedCourses.length}</span>
+            </summary>
+            <ul className="sidebar-course-list">
+              {archivedCourses.map((course) => {
+                const isSelected = activeSection === 'materias' && selectedCourseId === course.id;
+                return (
+                  <li key={course.id}>
+                    <button
+                      type="button"
+                      className={`sidebar-course-button ${isSelected ? 'is-active' : ''}`}
+                      data-course-color={course.color}
+                      onClick={() => onSelectCourse(course.id)}
+                    >
+                      <span
+                        className="course-dot"
+                        data-course-color={course.color}
+                        aria-hidden="true"
+                      />
+                      <span className="sidebar-course-name">{course.name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
+        ) : null}
       </nav>
 
       <div className="sidebar-footer">

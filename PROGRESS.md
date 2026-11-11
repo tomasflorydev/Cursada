@@ -1,23 +1,27 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: Diseño Base Finalizado y Aprobado (`DESIGN.md`). Listo para dar inicio a la **Fase 1** (Esqueleto de la app, base de datos SQLite y CRUD de materias con horarios).
+- **Fase actual**: **Fase 1 y Fase 2 en ejecución** — **Etapa 0 (Base + Tarea 1.1)** completada, verificada y commiteada en `main`. Listo para lanzar **Etapa 1** (Agente A y Agente B en paralelo).
 - **Última actualización**: 2026-11-11
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
-## Decisiones de Diseño Base Confirmadas
-1. **Layout de Inicio**: **Bento con Aire** (estructurado en 2 niveles: tareas por vencer y próximos exámenes en columnas asimétricas, más el pulso de la semana al pie; sin bloque de clases de hoy en inicio).
-2. **Paleta de Colores**: **Paleta 1 (Pizarra & Índigo)**, con modo oscuro en grises suaves de pizarra (`#21262D` / `#282E37`, cero negro puro) y modo claro alabastro (`#F6F8FA`). Acentos en índigo suave (`#748FFC` / `#3B5BDB`) y 8 colores tenues por materia.
-3. **Tipografía**: Pila nativa de **macOS** (`SF Pro Display`, `SF Pro Text` y `SF Mono` con números tabulares).
-4. **Espaciado y jerarquía**: Mucho aire visual, márgenes y paddings amplios, tarjetas sutiles y listas limpias.
+## Avances Completados
 
-## Decisiones Técnicas y de Dominio Confirmadas
-1. **Stack**: Electron + React + Vite + TypeScript + SQLite nativo (`node:sqlite` con FTS5 y `VACUUM INTO`).
-2. **Cuatrimestres**: Materias del cuatrimestre actual visibles + cuatrimestres anteriores en archivo.
-3. **Horarios y Calendario**: Campo opcional de Aula/Sede/Modalidad en cada horario; grilla semanal de **Lunes a Domingo**.
-4. **Tareas**: Dos estados simples (**Pendiente** / **Completada**); asociadas obligatoriamente a una materia.
-5. **Exámenes**: Escala de **1 a 10**, categorías (**Parcial, Recuperatorio, Final, TP evaluativo**) y cálculo de promedio.
-6. **IA (Fuentes y Reportes)**: Soporte para archivos (`.pdf`, `.md`, `.txt`) + pegar texto directo; selector de formato en preguntas de práctica.
+### Etapa 0 — Base y Tarea 1.1 (Completada)
+- [x] **Tarea 1.1**:
+  - Conexión SQLite con `node:sqlite` (`DatabaseSync`, `WAL`, `foreign_keys = ON`) y aislamiento estricto mediante `CURSADA_DATA_DIR` y directorios temporales en tests (`electron/db/database.ts`).
+  - Migración inicial `v1` (`electron/db/migrations.ts`) con tablas `courses`, `class_schedules`, `tasks` y `app_settings`.
+  - Servicio de backups automáticos con `VACUUM INTO` (`electron/services/backupService.ts`), backup al iniciar (≥ 24 h), backup pre-migración, backup automático previo al borrado de una materia y rotación de los últimos 15 backups.
+  - Vista **Ajustes → Datos y Backups** (`src/pages/SettingsPage.tsx`) con botón **"Crear backup ahora"**, confirmación de fecha y ruta, y selector de tema (Automático / Claro / Oscuro).
+- [x] **Infraestructura para trabajo paralelo (Etapa 1)**:
+  - Contrato compartido en `src/types/domain.ts` y `electron/types.ts` (incluyendo `CourseDeleteImpact` con conteo de tareas afectadas).
+  - Handlers IPC separados por dominio (`electron/ipc/systemHandlers.ts`, `electron/ipc/coursesHandlers.ts`, `electron/ipc/tasksHandlers.ts`) registrados desde `electron/ipc/handlers.ts`.
+  - Cliente tipado congelado (`src/lib/api/client.ts` y `src/lib/api/mockClient.ts`) con mocks divididos por dominio en `src/lib/api/mockCourses.ts` (Agente A) y `src/lib/api/mockTasks.ts` (Agente B).
+  - Barra lateral (`src/components/Sidebar.tsx`) y `src/App.tsx` conectados a `listCourses()` y `listTasks()`, con contrato de navegación `onSelectCourse(courseId)` ya enrutado hacia `CoursesPage`, `CalendarPage` y `TasksPage`.
 
 ## Qué sigue
-- [ ] Confirmar inicio de la **Fase 1: Tarea 1.1** (Conexión SQLite, migraciones, ventana Electron con semáforos integrados y backups automáticos).
+- [ ] **Etapa 1 (Paralelo en git worktrees)**:
+  - **Agente A (`feat/courses-calendar`)**: Tarea 1.2 (CRUD completo de Materias y horarios semanales, archivado, confirmación de borrado con cantidad de tareas afectadas y vista detalle de materia) y Tarea 1.3 (Calendario semanal de Lunes a Domingo con navegación entre semanas y clic en bloque de clase para ir a la materia).
+  - **Agente B (`feat/tasks`)**: Tarea 2.1 (CRUD de tareas por materia, componente reutilizable `<TaskList courseId? />` y vista global de Tareas con filtros por estado y materia).
+- [ ] **Etapa 2 (Integración secuencial)**:
+  - Merge de `feat/courses-calendar` y `feat/tasks` en `main`, montaje de `<TaskList courseId={course.id} />` en la pestaña Tareas de cada materia y Tarea 2.2 (superposición de entregas en el Calendario semanal).

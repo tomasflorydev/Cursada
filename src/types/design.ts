@@ -4,19 +4,14 @@ export type NavSectionId =
   | 'tareas'
   | 'examenes'
   | 'notas'
-  | 'materias';
+  | 'materias'
+  | 'ajustes';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
-export type CourseColor =
-  | 'blue'
-  | 'emerald'
-  | 'violet'
-  | 'amber'
-  | 'rose'
-  | 'cyan'
-  | 'orange'
-  | 'slate';
+import type { CourseColor } from './domain';
+
+export type { CourseColor };
 
 export interface SampleCourse {
   id: string;

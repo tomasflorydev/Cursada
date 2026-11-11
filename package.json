@@ -9,7 +9,7 @@
     "dev": "vite --port 5173",
     "dev:web": "vite --port 5173",
     "dev:electron": "tsc -p tsconfig.electron.json && electron .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit && tsc -p tsconfig.electron.json && vite build",
     "package": "npm run build"

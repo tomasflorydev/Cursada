@@ -261,17 +261,28 @@ Cursada/
 │   │   ├── reportService.ts         # Generación Map-Reduce de resúmenes, guías y exámenes (con formato elegible)
 │   │   └── ollamaClient.ts          # Cliente HTTP hacia localhost:11434 (/api/tags, /api/embed, /api/chat)
 │   └── ipc/
-│       └── handlers.ts              # Registro de canales ipcMain.handle con validación
+│       ├── handlers.ts              # Registro central de dominios IPC
+│       ├── systemHandlers.ts        # Canales IPC de backups y directorio de datos
+│       ├── coursesHandlers.ts       # Canales IPC de materias y horarios (con backup pre-borrado)
+│       └── tasksHandlers.ts         # Canales IPC de tareas
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React
-    ├── App.tsx                      # Layout principal y enrutamiento de vistas
-    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro)
-    ├── types/                       # Tipos compartidos entre Renderer y Main
+    ├── App.tsx                      # Layout principal, contrato de navegación y sincronización de barra lateral
+    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio)
+    ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado de comunicación con Electron IPC
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (mockCourses.ts, mockTasks.ts, mockClient.ts)
     │   ├── dates/                   # Utilidades de calendario (Lunes a Domingo) en español
     │   └── pdf/                     # Extracción de texto de PDFs página por página (pdfjs-dist)
     ├── components/                  # Componentes de UI por dominio
-    ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Notas, Materias)
+    ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Notas, Materias, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```
+
+---
+
+## 5. Aislamiento de Entorno, Navegación y Seguridad Operativa
+
+- **`CURSADA_DATA_DIR`**: `electron/db/database.ts` prioriza la variable de entorno `CURSADA_DATA_DIR` sobre `~/Library/Application Support/com.cursada.app/`, permitiendo que entornos de desarrollo y agentes en paralelo operen sobre directorios aislados. En `VITEST` / `NODE_ENV=test`, cualquier apertura sin directorio explícito usa automáticamente un directorio temporal (`fs.mkdtempSync(path.join(os.tmpdir(), 'cursada-test-'))`).
+- **Borrado seguro de materias**: Antes de eliminar una materia (`courses:delete`), se consulta el impacto (`courses:getDeleteImpact` devuelve cuántas tareas asociadas se eliminarán en cascada para informar en el diálogo de confirmación) y se ejecuta un backup automático (`createBackup(..., 'pre-course-delete')`).
+- **Contrato de navegación y refresco reactivo**: `App.tsx` inyecta `onSelectCourse(courseId | null)` a las vistas de dominio y escucha el evento `cursada:data-changed` emitido por `cursadaClient` tras cada mutación, manteniendo sincronizados la lista de materias (activas y archivadas) y el contador de tareas pendientes en `Sidebar.tsx`.
