@@ -67,24 +67,15 @@ Cada materia elige uno de los 8 colores disponibles en `courses.color`. En modo 
 
 ---
 
-## 4. Estructura de Pantalla: Bento con Aire (Layout Cockpit Semanal)
+## 4. Estructura de Pantalla: Bento con Aire
 
-La pantalla de **Inicio** funciona como un "Cockpit" académico semanal estructurado en un layout asimétrico con aire generoso (60-65% : 35-40%):
+La pantalla de **Inicio** se estructura en un layout Bento de dos niveles:
 
 1. **Cabecera**:
-   - Fecha completa en español (`Martes 10 de noviembre de 2026`) con pill monoespaciada de cuatrimestre/semana (`Semana 12 de 16`).
-   - Título principal `Inicio` y subtítulo resumen de pendientes (`Tenés 4 entregas pendientes y tu próximo examen es en 3 días.`).
-2. **Columna Izquierda — Protagonista (minmax 1.48fr)**:
-   - **Calendario de la semana (Preview semanal)**: Al abrir la aplicación, el estudiante ve de inmediato la grilla completa de 7 días (Lunes a Domingo, semana actual).
-   - Cada día muestra:
-     - Cabecera con día abreviado, número de fecha y destacado visual sobrio para el día actual (`Hoy`).
-     - Bloques de clases con la barra de acento del color de la materia, horario (`18:30 – 22:30`), nombre de la materia (enlace directo) y aula/modalidad (`Aula 308 · Lima`).
-     - Eventos de examen con badge destacado (`Examen`).
-     - Días sin actividad con ranura libre minimalista.
-   - Franja inferior con leyenda y acceso rápido a las materias activas del cuatrimestre.
-   - Botón de acceso directo en cabecera: `Ver calendario completo`.
-3. **Columna Derecha — Lateral de Entregas y Parciales (minmax 340px)**:
-   - **Tareas por vencer**: Panel vertical con checklist interactivo (checkboxes funcionales con tachado instantáneo), indicadores de prioridad alta, pill de materia y badge de urgencia (`Hoy`, `Mañana`, fecha).
-   - **Próximos exámenes**: Panel vertical con fichas de exámenes y contador tabular en días (`3 días`, `10 días`), fecha, horario, categoría (`Parcial`, `TP evaluativo`), temas y sede.
-4. **Simplificación visual**:
-   - Se descartó el bloque aislado de "clases de hoy" para evitar redundancias, ya que los horarios y aulas quedan integrados en la columna del día actual en la preview del calendario semanal.
+   - Fecha completa en español (`Martes 10 de noviembre`) con pill de cuatrimestre/semana.
+   - Título principal `Inicio` y subtítulo resumen de pendientes.
+2. **Nivel 1 (Columnas asimétricas 1.25fr : 1fr)**:
+   - **Columna izquierda**: Panel de **Tareas por vencer** en formato lista interactiva con checkbox rápido, etiquetas compactas de materia y fecha de entrega.
+   - **Columna derecha**: Panel de **Próximos exámenes** con cuenta regresiva en días, categoría y temas a evaluar.
+3. **Nivel 2 (Ancho completo)**:
+   - **Pulso de la semana**: Grilla horizontal de 7 días (Lunes a Domingo) que muestra el balance de carga académica semanal y resalta el día de hoy y los días con examen.

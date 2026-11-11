@@ -16,17 +16,14 @@ describe('Cursada Design Skeleton', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Inicio' })).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Calendario de la semana' })
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole('heading', { level: 2, name: 'Tareas por vencer' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 2, name: 'Próximos exámenes' })
     ).toBeInTheDocument();
-
-    // Verifies the weekly calendar hero includes the today highlight
-    expect(screen.getByText('Hoy')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Pulso de la semana' })
+    ).toBeInTheDocument();
 
     // Verifies "Clases de hoy" is NOT present on Inicio
     expect(screen.queryByText(/Clases de hoy/i)).not.toBeInTheDocument();

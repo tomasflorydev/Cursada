@@ -5,7 +5,7 @@
 - **Última actualización**: 2026-11-10
 
 ## Decisiones de Diseño Base Confirmadas
-1. **Layout de Inicio**: **Bento con Aire (Cockpit Semanal)**: Calendario de la semana como protagonista (grande, a la izquierda, 65% del ancho) con vista previa inmediata de las clases y eventos de la semana, acompañado de una columna lateral derecha (35% del ancho) con las tareas por vencer y próximos exámenes. Sin bloque redundante de clases de hoy en inicio.
+1. **Layout de Inicio**: **Bento con Aire** (estructurado en 2 niveles: tareas por vencer y próximos exámenes en columnas asimétricas, más el pulso de la semana al pie; sin bloque de clases de hoy en inicio).
 2. **Paleta de Colores**: **Paleta 1 (Pizarra & Índigo)**, con modo oscuro en grises suaves de pizarra (`#21262D` / `#282E37`, cero negro puro) y modo claro alabastro (`#F6F8FA`). Acentos en índigo suave (`#748FFC` / `#3B5BDB`) y 8 colores tenues por materia.
 3. **Tipografía**: Pila nativa de **macOS** (`SF Pro Display`, `SF Pro Text` y `SF Mono` con números tabulares).
 4. **Espaciado y jerarquía**: Mucho aire visual, márgenes y paddings amplios, tarjetas sutiles y listas limpias.
