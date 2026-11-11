@@ -7,7 +7,7 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 ## Fase 1: Base del Proyecto + Materias + Horario Semanal de Clases
 
 ### Tarea 1.1: Esqueleto de la app, base de datos SQLite y backups automáticos
-- **Qué incluye**: Inicialización de Tauri 2 + React + Vite + TypeScript (`com.cursada.app`), layout base estilo macOS con barra lateral fija, soporte de modo claro/oscuro según el sistema, conexión SQLite con migración inicial, servicio de backups automáticos y pantalla de Ajustes con botón de backup manual.
+- **Qué incluye**: Inicialización de Electron + React + Vite + TypeScript (`com.cursada.app`), ventana macOS con semáforos integrados (`titleBarStyle: 'hiddenInset'`), layout base estilo macOS con barra lateral fija, soporte de modo claro/oscuro según el sistema, conexión SQLite con `node:sqlite`, migraciones automáticas versionadas, servicio de backups automáticos y pantalla de Ajustes con botón de backup manual.
 - **Criterios de aceptación (como usuario)**:
   - Puedo abrir la aplicación **Cursada** y ver la barra lateral en español con la navegación principal (**Inicio**, **Calendario**, **Tareas**, **Exámenes**, **Materias** y **Ajustes**).
   - Si cambio mi Mac entre modo claro y modo oscuro, la interfaz de Cursada adapta sus colores automáticamente manteniendo legibilidad y estética nativa.
