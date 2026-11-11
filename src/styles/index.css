@@ -744,8 +744,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    padding-block: 15px;
+    gap: var(--space-4);
+    padding-block: 18px;
   }
 
   .task-row:not(:last-child) {
@@ -755,14 +755,14 @@
   .task-row-main {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 14px;
     min-width: 0;
     flex: 1;
   }
 
   .task-checkbox {
-    width: 16px;
-    height: 16px;
+    width: 17px;
+    height: 17px;
     margin-block-start: 3px;
     flex-shrink: 0;
     cursor: pointer;
@@ -770,10 +770,10 @@
   }
 
   .task-title-label {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: var(--text-primary);
     cursor: pointer;
-    line-height: 1.45;
+    line-height: 1.55;
   }
 
   .task-row:where(.is-completed, :has(.task-checkbox:checked)) .task-title-label {
@@ -784,7 +784,7 @@
   .task-row-meta {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 10px;
     flex-shrink: 0;
   }
 
@@ -836,8 +836,8 @@
   .exam-ficha {
     display: grid;
     grid-template-columns: 66px minmax(0, 1fr);
-    gap: 14px;
-    padding: 15px;
+    gap: 16px;
+    padding: 18px 20px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-canvas);
@@ -863,20 +863,20 @@
 
   .exam-countdown-number {
     font-family: var(--font-mono);
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 700;
     line-height: 1.1;
   }
 
   .exam-countdown-unit {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
   }
 
   .exam-ficha-body {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 7px;
     min-width: 0;
   }
 
@@ -889,30 +889,31 @@
 
   .exam-date-meta {
     font-family: var(--font-mono);
-    font-size: 0.73rem;
+    font-size: 0.74rem;
     font-variant-numeric: tabular-nums;
     color: var(--text-secondary);
   }
 
   .exam-ficha-title {
     font-family: var(--font-display);
-    font-size: 0.94rem;
+    font-size: 0.98rem;
     font-weight: 600;
+    line-height: 1.35;
     color: var(--text-primary);
   }
 
   .exam-ficha-topics {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
-    line-height: 1.45;
+    line-height: 1.55;
   }
 
   .exam-ficha-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-block-start: 4px;
-    font-size: 0.73rem;
+    margin-block-start: 6px;
+    font-size: 0.75rem;
     color: var(--text-muted);
   }
 
@@ -997,11 +998,46 @@
     background-color: #eb9e28;
   }
 
+  /* ==========================================================================
+     CABECERAS DE VISTAS SECUNDARIAS & ESTRUCTURA ESPACIOSA
+     ========================================================================== */
+  .page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-block-end: 24px;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .page-header-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+    color: var(--text-primary);
+  }
+
+  .page-subtitle {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 68ch;
+  }
+
   /* Basic Skeleton Views for other tabs */
   .basic-view {
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    gap: 36px;
   }
 
   .basic-header-actions {
@@ -1026,7 +1062,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 13px 14px;
   }
 
   .calendar-col-head:not(:last-child) {
@@ -1040,14 +1076,14 @@
   .calendar-skeleton-body {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    min-height: 360px;
+    min-height: 380px;
   }
 
   .calendar-day-col {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding: 10px;
+    gap: 10px;
+    padding: 12px;
   }
 
   .calendar-day-col:not(:last-child) {
@@ -1057,46 +1093,53 @@
   .calendar-block {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 8px 10px;
+    gap: 5px;
+    padding: 10px 12px;
     border-radius: var(--radius-sm);
     background-color: var(--course-bg);
     color: var(--course-text);
     border-inline-start: 3px solid var(--course-dot);
-    font-size: 0.74rem;
+    border-top: 1px solid var(--course-border);
+    border-right: 1px solid var(--course-border);
+    border-bottom: 1px solid var(--course-border);
+    font-size: 0.77rem;
+    line-height: 1.45;
   }
 
   .calendar-block-time {
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 600;
+    letter-spacing: 0.01em;
   }
 
   .calendar-empty-slot {
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     color: var(--text-muted);
-    padding: 6px;
+    padding: 10px 8px;
   }
 
   .calendar-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: 10px;
+    padding-block-start: 4px;
   }
 
   .basic-exams-grid,
   .notes-basic-grid,
   .courses-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-    gap: var(--space-5);
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
   }
 
   .note-preview-card,
   .course-overview-card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: 16px;
+    padding: 26px 28px;
   }
 
   .course-overview-card.is-focused {
@@ -1109,27 +1152,30 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
   }
 
   .note-updated-label,
   .course-grade-pill {
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     color: var(--text-muted);
   }
 
   .note-card-title,
   .course-card-title {
     font-family: var(--font-display);
-    font-size: 0.98rem;
+    font-size: 1.05rem;
     font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
     color: var(--text-primary);
   }
 
   .note-card-excerpt {
-    font-size: 0.82rem;
+    font-size: 0.86rem;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.62;
   }
 
   .note-card-footer {
@@ -1137,7 +1183,8 @@
     align-items: center;
     justify-content: space-between;
     margin-block-start: auto;
-    font-size: 0.73rem;
+    padding-block-start: 10px;
+    font-size: 0.75rem;
     color: var(--text-muted);
   }
 
@@ -1147,23 +1194,25 @@
   }
 
   .course-card-professor {
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
+    line-height: 1.45;
   }
 
   .course-card-details {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-block-start: var(--space-2);
+    gap: 10px;
+    padding-block-start: 14px;
     border-block-start: 1px solid var(--border-subtle);
   }
 
   .course-detail-row {
     display: flex;
     justify-content: space-between;
-    gap: var(--space-2);
-    font-size: 0.78rem;
+    gap: var(--space-3);
+    font-size: 0.82rem;
+    line-height: 1.45;
   }
 
   .course-detail-label {
