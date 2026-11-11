@@ -18,11 +18,10 @@
 }
 
 @layer tokens {
-  :root,
-  html[data-palette='p1'] {
+  :root {
     color-scheme: light dark;
 
-    /* P1: Pizarra & Índigo (Sobria, en la línea de orden de GitHub con paleta propia) */
+    /* Paleta Pizarra & Índigo (GitHub-inspired, sobria, con identidad propia) */
     --bg-canvas-light: #f6f8fa;
     --bg-sidebar-light: #eef1f6;
     --bg-surface-light: #ffffff;
@@ -40,7 +39,7 @@
     --accent-primary-text-light: #ffffff;
     --accent-soft-light: #edf2ff;
 
-    /* Dark Mode P1: Grises suaves de pizarra, nunca negro puro */
+    /* Modo Oscuro: Grises suaves de pizarra, NUNCA negro puro */
     --bg-canvas-dark: #21262d;
     --bg-sidebar-dark: #1b1f26;
     --bg-surface-dark: #282e37;
@@ -51,95 +50,14 @@
     --text-secondary-dark: #9ca6b4;
     --text-muted-dark: #7d8796;
 
-    --border-subtle-dark: #3b434f;
-    --border-strong-dark: #4d5766;
+    --border-subtle-dark: #38404c;
+    --border-strong-dark: #4b5463;
 
     --accent-primary-dark: #748ffc;
     --accent-primary-text-dark: #141923;
-    --accent-soft-dark: #283352;
-  }
+    --accent-soft-dark: #26314d;
 
-  /* P2: Piedra & Cobalto (Cálida, suave y descansada) */
-  html[data-palette='p2'] {
-    --bg-canvas-light: #f7f6f2;
-    --bg-sidebar-light: #efece6;
-    --bg-surface-light: #ffffff;
-    --bg-surface-subtle-light: #f3f1ec;
-    --bg-surface-active-light: #e6e2da;
-
-    --text-primary-light: #232529;
-    --text-secondary-light: #5c5f66;
-    --text-muted-light: #7c7f87;
-
-    --border-subtle-light: #e2dfd7;
-    --border-strong-light: #cbc6bc;
-
-    --accent-primary-light: #2b6cb0;
-    --accent-primary-text-light: #ffffff;
-    --accent-soft-light: #ebf4ff;
-
-    /* Dark Mode P2: Gris carbón aterciopelado suave */
-    --bg-canvas-dark: #25262b;
-    --bg-sidebar-dark: #1f2024;
-    --bg-surface-dark: #2e3036;
-    --bg-surface-subtle-dark: #353840;
-    --bg-surface-active-dark: #3d4049;
-
-    --text-primary-dark: #eceeef;
-    --text-secondary-dark: #a6aab4;
-    --text-muted-dark: #858994;
-
-    --border-subtle-dark: #3e4149;
-    --border-strong-dark: #525661;
-
-    --accent-primary-dark: #63b3ed;
-    --accent-primary-text-dark: #15202b;
-    --accent-soft-dark: #263849;
-  }
-
-  /* P3: Bruma & Pino (Fresca, serena y académica) */
-  html[data-palette='p3'] {
-    --bg-canvas-light: #f4f7f6;
-    --bg-sidebar-light: #e9efed;
-    --bg-surface-light: #ffffff;
-    --bg-surface-subtle-light: #eef4f2;
-    --bg-surface-active-light: #dfeae6;
-
-    --text-primary-light: #1a2421;
-    --text-secondary-light: #52635e;
-    --text-muted-light: #71827d;
-
-    --border-subtle-light: #d5e0dc;
-    --border-strong-light: #b9cac4;
-
-    --accent-primary-light: #0f766e;
-    --accent-primary-text-light: #ffffff;
-    --accent-soft-light: #e6f7f5;
-
-    /* Dark Mode P3: Gris grafito verdoso suave */
-    --bg-canvas-dark: #202625;
-    --bg-sidebar-dark: #1a1f1e;
-    --bg-surface-dark: #28302e;
-    --bg-surface-subtle-dark: #2f3836;
-    --bg-surface-active-dark: #374240;
-
-    --text-primary-dark: #e7f0ee;
-    --text-secondary-dark: #9cb0ab;
-    --text-muted-dark: #7b908b;
-
-    --border-subtle-dark: #384441;
-    --border-strong-dark: #4b5a56;
-
-    --accent-primary-dark: #2dd4bf;
-    --accent-primary-text-dark: #0f2421;
-    --accent-soft-dark: #1d3b38;
-  }
-
-  /* Dynamic Resolution across all palettes */
-  :root,
-  html[data-palette='p1'],
-  html[data-palette='p2'],
-  html[data-palette='p3'] {
+    /* Fallback por defecto (Claro) */
     --bg-canvas: var(--bg-canvas-light);
     --bg-sidebar: var(--bg-sidebar-light);
     --bg-surface: var(--bg-surface-light);
@@ -186,7 +104,12 @@
       --accent-soft: light-dark(var(--accent-soft-light), var(--accent-soft-dark));
     }
 
-    /* Status semantic tokens (Soft & balanced in both modes) */
+    /* Tipografía nativa del sistema macOS */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif;
+    --font-mono: 'SF Mono', Menlo, Monaco, monospace;
+
+    /* Semántica de estado suave */
     --status-today-bg: var(--accent-soft);
     --status-today-text: var(--accent-primary);
     --status-warn-bg: light-dark(#fef6e7, #3d311e);
@@ -205,6 +128,8 @@
     --space-6: 24px;
     --space-8: 32px;
     --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
 
     /* Radii */
     --radius-sm: 6px;
@@ -218,32 +143,6 @@
     --course-border: light-dark(#cbd5e1, #424e61);
 
     accent-color: var(--accent-primary);
-  }
-
-  /* Typography Options (T1, T2, T3) */
-  :root,
-  html[data-font='t1'] {
-    --font-sans: 'Plus Jakarta Sans', 'Avenir Next', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-display: 'Plus Jakarta Sans', 'Avenir Next', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
-    --title-size: 1.6rem;
-    --section-title-size: 0.96rem;
-  }
-
-  html[data-font='t2'] {
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-display: 'Newsreader', 'Iowan Old Style', 'Georgia', serif;
-    --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
-    --title-size: 1.85rem;
-    --section-title-size: 1.08rem;
-  }
-
-  html[data-font='t3'] {
-    --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-display: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-mono: 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
-    --title-size: 1.55rem;
-    --section-title-size: 0.94rem;
   }
 
   html[data-theme='light'] {
@@ -280,7 +179,7 @@
     --accent-soft: var(--accent-soft-dark);
   }
 
-  /* 8 Course Accent Palettes softened for soft-grey dark mode */
+  /* 8 Course Accent Palettes */
   [data-course-color='blue'] {
     --course-dot: #4c82f7;
     --course-bg: light-dark(#eef4ff, #26344d);
@@ -347,7 +246,7 @@
 
   body {
     font-family: var(--font-sans);
-    font-size: 0.875rem; /* 14px comfortable reading size */
+    font-size: 0.875rem; /* 14px */
     line-height: 1.55;
     color: var(--text-primary);
     background-color: var(--bg-canvas);
@@ -363,7 +262,7 @@
   }
 
   @media (forced-colors: active) {
-    :where(.surface-panel, .schedule-strip-card, .exam-ficha, .gh-box, .gh-pinned-card) {
+    :where(.surface-panel, .schedule-strip-card, .exam-ficha) {
       border: 1px solid CanvasText;
     }
   }
@@ -372,7 +271,7 @@
 @layer layout {
   .app-shell {
     display: grid;
-    grid-template-columns: 252px minmax(0, 1fr);
+    grid-template-columns: 248px minmax(0, 1fr);
     height: 100vh;
     width: 100vw;
     background-color: var(--bg-canvas);
@@ -414,7 +313,7 @@
     color: var(--accent-primary-text);
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.92rem;
   }
 
   .sidebar-brand-text {
@@ -426,13 +325,13 @@
   .sidebar-app-name {
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: 0.96rem;
+    font-size: 0.95rem;
     color: var(--text-primary);
     line-height: 1.2;
   }
 
   .sidebar-term-caption {
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -527,7 +426,7 @@
   }
 
   .sidebar-section-title {
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-muted);
   }
@@ -631,127 +530,42 @@
     flex: 1;
     overflow-y: auto;
     padding-inline: var(--space-10);
-    padding-block: var(--space-2) 56px;
+    padding-block: var(--space-2) 64px;
   }
 
   .content-container {
-    max-width: 1180px;
+    max-width: 1140px;
     margin-inline: auto;
   }
 }
 
 @layer components {
-  /* Design Lab Comparison Bar */
-  .design-lab-bar {
+  /* Selection Header Switcher */
+  .variant-selector-bar {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
-    padding: 14px 18px;
-    margin-block-end: var(--space-6);
+    padding: 12px 16px;
+    margin-block-end: var(--space-8);
     background-color: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
   }
 
-  .design-lab-group {
+  .variant-selector-info {
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.82rem;
   }
 
-  .design-lab-label {
+  .variant-selector-tag {
     font-size: 0.72rem;
     font-weight: 600;
-    color: var(--text-muted);
-  }
-
-  .swatch-dot {
-    display: inline-block;
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    margin-inline-end: 6px;
-  }
-
-  .swatch-p1 {
-    background-color: #5c7cfa;
-  }
-
-  .swatch-p2 {
-    background-color: #4299e1;
-  }
-
-  .swatch-p3 {
-    background-color: #14b8a6;
-  }
-
-  /* Page Header */
-  .page-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--space-6);
-    padding-block-end: var(--space-6);
-    margin-block-end: var(--space-8);
-    border-block-end: 1px solid var(--border-subtle);
-    flex-wrap: wrap;
-  }
-
-  .page-header-titles {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-width: 68ch;
-  }
-
-  .page-date-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-block-end: 2px;
-  }
-
-  .page-date-text {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-
-  .page-week-pill {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-variant-numeric: tabular-nums;
-    padding: 2px 9px;
-    border-radius: 999px;
-    background-color: var(--accent-soft);
     color: var(--accent-primary);
-    font-weight: 500;
-  }
-
-  .page-title {
-    font-family: var(--font-display);
-    font-size: var(--title-size);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    color: var(--text-primary);
-  }
-
-  .page-title:focus {
-    outline: none;
-  }
-
-  .page-subtitle {
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-    margin-block-start: 4px;
-  }
-
-  .page-subtitle strong {
-    color: var(--text-primary);
-    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   /* Segmented Control */
@@ -768,12 +582,12 @@
     display: inline-flex;
     align-items: center;
     min-block-size: 28px;
-    padding: 4px 11px;
+    padding: 4px 14px;
     border: none;
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-secondary);
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     font-weight: 500;
     cursor: pointer;
     transition: background-color 120ms ease, color 120ms ease;
@@ -853,7 +667,7 @@
     text-underline-offset: 3px;
   }
 
-  /* Course Dots and Pills */
+  /* Course Dots & Pills */
   .course-dot {
     display: inline-block;
     width: 9px;
@@ -877,20 +691,10 @@
   }
 
   /* Shared Headings & Panels */
-  .dashboard-block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
   .surface-panel {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    padding: var(--space-6);
-  }
-
-  .surface-panel.is-airy {
     padding: 28px 30px;
   }
 
@@ -899,7 +703,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    margin-block-end: var(--space-2);
+    margin-block-end: var(--space-3);
   }
 
   .section-heading-left {
@@ -910,9 +714,9 @@
 
   .section-title {
     font-family: var(--font-display);
-    font-size: var(--section-title-size);
+    font-size: 1.05rem;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     color: var(--text-primary);
   }
 
@@ -924,600 +728,77 @@
   }
 
   /* ==========================================================================
-     PANTALLA 1: ESTILO GITHUB (Sobrio, limpio, mucho orden, cajas con cabecera)
-     ========================================================================== */
-  .gh-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-  }
-
-  .gh-section {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .gh-section-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .gh-counter-pill {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-variant-numeric: tabular-nums;
-    padding: 1px 8px;
-    border-radius: 999px;
-    background-color: var(--bg-surface-subtle);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-  }
-
-  .gh-pinned-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 20px;
-  }
-
-  .gh-pinned-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 20px 22px;
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-  }
-
-  .gh-pinned-card.is-next {
-    border-inline-start: 3.5px solid var(--accent-primary);
-  }
-
-  .gh-pinned-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .gh-pinned-title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-  }
-
-  .gh-pinned-title {
-    font-family: var(--font-display);
-    font-size: 0.96rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .gh-status-tag {
-    font-family: var(--font-mono);
-    font-size: 0.71rem;
-    font-weight: 500;
-    padding: 2px 9px;
-    border-radius: 999px;
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-  }
-
-  .gh-status-tag.status-upcoming {
-    background-color: var(--accent-soft);
-    border-color: transparent;
-    color: var(--accent-primary);
-    font-weight: 600;
-  }
-
-  .gh-pinned-desc {
-    font-size: 0.83rem;
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-
-  .gh-pinned-footer {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding-block-start: 10px;
-    border-block-start: 1px solid var(--border-subtle);
-    font-size: 0.76rem;
-    color: var(--text-muted);
-  }
-
-  .gh-mono-meta {
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-secondary);
-  }
-
-  .gh-columns {
-    display: grid;
-    grid-template-columns: 1.35fr 1fr;
-    gap: 24px;
-    align-items: start;
-  }
-
-  .gh-right-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .gh-box {
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-
-  .gh-box-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 13px 18px;
-    background-color: var(--bg-surface-subtle);
-    border-block-end: 1px solid var(--border-subtle);
-  }
-
-  .gh-box-list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .gh-list-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 15px 18px;
-  }
-
-  .gh-list-row:not(:last-child) {
-    border-block-end: 1px solid var(--border-subtle);
-  }
-
-  .gh-row-left {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .gh-row-text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .gh-row-submeta {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 0.76rem;
-    color: var(--text-muted);
-  }
-
-  .gh-outline-tag.is-high {
-    font-size: 0.69rem;
-    font-weight: 600;
-    padding: 1px 7px;
-    border-radius: 999px;
-    border: 1px solid var(--status-urgent-text);
-    color: var(--status-urgent-text);
-  }
-
-  .gh-due-tag {
-    font-family: var(--font-mono);
-    font-size: 0.73rem;
-    font-variant-numeric: tabular-nums;
-    padding: 3px 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-
-  .gh-due-tag.urgency-today {
-    background-color: var(--accent-soft);
-    border-color: transparent;
-    color: var(--accent-primary);
-    font-weight: 600;
-  }
-
-  .gh-due-tag.is-done {
-    background-color: var(--status-done-bg);
-    border-color: transparent;
-    color: var(--status-done-text);
-  }
-
-  .gh-exam-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-  }
-
-  .gh-exam-row:not(:last-child) {
-    border-block-end: 1px solid var(--border-subtle);
-  }
-
-  .gh-exam-main {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .gh-exam-title-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .gh-exam-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .gh-exam-course-name {
-    font-size: 0.76rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-
-  .gh-exam-topics {
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    line-height: 1.45;
-    margin-block: 2px;
-  }
-
-  .gh-countdown-badge {
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .gh-countdown-badge.is-soon {
-    background-color: var(--accent-soft);
-    border-color: transparent;
-    color: var(--accent-primary);
-  }
-
-  .gh-week-box-body {
-    padding: 16px;
-  }
-
-  /* ==========================================================================
-     PANTALLA 2: BENTO CON AIRE (Más minimalista, más espacio entre elementos)
+     VARIANTE A: BENTO CON AIRE (REFINADO SIN CLASES DE HOY)
      ========================================================================== */
   .bento-airy-layout {
     display: flex;
     flex-direction: column;
-    gap: 38px;
+    gap: 36px;
   }
 
-  .today-classes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 24px;
+  .bento-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-block-end: 24px;
+    border-block-end: 1px solid var(--border-subtle);
   }
 
-  .schedule-strip-card {
-    position: relative;
+  .bento-header-titles {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 22px 26px;
-    padding-inline-start: 26px;
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+    gap: 6px;
   }
 
-  .schedule-strip-card.is-airy {
-    padding: 26px 30px;
-    gap: 10px;
-  }
-
-  .schedule-strip-card::before {
-    content: '';
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    width: 4px;
-    background-color: var(--course-dot);
-  }
-
-  .schedule-strip-card.is-featured {
-    border-color: var(--course-border);
-  }
-
-  .schedule-strip-card.is-past {
-    opacity: 0.85;
-  }
-
-  .schedule-strip-top {
+  .page-date-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--space-2);
   }
 
-  .schedule-time-range {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
+  .page-date-text {
+    font-size: 0.82rem;
+    font-weight: 500;
     color: var(--text-secondary);
   }
 
-  .schedule-status-badge {
+  .page-week-pill {
+    font-family: var(--font-mono);
     font-size: 0.72rem;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 999px;
     font-variant-numeric: tabular-nums;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background-color: var(--accent-soft);
+    color: var(--accent-primary);
+    font-weight: 500;
   }
 
-  .schedule-status-badge.status-upcoming,
-  .schedule-status-badge.status-current {
-    background-color: var(--status-today-bg);
-    color: var(--status-today-text);
-  }
-
-  .schedule-status-badge.status-completed {
-    background-color: var(--bg-surface-subtle);
-    color: var(--text-muted);
-  }
-
-  .schedule-course-title {
+  .bento-title {
     font-family: var(--font-display);
-    font-size: 1.05rem;
+    font-size: 1.85rem;
     font-weight: 600;
+    letter-spacing: -0.025em;
     color: var(--text-primary);
   }
 
-  .schedule-topic-text {
-    font-size: 0.84rem;
+  .bento-subtitle {
+    font-size: 0.9rem;
     color: var(--text-secondary);
-    max-width: 65ch;
   }
 
-  .schedule-meta-footer {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-block-start: 4px;
-    font-size: 0.78rem;
-    color: var(--text-muted);
-  }
-
-  .schedule-location-pill {
-    font-weight: 500;
-    color: var(--text-secondary);
+  .bento-subtitle strong {
+    color: var(--text-primary);
+    font-weight: 600;
   }
 
   .bento-airy-columns {
     display: grid;
     grid-template-columns: 1.25fr 1fr;
-    gap: 30px;
-    align-items: stretch;
-  }
-
-  /* ==========================================================================
-     PANTALLA 3: AGENDA CON PERSONALIDAD (Riel en vivo "Ahora" + alineación)
-     ========================================================================== */
-  .agenda-personality-layout {
-    display: grid;
-    grid-template-columns: 380px minmax(0, 1fr);
     gap: 28px;
     align-items: stretch;
   }
 
-  .agenda-rail-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-  }
-
-  .agenda-rail-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .agenda-rail-eyebrow {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--accent-primary);
-    margin-block-end: 2px;
-  }
-
-  .agenda-clock-pill {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background-color: var(--accent-soft);
-    color: var(--accent-primary);
-  }
-
-  .agenda-progress-box {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    background-color: var(--bg-surface-subtle);
-    border: 1px solid var(--border-subtle);
-  }
-
-  .agenda-progress-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-  }
-
-  .agenda-progress-track {
-    height: 6px;
-    border-radius: 999px;
-    background-color: var(--border-subtle);
-    overflow: hidden;
-  }
-
-  .agenda-progress-fill {
-    height: 100%;
-    border-radius: 999px;
-    background-color: var(--accent-primary);
-  }
-
-  .agenda-vertical-rail {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding-inline-start: 22px;
-  }
-
-  .agenda-vertical-rail::before {
-    content: '';
-    position: absolute;
-    inset-block: 8px;
-    inset-inline-start: 5px;
-    width: 2px;
-    background-color: var(--border-strong);
-  }
-
-  .rail-node {
-    position: relative;
-  }
-
-  .rail-dot {
-    position: absolute;
-    inset-inline-start: -22px;
-    inset-block-start: 6px;
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    background-color: var(--course-dot);
-    border: 2px solid var(--bg-surface);
-  }
-
-  .rail-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .rail-content.is-featured-card {
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    background-color: var(--course-bg);
-    border: 1px solid var(--course-border);
-  }
-
-  .rail-time-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .rail-time {
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
-
-  .rail-state-tag {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-  }
-
-  .rail-title {
-    font-family: var(--font-display);
-    font-size: 0.94rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .rail-topic {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    line-height: 1.45;
-  }
-
-  .rail-meta {
-    font-size: 0.74rem;
-    color: var(--text-muted);
-  }
-
-  .rail-now-marker {
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    background-color: var(--accent-soft);
-    color: var(--accent-primary);
-    font-size: 0.76rem;
-    font-weight: 600;
-  }
-
-  .rail-now-pulse {
-    position: absolute;
-    inset-inline-start: -22px;
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    background-color: var(--accent-primary);
-    box-shadow: 0 0 0 4px var(--accent-soft);
-  }
-
-  .rail-deadline-title {
-    font-size: 0.82rem;
-    color: var(--text-primary);
-    margin-block-start: 2px;
-  }
-
-  .agenda-right-column {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 24px;
-  }
-
-  .agenda-exams-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 16px;
-  }
-
-  /* Shared Checklist & Exam Ficha */
+  /* Task checklist in Bento */
   .task-checklist {
     display: flex;
     flex-direction: column;
@@ -1528,11 +809,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    padding-block: 12px;
-  }
-
-  .task-checklist.is-airy .task-row {
-    padding-block: 16px;
+    padding-block: 15px;
   }
 
   .task-row:not(:last-child) {
@@ -1557,14 +834,13 @@
   }
 
   .task-title-label {
-    font-size: 0.86rem;
+    font-size: 0.88rem;
     color: var(--text-primary);
     cursor: pointer;
     line-height: 1.45;
   }
 
-  .task-row:where(.is-completed, :has(.task-checkbox:checked)) .task-title-label,
-  .gh-list-row:where(.is-completed, :has(.task-checkbox:checked)) .task-title-label {
+  .task-row:where(.is-completed, :has(.task-checkbox:checked)) .task-title-label {
     text-decoration: line-through;
     color: var(--text-muted);
   }
@@ -1614,20 +890,16 @@
     color: var(--status-done-text);
   }
 
-  /* Exam Fichas */
+  /* Exams Stack in Bento */
   .exams-stack {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-  }
-
-  .exams-stack.is-airy {
-    gap: 18px;
+    gap: 16px;
   }
 
   .exam-ficha {
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 66px minmax(0, 1fr);
     gap: 14px;
     padding: 15px;
     border-radius: var(--radius-md);
@@ -1655,7 +927,7 @@
 
   .exam-countdown-number {
     font-family: var(--font-mono);
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 700;
     line-height: 1.1;
   }
@@ -1688,7 +960,7 @@
 
   .exam-ficha-title {
     font-family: var(--font-display);
-    font-size: 0.92rem;
+    font-size: 0.94rem;
     font-weight: 600;
     color: var(--text-primary);
   }
@@ -1713,30 +985,21 @@
     color: var(--text-secondary);
   }
 
-  /* Week Pulse Strip */
+  /* Week Pulse Strip in Bento */
   .week-pulse-strip {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .week-pulse-strip.is-airy {
-    gap: 14px;
+    gap: 12px;
   }
 
   .week-day-cell {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 12px;
+    padding: 16px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-canvas);
-  }
-
-  .week-day-cell.is-airy {
-    padding: 16px;
-    gap: 10px;
   }
 
   .week-day-cell.is-today {
@@ -1755,23 +1018,23 @@
   }
 
   .week-day-short {
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     font-weight: 600;
     color: var(--text-secondary);
   }
 
   .week-day-num {
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
   }
 
   .week-day-summary {
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     color: var(--text-secondary);
-    line-height: 1.3;
+    line-height: 1.35;
   }
 
   .week-day-dots {
@@ -1798,9 +1061,372 @@
     background-color: #eb9e28;
   }
 
-  .is-done-text {
+  /* ==========================================================================
+     VARIANTE B: SWISS EDITORIAL DESIGN (RIGOROSA, CERO CAJAS, ESCALA EXTREMA)
+     ========================================================================== */
+  .swiss-editorial-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+    padding-block-start: 12px;
+  }
+
+  /* Header Swiss: Escala Tipográfica Monumental */
+  .swiss-header {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-block-end: 36px;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .swiss-header-topline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  .swiss-headline-huge {
+    font-family: var(--font-display);
+    font-size: 3.2rem;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.02;
+    color: var(--text-primary);
+    max-width: 18ch;
+  }
+
+  .swiss-lead-stat {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 28px;
+    padding-block-start: 10px;
+  }
+
+  .swiss-stat-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .swiss-stat-number {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+  }
+
+  .swiss-stat-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  /* Invisible Rigorous Grid (2 Columns, no card backgrounds, high whitespace) */
+  .swiss-grid-duo {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+
+  .swiss-module {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .swiss-module-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block-end: 12px;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .swiss-module-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text-primary);
+  }
+
+  .swiss-module-meta {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Swiss Tasks List: Pure typographic rows separated by 1px hairlines */
+  .swiss-task-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .swiss-task-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px;
+    padding-block: 18px;
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .swiss-task-left {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .swiss-task-index {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  .swiss-task-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .swiss-task-title {
+    font-family: var(--font-sans);
+    font-size: 0.98rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-primary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: start;
+  }
+
+  .swiss-task-title:hover {
+    color: var(--accent-primary);
+  }
+
+  .swiss-task-row.is-completed .swiss-task-title {
     text-decoration: line-through;
     color: var(--text-muted);
+  }
+
+  .swiss-task-course {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  .swiss-task-right {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .swiss-task-urgency {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+  }
+
+  .swiss-task-urgency.is-urgent {
+    color: var(--accent-primary);
+  }
+
+  .swiss-check-action {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .swiss-check-action:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+  }
+
+  /* Swiss Exams Column: Extreme Countdown Typography */
+  .swiss-exam-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .swiss-exam-row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 20px;
+    padding-block: 24px;
+    border-block-end: 1px solid var(--border-subtle);
+    align-items: start;
+  }
+
+  .swiss-exam-big-number {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .swiss-huge-digit {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    color: var(--text-primary);
+  }
+
+  .swiss-huge-digit.is-soon {
+    color: var(--accent-primary);
+  }
+
+  .swiss-huge-unit {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-block-start: 4px;
+  }
+
+  .swiss-exam-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .swiss-exam-course-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+  }
+
+  .swiss-exam-headline {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.015em;
+  }
+
+  .swiss-exam-topics-clean {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .swiss-exam-meta-line {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-block-start: 2px;
+  }
+
+  /* Swiss Week Pulse: Ultrafine Architectural Grid */
+  .swiss-week-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-block-start: 12px;
+  }
+
+  .swiss-week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    border-block-start: 1px solid var(--border-subtle);
+    border-block-end: 1px solid var(--border-subtle);
+  }
+
+  .swiss-week-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 22px;
+    padding-inline: 18px;
+    min-height: 130px;
+  }
+
+  .swiss-week-cell:not(:last-child) {
+    border-inline-end: 1px solid var(--border-subtle);
+  }
+
+  .swiss-week-cell.is-today {
+    background-color: var(--accent-soft);
+  }
+
+  .swiss-week-cell-top {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .swiss-day-name {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  .swiss-day-big-num {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+  }
+
+  .swiss-week-cell-content {
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.35;
+  }
+
+  .swiss-week-cell.is-today .swiss-day-big-num {
+    color: var(--accent-primary);
   }
 
   /* Basic Skeleton Views for other tabs */
@@ -1982,11 +1608,15 @@
     text-align: end;
   }
 
-  @media (max-width: 980px) {
-    .gh-columns,
+  @media (max-width: 960px) {
     .bento-airy-columns,
-    .agenda-personality-layout {
+    .swiss-grid-duo {
       grid-template-columns: 1fr;
+      gap: 36px;
+    }
+
+    .swiss-week-grid {
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 }

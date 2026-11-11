@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react';
 import type {
   HomeLayoutVariant,
   NavSectionId,
-  PaletteVariant,
   ThemeMode,
-  TypographyVariant,
   UpcomingTaskItem,
 } from './types/design';
 import {
   SAMPLE_COURSES,
   SAMPLE_NOTES,
-  TODAY_CLASSES,
   UPCOMING_EXAMS,
   UPCOMING_TASKS,
   WEEK_PULSE,
@@ -37,9 +34,7 @@ const SECTION_TITLES: Record<NavSectionId, string> = {
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSectionId>('inicio');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [homeVariant, setHomeVariant] = useState<HomeLayoutVariant>('github');
-  const [palette, setPalette] = useState<PaletteVariant>('p1');
-  const [typography, setTypography] = useState<TypographyVariant>('t1');
+  const [homeVariant, setHomeVariant] = useState<HomeLayoutVariant>('bento');
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [tasks, setTasks] = useState<UpcomingTaskItem[]>(UPCOMING_TASKS);
 
@@ -54,9 +49,7 @@ export function App() {
     } else {
       root.setAttribute('data-theme', themeMode);
     }
-    root.setAttribute('data-palette', palette);
-    root.setAttribute('data-font', typography);
-  }, [themeMode, palette, typography]);
+  }, [themeMode]);
 
   function handleSelectSection(section: NavSectionId): void {
     setActiveSection(section);
@@ -106,17 +99,11 @@ export function App() {
               <HomePage
                 variant={homeVariant}
                 onChangeVariant={setHomeVariant}
-                palette={palette}
-                onChangePalette={setPalette}
-                typography={typography}
-                onChangeTypography={setTypography}
                 themeMode={themeMode}
                 onChangeThemeMode={setThemeMode}
-                todayClasses={TODAY_CLASSES}
                 tasks={tasks}
                 exams={UPCOMING_EXAMS}
                 weekPulse={WEEK_PULSE}
-                courses={SAMPLE_COURSES}
                 onToggleTask={handleToggleTask}
                 onNavigateSection={handleSelectSection}
                 onSelectCourse={handleSelectCourse}
