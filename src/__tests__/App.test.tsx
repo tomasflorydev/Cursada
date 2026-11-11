@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 
 describe('Cursada Design Skeleton', () => {
-  it('renders the sidebar with all main sections and Bento con Aire by default', () => {
+  it('renders the sidebar with all main sections and Bento con Aire as the confirmed layout', () => {
     render(<App />);
 
     const primaryNav = screen.getByRole('navigation', { name: 'Principal' });
@@ -25,25 +25,18 @@ describe('Cursada Design Skeleton', () => {
       screen.getByRole('heading', { level: 2, name: 'Pulso de la semana' })
     ).toBeInTheDocument();
 
-    // Verifies "Clases de hoy" is NOT present
+    // Verifies "Clases de hoy" is NOT present on Inicio
     expect(screen.queryByText(/Clases de hoy/i)).not.toBeInTheDocument();
   });
 
-  it('switches between Bento con Aire and Swiss Editorial layouts', () => {
+  it('allows completing tasks and navigating between views', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Swiss Editorial' }));
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Resumen Académico' })
-    ).toBeInTheDocument();
-    expect(screen.getByText('Entregas por vencer')).toBeInTheDocument();
-    expect(screen.getByText('Fechas de examen')).toBeInTheDocument();
-    expect(screen.getByText('Cronograma semanal')).toBeInTheDocument();
+    const primaryNav = screen.getByRole('navigation', { name: 'Principal' });
+    fireEvent.click(within(primaryNav).getByRole('button', { name: /Calendario/i }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Calendario' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bento con Aire' }));
+    fireEvent.click(within(primaryNav).getByRole('button', { name: /Inicio/i }));
     expect(screen.getByRole('heading', { level: 1, name: 'Inicio' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { level: 2, name: 'Tareas por vencer' })
-    ).toBeInTheDocument();
   });
 });

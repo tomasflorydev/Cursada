@@ -6,8 +6,6 @@ export type NavSectionId =
   | 'notas'
   | 'materias';
 
-export type HomeLayoutVariant = 'bento' | 'swiss';
-
 export type ThemeMode = 'system' | 'light' | 'dark';
 
 export type CourseColor =

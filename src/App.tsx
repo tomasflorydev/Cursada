@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react';
-import type {
-  HomeLayoutVariant,
-  NavSectionId,
-  ThemeMode,
-  UpcomingTaskItem,
-} from './types/design';
+import type { NavSectionId, ThemeMode, UpcomingTaskItem } from './types/design';
 import {
   SAMPLE_COURSES,
   SAMPLE_NOTES,
@@ -34,7 +29,6 @@ const SECTION_TITLES: Record<NavSectionId, string> = {
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSectionId>('inicio');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [homeVariant, setHomeVariant] = useState<HomeLayoutVariant>('bento');
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [tasks, setTasks] = useState<UpcomingTaskItem[]>(UPCOMING_TASKS);
 
@@ -97,10 +91,6 @@ export function App() {
           <div className="content-container">
             {activeSection === 'inicio' ? (
               <HomePage
-                variant={homeVariant}
-                onChangeVariant={setHomeVariant}
-                themeMode={themeMode}
-                onChangeThemeMode={setThemeMode}
                 tasks={tasks}
                 exams={UPCOMING_EXAMS}
                 weekPulse={WEEK_PULSE}
