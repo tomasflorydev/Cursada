@@ -4,6 +4,7 @@ import type {
   TodayClassItem,
   UpcomingExamItem,
   UpcomingTaskItem,
+  WeekCalendarDay,
   WeekDayPulse,
 } from '../types/design';
 
@@ -268,6 +269,127 @@ export const WEEK_PULSE: WeekDayPulse[] = [
     classesCount: 0,
     tasksCount: 0,
     summary: 'Descanso',
+  },
+];
+
+export const WEEK_CALENDAR_DAYS: WeekCalendarDay[] = [
+  {
+    dayOfWeek: 1,
+    dayShort: 'Lun',
+    dayName: 'Lunes',
+    dayNumber: '09',
+    events: [],
+  },
+  {
+    dayOfWeek: 2,
+    dayShort: 'Mar',
+    dayName: 'Martes',
+    dayNumber: '10',
+    isToday: true,
+    events: [
+      {
+        id: 'cal-mar-1',
+        courseId: 'diseno-sistemas',
+        courseName: 'Diseño de Sistemas',
+        courseColor: 'violet',
+        startTime: '14:00',
+        endTime: '18:00',
+        location: 'Aula 308 · Lima',
+      },
+      {
+        id: 'cal-mar-2',
+        courseId: 'ing-soft-1',
+        courseName: 'Ingeniería de Software I',
+        courseColor: 'blue',
+        startTime: '18:30',
+        endTime: '22:30',
+        location: 'Aula 402 · Lima',
+      },
+    ],
+  },
+  {
+    dayOfWeek: 3,
+    dayShort: 'Mié',
+    dayName: 'Miércoles',
+    dayNumber: '11',
+    events: [
+      {
+        id: 'cal-mie-1',
+        courseId: 'bd-2',
+        courseName: 'Base de Datos II',
+        courseColor: 'emerald',
+        startTime: '18:30',
+        endTime: '22:30',
+        location: 'Lab 504 · Lima',
+      },
+    ],
+  },
+  {
+    dayOfWeek: 4,
+    dayShort: 'Jue',
+    dayName: 'Jueves',
+    dayNumber: '12',
+    events: [
+      {
+        id: 'cal-jue-1',
+        courseId: 'proba-estadistica',
+        courseName: 'Probabilidad y Estadística',
+        courseColor: 'amber',
+        startTime: '14:00',
+        endTime: '18:00',
+        location: 'Aula 215 · Monserrat',
+      },
+      {
+        id: 'cal-jue-2',
+        courseId: 'diseno-sistemas',
+        courseName: 'Diseño de Sistemas',
+        courseColor: 'violet',
+        startTime: '18:30',
+        endTime: '22:30',
+        location: 'Aula 308 · Lima',
+      },
+    ],
+  },
+  {
+    dayOfWeek: 5,
+    dayShort: 'Vie',
+    dayName: 'Viernes',
+    dayNumber: '13',
+    events: [
+      {
+        id: 'cal-vie-1',
+        courseId: 'paradigmas',
+        courseName: 'Paradigmas de Programación',
+        courseColor: 'rose',
+        startTime: '18:30',
+        endTime: '22:30',
+        location: 'Virtual · Sincrónica',
+      },
+      {
+        id: 'cal-vie-exam',
+        courseId: 'ing-soft-1',
+        courseName: '2° Parcial · Ing. Software',
+        courseColor: 'blue',
+        startTime: '18:30',
+        endTime: '21:30',
+        location: 'Aula 402 · Lima',
+        isExam: true,
+      },
+    ],
+  },
+  {
+    dayOfWeek: 6,
+    dayShort: 'Sáb',
+    dayName: 'Sábado',
+    dayNumber: '14',
+    events: [],
+  },
+  {
+    dayOfWeek: 7,
+    dayShort: 'Dom',
+    dayName: 'Domingo',
+    dayNumber: '15',
+    events: [],
   },
 ];
 

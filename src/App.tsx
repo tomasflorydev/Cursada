@@ -5,6 +5,7 @@ import {
   SAMPLE_NOTES,
   UPCOMING_EXAMS,
   UPCOMING_TASKS,
+  WEEK_CALENDAR_DAYS,
   WEEK_PULSE,
 } from './lib/sampleData';
 import { Sidebar } from './components/Sidebar';
@@ -93,6 +94,7 @@ export function App() {
               <HomePage
                 tasks={tasks}
                 exams={UPCOMING_EXAMS}
+                weekCalendar={WEEK_CALENDAR_DAYS}
                 weekPulse={WEEK_PULSE}
                 onToggleTask={handleToggleTask}
                 onNavigateSection={handleSelectSection}

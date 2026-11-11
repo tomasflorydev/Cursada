@@ -84,6 +84,26 @@ export interface WeekDayPulse {
   summary: string;
 }
 
+export interface WeekCalendarEvent {
+  id: string;
+  courseId: string;
+  courseName: string;
+  courseColor: CourseColor;
+  startTime: string;
+  endTime: string;
+  location: string;
+  isExam?: boolean;
+}
+
+export interface WeekCalendarDay {
+  dayOfWeek: number;
+  dayShort: string;
+  dayName: string;
+  dayNumber: string;
+  isToday?: boolean;
+  events: WeekCalendarEvent[];
+}
+
 export interface SampleNoteItem {
   id: string;
   courseId: string;
