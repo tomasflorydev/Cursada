@@ -1,24 +1,23 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: Tarea 1 — Planificación y Arquitectura (Completada, aguardando aprobación del Product Owner para iniciar la Fase 1).
+- **Fase actual**: Tarea de Diseño Base previa a la Fase 1 (`DESIGN.md` + esqueleto de la app con barra lateral, pantalla de Inicio completa con 3 variantes de diseño intercambiables y vistas básicas).
 - **Última actualización**: 2026-11-10
 
-## Qué está hecho
-- [x] **Tarea 1: Planificación inicial y documentación base**
-  - Revisión crítica del stack propuesto, riesgos técnicos en macOS (Apple Silicon) y decisiones de arquitectura documentadas.
-  - Diseño completo del modelo de datos en SQLite (materias, horarios recurrentes, tareas, exámenes, notas con FTS5, fuentes, fragmentos vectoriales y conversaciones con citas).
-  - Creación de `AGENTS.md` con reglas de trabajo, convenciones, comandos y políticas de seguridad de datos (backups automáticos y bases temporales en tests).
-  - Creación de `ARCHITECTURE.md` con decisiones justificadas, esquema SQLite y estructura de carpetas.
-  - Creación de `ROADMAP.md` con las 8 fases desglosadas en tareas pequeñas y criterios de aceptación redactados como acciones de usuario.
-  - Creación de `PROGRESS.md` para seguimiento continuo entre sesiones.
+## Avances Completados
+- [x] Redacción de `DESIGN.md` con principios visuales, paleta de colores (modo claro Alabastro y modo oscuro Obsidiana), 8 colores de acento por materia, tipografía, espaciados, componentes y 3 variantes de diseño para Inicio.
+- [x] Construcción del esqueleto de la aplicación en React + Vite + TypeScript + CSS nativo modular (`color-scheme: light dark` y `light-dark()`), sin lógica de negocio ni base de datos conectada aún.
+- [x] Barra lateral nativa macOS con las secciones **Inicio**, **Calendario**, **Tareas**, **Exámenes**, **Notas** y **Materias**, más accesos directos a las materias del cuatrimestre actual.
+- [x] Pantalla de **Inicio** completa con datos de ejemplo reales (clases de hoy, tareas por vencer, próximos exámenes, pulso semanal) y selector en vivo entre **Variante A (Bento)**, **Variante B (Agenda)** y **Variante C (Editorial)**.
 
-## Qué sigue (Próximos pasos tras aprobación)
-- [ ] **Fase 1: Base del proyecto + Materias + Horario semanal de clases**
-  - [ ] **Tarea 1.1**: Inicializar proyecto Tauri 2 + React + Vite + TypeScript (`com.cursada.app`), base SQLite con migraciones, servicio de backups automáticos y layout principal claro/oscuro.
-  - [ ] **Tarea 1.2**: Implementar CRUD completo de Materias y bloques de horario semanal recurrente con sus tests de backend y frontend.
-  - [ ] **Tarea 1.3**: Implementar vista de Calendario con grilla de horario semanal de clases y navegación por semanas.
+## Decisiones de Producto y Stack Confirmadas
+1. **Stack**: Electron + React + Vite + TypeScript + SQLite nativo (`node:sqlite` con FTS5 y `VACUUM INTO`).
+2. **Cuatrimestres**: Materias del cuatrimestre actual visibles + cuatrimestres anteriores en sección de archivo.
+3. **Horarios y Calendario**: Campo opcional de Aula/Sede/Modalidad en cada horario; grilla semanal de **Lunes a Domingo**.
+4. **Tareas**: Dos estados simples (**Pendiente** / **Completada**); todas las tareas pertenecen obligatoriamente a una materia.
+5. **Exámenes**: Escala de **1 a 10**, categorías (**Parcial, Recuperatorio, Final, TP evaluativo**) y cálculo de promedio en la vista de la materia.
+6. **IA (Fuentes y Reportes)**: Soporte para archivos (`.pdf`, `.md`, `.txt`) + **pegar texto directo**; selector de formato al generar **Preguntas de práctica** (a desarrollar, multiple choice o mixto).
 
-## Problemas conocidos / Notas del entorno
-- **Toolchain de Rust**: Node.js (`v26.7.0`), `npm` (`11.19.0`) y Xcode Command Line Tools (`clang 21`) están instalados en el MacBook Air M5, pero `rustup` / `cargo` aún no está instalado. Se consultó al Product Owner si prefiere que instalemos Rust al iniciar la Fase 1 para Tauri 2 o usar Electron + TypeScript.
-- **Ollama**: No se detectó el binario `ollama` en el `PATH` actual; la app incluirá detección amigable de estado y guía de conexión para las Fases 5–7.
+## Qué sigue
+- [ ] Revisar el diseño base y elegir la variante preferida de la pantalla de **Inicio** con el Product Owner.
+- [ ] Confirmar el arranque de la **Fase 1** (`ROADMAP.md`).
