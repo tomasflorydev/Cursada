@@ -5,6 +5,7 @@ import {
   formatSchedulesSummary,
 } from '../../lib/dates';
 import type { CourseWithSchedules } from '../../types/domain';
+import { TaskList } from '../tasks/TaskList';
 import { getCourseColorLabel } from './courseColors';
 
 export type CourseTabId =
@@ -263,14 +264,9 @@ export function CourseDetailView({
           role="tabpanel"
           aria-labelledby={`${baseId}-tab-tareas`}
           data-testid="course-tasks-tab-panel"
-          className="surface-panel course-tab-panel"
+          className="course-tab-panel"
         >
-          <div className="section-heading-bar">
-            <h2 className="section-title">Tareas de {course.name}</h2>
-          </div>
-          <p className="course-empty-text">
-            Acá se listarán y gestionarán las entregas y tareas pendientes de {course.name}.
-          </p>
+          <TaskList courseId={course.id} />
         </section>
       ) : null}
 

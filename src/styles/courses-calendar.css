@@ -515,6 +515,137 @@ dialog::backdrop {
   filter: brightness(0.97);
 }
 
+/* Calendar Day Header & Task Deliveries Overlay (Task 2.2) */
+.calendar-col-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.calendar-col-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-col-tasks-count {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background-color: var(--accent-soft);
+  color: var(--accent-primary);
+}
+
+.calendar-day-tasks-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block-end: 8px;
+  border-block-end: 1px dashed var(--border-subtle);
+}
+
+.calendar-task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--course-border);
+  border-inline-start: 3px solid var(--course-dot);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.calendar-task-card.is-completed {
+  opacity: 0.78;
+}
+
+.calendar-task-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.calendar-task-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--course-dot);
+}
+
+.calendar-task-status-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.calendar-task-status-badge.is-pending {
+  background-color: var(--course-bg);
+  color: var(--course-text);
+}
+
+.calendar-task-status-badge.is-done {
+  background-color: var(--status-done-bg);
+  color: var(--status-done-text);
+}
+
+.calendar-task-title-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.calendar-task-title-btn:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.calendar-task-card.is-completed .calendar-task-title-btn {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.calendar-task-course-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.calendar-task-course-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-task-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar-task-dialog-desc {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
 @media (max-width: 960px) {
   .course-summary-grid,
   .course-form-grid {
