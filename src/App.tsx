@@ -4,15 +4,14 @@ import type { SidebarCourseItem } from './components/Sidebar';
 import { Sidebar } from './components/Sidebar';
 import {
   SAMPLE_COURSES,
-  SAMPLE_NOTES,
   UPCOMING_EXAMS,
   UPCOMING_TASKS,
 } from './lib/sampleData';
-import { NotasBasicView } from './pages/BasicViews';
 import { CalendarPage } from './pages/CalendarPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { ExamsPage } from './pages/ExamsPage';
 import { HomePage } from './pages/HomePage';
+import { NotesPage } from './pages/NotesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TasksPage } from './pages/TasksPage';
 import type { NavSectionId, ThemeMode } from './types';
@@ -187,7 +186,9 @@ export function App() {
               />
             ) : null}
 
-            {activeSection === 'notas' ? <NotasBasicView notes={SAMPLE_NOTES} /> : null}
+            {activeSection === 'notas' ? (
+              <NotesPage onSelectCourse={handleSelectCourse} />
+            ) : null}
 
             {activeSection === 'materias' ? (
               <CoursesPage

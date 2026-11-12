@@ -7,6 +7,8 @@ import {
 } from '../../lib/dates';
 import type { CourseWithSchedules, ExamWithCourse } from '../../types/domain';
 import { calculateAverageFromExams, ExamList } from '../exams/ExamList';
+import { ExportMarkdownButton } from '../export/ExportMarkdownButton';
+import { NotesWorkspace } from '../notes/NotesWorkspace';
 import { TaskList } from '../tasks/TaskList';
 import { getCourseColorLabel } from './courseColors';
 
@@ -236,6 +238,16 @@ export function CourseDetailView({
                   </dd>
                 </div>
               </dl>
+
+              <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border-subtle)' }}>
+                <ExportMarkdownButton
+                  scope="course"
+                  courseId={course.id}
+                  label="Exportar materia (.md)"
+                  className="secondary-button"
+                  data-testid="export-course-markdown-btn"
+                />
+              </div>
             </div>
 
             <div className="surface-panel course-schedules-panel">
@@ -319,15 +331,10 @@ export function CourseDetailView({
           id={`${baseId}-panel-notas`}
           role="tabpanel"
           aria-labelledby={`${baseId}-tab-notas`}
-          className="surface-panel course-tab-panel"
+          data-testid="course-notes-tab-panel"
+          className="course-tab-panel"
         >
-          <div className="section-heading-bar">
-            <h2 className="section-title">Notas y apuntes de clase</h2>
-          </div>
-          <p className="course-empty-text">
-            En la Fase 4 tendrás disponible el editor Markdown en vivo y buscador instantáneo para
-            tus apuntes de {course.name}.
-          </p>
+          <NotesWorkspace courseId={course.id} />
         </section>
       ) : null}
 

@@ -255,7 +255,7 @@ Cursada/
 │   │   └── chatRepo.ts              # Persistencia de conversaciones y mensajes con citas
 │   ├── services/
 │   │   ├── backupService.ts         # Backups automáticos (VACUUM INTO) y rotación de los últimos 15
-│   │   ├── exportService.ts         # Exportación completa o por materia a carpetas Markdown (.md)
+│   │   ├── exportService.ts         # Exportación completa o por materia/nota a carpetas Markdown (.md)
 │   │   ├── chunkingService.ts       # División de fuentes en fragmentos con solapamiento y página
 │   │   ├── ragService.ts            # Búsqueda híbrida (Coseno + FTS5) y armado de contexto citado
 │   │   ├── reportService.ts         # Generación Map-Reduce de resúmenes, guías y exámenes (con formato elegible)
@@ -265,17 +265,19 @@ Cursada/
 │       ├── systemHandlers.ts        # Canales IPC de backups y directorio de datos
 │       ├── coursesHandlers.ts       # Canales IPC de materias y horarios (con backup pre-borrado)
 │       ├── tasksHandlers.ts         # Canales IPC de tareas
-│       └── examsHandlers.ts         # Canales IPC de exámenes y calificaciones
+│       ├── examsHandlers.ts         # Canales IPC de exámenes y calificaciones
+│       ├── notesHandlers.ts         # Canales IPC de notas y búsqueda FTS5
+│       └── exportHandlers.ts        # Canales IPC de exportación a Markdown con selector nativo de carpeta
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React
     ├── App.tsx                      # Layout principal, contrato de navegación y sincronización de barra lateral
     ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (mockCourses.ts, mockTasks.ts, mockExams.ts, mockClient.ts)
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (mockCourses.ts, mockTasks.ts, mockExams.ts, mockNotes.ts, mockExport.ts, mockClient.ts)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
     │   └── pdf/                     # Extracción de texto de PDFs página por página (pdfjs-dist)
-    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/)
+    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/)
     ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Notas, Materias, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```

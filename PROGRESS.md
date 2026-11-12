@@ -1,7 +1,7 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: **Fases 1, 2 y 3 completadas, integradas y verificadas en `main`**.
+- **Fase actual**: **Fases 1, 2, 3 y 4 completadas, integradas y verificadas en `main`**.
 - **Última actualización**: 2026-11-12
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
@@ -41,6 +41,16 @@
     2. **Próximos exámenes**: Fichas en vivo ordenadas por fecha con cuenta regresiva dinámica en días, categoría, fecha/hora, temas y navegación a la materia.
     3. **Pulso de la semana**: Grilla horizontal de 7 días (Lunes a Domingo) calculada dinámicamente combinando horarios de cursada activos, entregas pendientes y exámenes de cada día.
 
+### Fase 4: Notas por Materia + Exportación a Markdown
+- [x] **Tarea 4.1 — Editor Markdown con Preview en vivo, guardado automático y vista global de Notas**:
+  - Migración SQLite `v3` (`electron/db/migrations.ts`) creando `notes`, la tabla virtual FTS5 `notes_fts` (`unicode61 remove_diacritics 2`) y triggers automáticos de sincronización ante inserción, edición y borrado en cascada.
+  - Repositorio parametrizado e IPC handlers (`electron/db/notesRepo.ts`, `electron/ipc/notesHandlers.ts`, `src/lib/api/mockNotes.ts`) con búsqueda sin tildes, fijado (`isPinned`) y validaciones de entrada.
+  - Editor Markdown (`src/components/notes/NoteEditor.tsx`) con **CodeMirror 6**, renderizado GFM seguro (`react-markdown` + `remark-gfm`), selector de modos **Editar / Dividido / Lectura** y guardado automático con *debounce* e indicador de estado.
+  - Workspace reutilizable `<NotesWorkspace courseId? />` (`src/components/notes/NotesWorkspace.tsx`) y vista global (`src/pages/NotesPage.tsx`), integrado tanto en la barra lateral (**Notas**) como en la pestaña **Notas** de cada materia (`src/components/courses/CourseDetailView.tsx`), con estilos adaptativos Claro/Oscuro (`src/styles/notes.css`).
+- [x] **Tarea 4.2 — Exportación de Notas y Materias a Markdown en disco**:
+  - Servicio backend (`electron/services/exportService.ts`) e IPC (`electron/ipc/exportHandlers.ts`) con selector nativo de carpeta (`dialog.showOpenDialog`), sanitización segura de nombres de archivo y soporte de tres alcances: **nota suelta** (`note`), **materia completa** (`course`: resumen + horarios + tareas + exámenes + carpeta de notas) y **toda la cursada** (`all`: `README.md` índice + subcarpetas por materia), con fallback de descarga para navegador (`src/lib/api/mockExport.ts`).
+  - Componente `<ExportMarkdownButton />` (`src/components/export/ExportMarkdownButton.tsx`) integrado en **Ajustes → Exportar a Markdown** (`src/pages/SettingsPage.tsx`), en la pestaña **Resumen** de cada materia (`src/components/courses/CourseDetailView.tsx`) y en el editor de cada nota (`NoteEditor.tsx`).
+
 ## Qué sigue
-- [ ] Validación manual del Product Owner sobre la **Fase 3**.
-- [ ] Inicio de la **Fase 4: Notas por Materia + Exportación a Markdown**.
+- [ ] Validación manual del Product Owner sobre la **Fase 4**.
+- [ ] Inicio de la **Fase 5: Fuentes + Indexado Local**.
