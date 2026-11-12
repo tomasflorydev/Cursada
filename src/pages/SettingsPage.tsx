@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ExportMarkdownButton } from '../components/export/ExportMarkdownButton';
 import { cursadaClient } from '../lib/api/client';
 import type { BackupInfo, ThemeMode } from '../types';
 
@@ -153,6 +154,30 @@ export function SettingsPage({ themeMode, onChangeThemeMode }: SettingsPageProps
             </ul>
           )}
         </div>
+      </section>
+
+      <section className="surface-panel settings-section" aria-labelledby="settings-export-heading">
+        <div className="section-heading-bar">
+          <div className="section-heading-left">
+            <h2 id="settings-export-heading" className="section-title">
+              Exportar a Markdown
+            </h2>
+            <span className="section-counter">Portabilidad local (.md)</span>
+          </div>
+        </div>
+
+        <p className="settings-description">
+          Exportá todas tus materias (en curso y archivadas), horarios, tareas, exámenes con
+          promedio y apuntes en formato Markdown estándar, organizados por carpeta con un índice
+          general.
+        </p>
+
+        <ExportMarkdownButton
+          scope="all"
+          label="Exportar toda la cursada (.md)"
+          className="primary-button"
+          data-testid="settings-export-all-button"
+        />
       </section>
 
       <section className="surface-panel settings-section" aria-labelledby="settings-theme-heading">
