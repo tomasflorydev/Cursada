@@ -18,6 +18,18 @@ import {
   mockUpdateExam,
   resetMockExams,
 } from './mockExams';
+import { mockExportMarkdown } from './mockExport';
+import {
+  mockCountNotesByCourse,
+  mockCreateNote,
+  mockDeleteNote,
+  mockDeleteNotesByCourse,
+  mockGetNote,
+  mockListNotes,
+  mockToggleNotePin,
+  mockUpdateNote,
+  resetMockNotes,
+} from './mockNotes';
 import {
   mockCountTasksByCourse,
   mockCreateTask,
@@ -68,6 +80,8 @@ registerCourseTaskHooks({
   deleteTasksByCourse: mockDeleteTasksByCourse,
   countExamsByCourse: mockCountExamsByCourse,
   deleteExamsByCourse: mockDeleteExamsByCourse,
+  countNotesByCourse: mockCountNotesByCourse,
+  deleteNotesByCourse: mockDeleteNotesByCourse,
   onBeforeDeleteCourse: () => {
     createMockBackupSync('pre-course-delete');
   },
@@ -77,6 +91,7 @@ export function resetAllMocks(): void {
   resetMockCourses();
   resetMockTasks();
   resetMockExams();
+  resetMockNotes();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
 }
@@ -101,4 +116,11 @@ export const mockClient: CursadaIpcApi = {
   createExam: mockCreateExam,
   updateExam: mockUpdateExam,
   deleteExam: mockDeleteExam,
+  listNotes: mockListNotes,
+  getNote: mockGetNote,
+  createNote: mockCreateNote,
+  updateNote: mockUpdateNote,
+  toggleNotePin: mockToggleNotePin,
+  deleteNote: mockDeleteNote,
+  exportMarkdown: mockExportMarkdown,
 };

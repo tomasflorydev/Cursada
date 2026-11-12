@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createBackup } from '../services/backupService.js';
 
-export const LATEST_SCHEMA_VERSION = 2;
+export const LATEST_SCHEMA_VERSION = 3;
 
 const MIGRATION_V1_SQL = `
 CREATE TABLE IF NOT EXISTS courses (
@@ -67,6 +67,44 @@ CREATE INDEX IF NOT EXISTS idx_exams_course ON exams(course_id);
 CREATE INDEX IF NOT EXISTS idx_exams_date ON exams(exam_date);
 `;
 
+const MIGRATION_V3_SQL = `
+CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    origin TEXT NOT NULL DEFAULT 'manual' CHECK (origin IN ('manual', 'ai_summary', 'ai_study_guide', 'ai_practice_exam')),
+    is_pinned INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notes_course ON notes(course_id);
+CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+    note_id UNINDEXED,
+    course_id UNINDEXED,
+    title,
+    content,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS trg_notes_ai AFTER INSERT ON notes BEGIN
+    INSERT INTO notes_fts (note_id, course_id, title, content)
+    VALUES (new.id, new.course_id, new.title, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_notes_au AFTER UPDATE OF course_id, title, content ON notes BEGIN
+    DELETE FROM notes_fts WHERE note_id = old.id;
+    INSERT INTO notes_fts (note_id, course_id, title, content)
+    VALUES (new.id, new.course_id, new.title, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_notes_ad AFTER DELETE ON notes BEGIN
+    DELETE FROM notes_fts WHERE note_id = old.id;
+END;
+`;
+
 export function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   return row?.user_version ?? 0;
@@ -112,6 +150,18 @@ export function runMigrations(
     try {
       db.exec(MIGRATION_V2_SQL);
       db.exec('PRAGMA user_version = 2;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 3) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V3_SQL);
+      db.exec('PRAGMA user_version = 3;');
       db.exec('COMMIT;');
     } catch (err) {
       db.exec('ROLLBACK;');

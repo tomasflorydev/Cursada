@@ -3,11 +3,15 @@ import type {
   CourseStatus,
   CreateCourseInput,
   CreateExamInput,
+  CreateNoteInput,
   CreateTaskInput,
   ExamFilters,
+  ExportMarkdownRequest,
+  NoteFilters,
   TaskFilters,
   UpdateCourseInput,
   UpdateExamInput,
+  UpdateNoteInput,
   UpdateTaskInput,
 } from './types.js';
 
@@ -40,4 +44,15 @@ contextBridge.exposeInMainWorld('cursadaApi', {
   updateExam: (id: string, input: UpdateExamInput) =>
     ipcRenderer.invoke('exams:update', id, input),
   deleteExam: (id: string) => ipcRenderer.invoke('exams:delete', id),
+  // Notes
+  listNotes: (filters?: NoteFilters) => ipcRenderer.invoke('notes:list', filters),
+  getNote: (id: string) => ipcRenderer.invoke('notes:getById', id),
+  createNote: (input: CreateNoteInput) => ipcRenderer.invoke('notes:create', input),
+  updateNote: (id: string, input: UpdateNoteInput) =>
+    ipcRenderer.invoke('notes:update', id, input),
+  toggleNotePin: (id: string) => ipcRenderer.invoke('notes:togglePin', id),
+  deleteNote: (id: string) => ipcRenderer.invoke('notes:delete', id),
+  // Export
+  exportMarkdown: (request: ExportMarkdownRequest) =>
+    ipcRenderer.invoke('export:markdown', request),
 });

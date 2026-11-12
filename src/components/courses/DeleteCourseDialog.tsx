@@ -78,6 +78,10 @@ export function DeleteCourseDialog({
   const examsLabel =
     examsCount === 1 ? '1 examen asociado' : `${examsCount} exámenes asociados`;
 
+  const notesCount = impact.notesCount ?? 0;
+  const notesLabel =
+    notesCount === 1 ? '1 nota asociada' : `${notesCount} notas asociadas`;
+
   return (
     <dialog
       ref={dialogRef}
@@ -103,6 +107,11 @@ export function DeleteCourseDialog({
             {examsCount > 0 ? (
               <>
                 , <strong>{examsLabel}</strong>
+              </>
+            ) : null}
+            {notesCount > 0 ? (
+              <>
+                , <strong>{notesLabel}</strong>
               </>
             ) : null}{' '}
             y todos sus bloques de horario semanal. Se realizará un backup automático

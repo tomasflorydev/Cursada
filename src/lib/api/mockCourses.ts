@@ -68,6 +68,8 @@ interface CourseTaskHooks {
   deleteTasksByCourse: (courseId: string) => void;
   countExamsByCourse?: (courseId: string) => number;
   deleteExamsByCourse?: (courseId: string) => void;
+  countNotesByCourse?: (courseId: string) => number;
+  deleteNotesByCourse?: (courseId: string) => void;
   onBeforeDeleteCourse?: (courseId: string) => void;
 }
 
@@ -347,11 +349,13 @@ export async function mockGetCourseDeleteImpact(
   if (!found) {
     throw new Error(`Course not found: ${id}`);
   }
+  const notesCount = taskHooks.countNotesByCourse?.(id) ?? 0;
   return {
     courseId: found.id,
     courseName: found.name,
     tasksCount: taskHooks.countTasksByCourse(id),
     examsCount: taskHooks.countExamsByCourse?.(id) ?? 0,
+    ...(notesCount > 0 ? { notesCount } : {}),
   };
 }
 
@@ -359,5 +363,6 @@ export async function mockDeleteCourse(id: string): Promise<void> {
   taskHooks.onBeforeDeleteCourse?.(id);
   taskHooks.deleteTasksByCourse(id);
   taskHooks.deleteExamsByCourse?.(id);
+  taskHooks.deleteNotesByCourse?.(id);
   coursesStore = coursesStore.filter((c) => c.id !== id);
 }

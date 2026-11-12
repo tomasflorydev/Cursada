@@ -5,14 +5,20 @@ import type {
   CourseWithSchedules,
   CreateCourseInput,
   CreateExamInput,
+  CreateNoteInput,
   CreateTaskInput,
   CursadaIpcApi,
   ExamFilters,
   ExamWithCourse,
+  ExportMarkdownRequest,
+  ExportMarkdownResult,
+  NoteFilters,
+  NoteWithCourse,
   TaskFilters,
   TaskWithCourse,
   UpdateCourseInput,
   UpdateExamInput,
+  UpdateNoteInput,
   UpdateTaskInput,
 } from '../../types/domain';
 import { mockClient } from './mockClient';
@@ -163,5 +169,55 @@ export const cursadaClient: CursadaIpcApi = {
       await mockClient.deleteExam(id);
     }
     notifyCursadaDataChanged();
+  },
+
+  // Notes (Phase 4)
+  async listNotes(filters?: NoteFilters): Promise<NoteWithCourse[]> {
+    const fn = getBridge()?.listNotes;
+    return fn ? fn(filters) : mockClient.listNotes(filters);
+  },
+
+  async getNote(id: string): Promise<NoteWithCourse | null> {
+    const fn = getBridge()?.getNote;
+    return fn ? fn(id) : mockClient.getNote(id);
+  },
+
+  async createNote(input: CreateNoteInput): Promise<NoteWithCourse> {
+    const fn = getBridge()?.createNote;
+    const created = fn ? await fn(input) : await mockClient.createNote(input);
+    notifyCursadaDataChanged();
+    return created;
+  },
+
+  async updateNote(id: string, input: UpdateNoteInput): Promise<NoteWithCourse> {
+    const fn = getBridge()?.updateNote;
+    const updated = fn ? await fn(id, input) : await mockClient.updateNote(id, input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async toggleNotePin(id: string): Promise<NoteWithCourse> {
+    const fn = getBridge()?.toggleNotePin;
+    const updated = fn ? await fn(id) : await mockClient.toggleNotePin(id);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async deleteNote(id: string): Promise<void> {
+    const fn = getBridge()?.deleteNote;
+    if (fn) {
+      await fn(id);
+    } else {
+      await mockClient.deleteNote(id);
+    }
+    notifyCursadaDataChanged();
+  },
+
+  // Markdown Export (Phase 4)
+  async exportMarkdown(
+    request: ExportMarkdownRequest
+  ): Promise<ExportMarkdownResult> {
+    const fn = getBridge()?.exportMarkdown;
+    return fn ? fn(request) : mockClient.exportMarkdown(request);
   },
 };

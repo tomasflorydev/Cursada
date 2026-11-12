@@ -68,6 +68,7 @@ export interface CourseDeleteImpact {
   courseName: string;
   tasksCount: number;
   examsCount?: number;
+  notesCount?: number;
 }
 
 export type ExamCategory = 'parcial' | 'recuperatorio' | 'final' | 'tp';
@@ -172,6 +173,62 @@ export interface BackupInfo {
   sizeBytes: number;
 }
 
+export type NoteOrigin = 'manual' | 'ai_summary' | 'ai_study_guide' | 'ai_practice_exam';
+
+export interface Note {
+  id: string;
+  courseId: string;
+  title: string;
+  content: string;
+  origin: NoteOrigin;
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteWithCourse extends Note {
+  courseName: string;
+  courseColor: CourseColor;
+}
+
+export interface CreateNoteInput {
+  courseId: string;
+  title: string;
+  content?: string;
+  origin?: NoteOrigin;
+  isPinned?: boolean;
+}
+
+export interface UpdateNoteInput {
+  courseId?: string;
+  title?: string;
+  content?: string;
+  isPinned?: boolean;
+}
+
+export interface NoteFilters {
+  courseId?: string;
+  query?: string;
+  pinnedOnly?: boolean;
+}
+
+export type ExportScope = 'note' | 'course' | 'all';
+
+export interface ExportMarkdownRequest {
+  scope: ExportScope;
+  noteId?: string;
+  courseId?: string;
+  targetDir?: string;
+}
+
+export interface ExportMarkdownResult {
+  canceled: boolean;
+  targetDir: string | null;
+  filesCreated: string[];
+  fileCount: number;
+  mode: 'filesystem' | 'download';
+}
+
 /**
  * Shared navigation contract injected by App.tsx into domain views.
  * - `onSelectCourse(courseId)`: Navigates to the 'materias' section with `courseId` selected
@@ -209,6 +266,15 @@ export interface CursadaIpcApi {
   createExam: (input: CreateExamInput) => Promise<ExamWithCourse>;
   updateExam: (id: string, input: UpdateExamInput) => Promise<ExamWithCourse>;
   deleteExam: (id: string) => Promise<void>;
+  // Notes (Phase 4)
+  listNotes: (filters?: NoteFilters) => Promise<NoteWithCourse[]>;
+  getNote: (id: string) => Promise<NoteWithCourse | null>;
+  createNote: (input: CreateNoteInput) => Promise<NoteWithCourse>;
+  updateNote: (id: string, input: UpdateNoteInput) => Promise<NoteWithCourse>;
+  toggleNotePin: (id: string) => Promise<NoteWithCourse>;
+  deleteNote: (id: string) => Promise<void>;
+  // Markdown Export (Phase 4)
+  exportMarkdown: (request: ExportMarkdownRequest) => Promise<ExportMarkdownResult>;
 }
 
 declare global {

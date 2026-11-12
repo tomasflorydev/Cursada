@@ -67,6 +67,7 @@ export interface CourseDeleteImpact {
   courseName: string;
   tasksCount: number;
   examsCount?: number;
+  notesCount?: number;
 }
 
 export type ExamCategory = 'parcial' | 'recuperatorio' | 'final' | 'tp';
@@ -169,4 +170,60 @@ export interface BackupInfo {
   filePath: string;
   createdAt: string;
   sizeBytes: number;
+}
+
+export type NoteOrigin = 'manual' | 'ai_summary' | 'ai_study_guide' | 'ai_practice_exam';
+
+export interface Note {
+  id: string;
+  courseId: string;
+  title: string;
+  content: string;
+  origin: NoteOrigin;
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteWithCourse extends Note {
+  courseName: string;
+  courseColor: CourseColor;
+}
+
+export interface CreateNoteInput {
+  courseId: string;
+  title: string;
+  content?: string;
+  origin?: NoteOrigin;
+  isPinned?: boolean;
+}
+
+export interface UpdateNoteInput {
+  courseId?: string;
+  title?: string;
+  content?: string;
+  isPinned?: boolean;
+}
+
+export interface NoteFilters {
+  courseId?: string;
+  query?: string;
+  pinnedOnly?: boolean;
+}
+
+export type ExportScope = 'note' | 'course' | 'all';
+
+export interface ExportMarkdownRequest {
+  scope: ExportScope;
+  noteId?: string;
+  courseId?: string;
+  targetDir?: string;
+}
+
+export interface ExportMarkdownResult {
+  canceled: boolean;
+  targetDir: string | null;
+  filesCreated: string[];
+  fileCount: number;
+  mode: 'filesystem' | 'download';
 }
