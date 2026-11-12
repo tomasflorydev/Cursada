@@ -1,4 +1,5 @@
 import { registerCoursesHandlers } from './coursesHandlers.js';
+import { registerExamsHandlers } from './examsHandlers.js';
 import { registerSystemHandlers } from './systemHandlers.js';
 import { registerTasksHandlers } from './tasksHandlers.js';
 
@@ -11,5 +12,6 @@ export function registerAllIpcHandlers(): void {
   registerSystemHandlers();
   registerCoursesHandlers();
   registerTasksHandlers();
+  registerExamsHandlers();
   handlersRegistered = true;
 }

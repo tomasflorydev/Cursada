@@ -9,7 +9,7 @@ import {
   listCourses,
 } from '../../electron/db/coursesRepo';
 import { createTestDatabase, openDatabase, resolveDataDir } from '../../electron/db/database';
-import { getSchemaVersion } from '../../electron/db/migrations';
+import { getSchemaVersion, LATEST_SCHEMA_VERSION } from '../../electron/db/migrations';
 import { createTask, listTasks } from '../../electron/db/tasksRepo';
 import {
   createBackup,
@@ -41,7 +41,8 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     const ctx = openDatabase();
     expect(ctx.dataDir).toBe(path.resolve(customDir));
     expect(ctx.dbPath).toBe(path.join(customDir, 'cursada.sqlite'));
-    expect(getSchemaVersion(ctx.db)).toBe(1);
+    expect(getSchemaVersion(ctx.db)).toBe(LATEST_SCHEMA_VERSION);
+    expect(getSchemaVersion(ctx.db)).toBe(2);
     ctx.close();
   });
 

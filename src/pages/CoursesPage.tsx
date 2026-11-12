@@ -2,12 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
+import {
+  calculateAverageFromExams,
+  formatExamDateLabel,
+} from '../components/exams/ExamList';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import { formatSchedulesSummary } from '../lib/dates';
 import type {
   CourseDeleteImpact,
   CourseWithSchedules,
   CreateCourseInput,
+  ExamWithCourse,
   UpdateCourseInput,
 } from '../types';
 
@@ -64,21 +69,33 @@ export function CoursesPage({
 }: CoursesPageProps) {
   const [courses, setCourses] = useState<CourseWithSchedules[]>([]);
   const [pendingByCourse, setPendingByCourse] = useState<Record<string, number>>({});
+  const [examsByCourse, setExamsByCourse] = useState<Record<string, ExamWithCourse[]>>(
+    {}
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
 
   const loadCourses = useCallback(async () => {
-    const [loaded, pendingTasks] = await Promise.all([
+    const [loaded, pendingTasks, allExams] = await Promise.all([
       cursadaClient.listCourses({ status: 'all' }),
       cursadaClient.listTasks({ status: 'pending' }),
+      cursadaClient.listExams(),
     ]);
     const counts: Record<string, number> = {};
     for (const task of pendingTasks) {
       counts[task.courseId] = (counts[task.courseId] ?? 0) + 1;
     }
+    const groupedExams: Record<string, ExamWithCourse[]> = {};
+    for (const exam of allExams) {
+      if (!groupedExams[exam.courseId]) {
+        groupedExams[exam.courseId] = [];
+      }
+      groupedExams[exam.courseId].push(exam);
+    }
     setCourses(loaded);
     setPendingByCourse(counts);
+    setExamsByCourse(groupedExams);
   }, []);
 
   useEffect(() => {
@@ -151,6 +168,9 @@ export function CoursesPage({
     const scheduleSummary = formatSchedulesSummary(course.schedules);
     const locationSummary = formatCourseLocationSummary(course);
     const pendingCount = pendingByCourse[course.id] ?? 0;
+    const courseExams = examsByCourse[course.id] ?? [];
+    const averageGrade = calculateAverageFromExams(courseExams);
+    const nextExam = courseExams.find((e) => e.grade === null) ?? null;
     const shortCode = getCourseShortCode(course);
 
     return (
@@ -169,7 +189,11 @@ export function CoursesPage({
             {shortCode}
           </span>
           <span className="course-grade-pill">
-            {isArchived ? `Archivada · ${course.term}` : course.term}
+            {averageGrade !== null
+              ? `Promedio ${averageGrade.toFixed(1)}`
+              : isArchived
+                ? `Archivada · ${course.term}`
+                : course.term}
           </span>
         </div>
 
@@ -199,6 +223,9 @@ export function CoursesPage({
             <span className="course-detail-label">Pendientes</span>
             <span className="course-detail-value">
               {pendingCount} {pendingCount === 1 ? 'tarea' : 'tareas'}
+              {nextExam
+                ? ` · ${formatExamDateLabel(nextExam.examDate)}`
+                : ''}
             </span>
           </div>
         </div>

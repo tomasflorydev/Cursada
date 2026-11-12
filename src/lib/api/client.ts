@@ -4,11 +4,15 @@ import type {
   CourseStatus,
   CourseWithSchedules,
   CreateCourseInput,
+  CreateExamInput,
   CreateTaskInput,
   CursadaIpcApi,
+  ExamFilters,
+  ExamWithCourse,
   TaskFilters,
   TaskWithCourse,
   UpdateCourseInput,
+  UpdateExamInput,
   UpdateTaskInput,
 } from '../../types/domain';
 import { mockClient } from './mockClient';
@@ -127,6 +131,36 @@ export const cursadaClient: CursadaIpcApi = {
       await fn(id);
     } else {
       await mockClient.deleteTask(id);
+    }
+    notifyCursadaDataChanged();
+  },
+
+  // Exams
+  async listExams(filters?: ExamFilters): Promise<ExamWithCourse[]> {
+    const fn = getBridge()?.listExams;
+    return fn ? fn(filters) : mockClient.listExams(filters);
+  },
+
+  async createExam(input: CreateExamInput): Promise<ExamWithCourse> {
+    const fn = getBridge()?.createExam;
+    const created = fn ? await fn(input) : await mockClient.createExam(input);
+    notifyCursadaDataChanged();
+    return created;
+  },
+
+  async updateExam(id: string, input: UpdateExamInput): Promise<ExamWithCourse> {
+    const fn = getBridge()?.updateExam;
+    const updated = fn ? await fn(id, input) : await mockClient.updateExam(id, input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async deleteExam(id: string): Promise<void> {
+    const fn = getBridge()?.deleteExam;
+    if (fn) {
+      await fn(id);
+    } else {
+      await mockClient.deleteExam(id);
     }
     notifyCursadaDataChanged();
   },

@@ -524,13 +524,19 @@
   .calendar-month-cell {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-block-size: 124px;
-    padding: 10px 10px 12px;
+    gap: 5px;
+    min-block-size: 120px;
+    padding: 8px 8px 10px;
     border-block-end: 1px solid var(--border-subtle);
     border-inline-end: 1px solid var(--border-subtle);
     background-color: var(--bg-surface);
-    min-width: 0;
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+
+  .calendar-day-col {
+    min-inline-size: 0;
+    overflow: hidden;
   }
 
   .calendar-month-cell:nth-child(7n) {
@@ -556,6 +562,7 @@
     justify-content: space-between;
     gap: 6px;
     margin-block-end: 2px;
+    min-inline-size: 0;
   }
 
   .calendar-month-day-number {
@@ -577,30 +584,29 @@
     color: var(--accent-primary-text);
   }
 
-  .calendar-month-task-indicator {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background-color: var(--accent-soft);
-    color: var(--accent-primary);
-    white-space: nowrap;
+  .calendar-month-cell-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
   .calendar-month-classes-stack {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    min-width: 0;
+    gap: 4px;
+    min-inline-size: 0;
   }
 
   /* Interactive Calendar Block Button */
   .calendar-block-button {
     width: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow: hidden;
     text-align: start;
     cursor: pointer;
-    transition: filter 120ms ease, transform 100ms ease;
+    transition: filter 120ms ease;
   }
 
   .calendar-block-button:hover {
@@ -608,38 +614,53 @@
   }
 
   .calendar-block-compact {
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 8px;
-    font-size: 0.73rem;
-    line-height: 1.3;
-    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1px;
+    padding: 4px 7px;
+    font-size: 0.7rem;
+    line-height: 1.25;
+    min-inline-size: 0;
+    overflow: hidden;
   }
 
   .calendar-block-compact .calendar-block-time {
-    font-size: 0.67rem;
-    flex-shrink: 0;
-    opacity: 0.9;
+    font-size: 0.64rem;
+    line-height: 1.2;
+    opacity: 0.88;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .calendar-block-compact .calendar-block-title {
-    font-size: 0.73rem;
+    display: block;
+    font-size: 0.71rem;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    min-width: 0;
+    min-inline-size: 0;
   }
 
   .calendar-block-title {
+    display: block;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-inline-size: 0;
   }
 
   .calendar-block-location {
-    font-size: 0.73rem;
+    display: block;
+    font-size: 0.72rem;
     opacity: 0.92;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-inline-size: 0;
   }
 
   .calendar-legend-pill {
@@ -651,26 +672,83 @@
     filter: brightness(0.97);
   }
 
+  /* Exams Overlay in Calendar (Task 3.1) */
+  .calendar-day-exams-overlay {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-inline-size: 0;
+  }
+
+  .calendar-exam-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1px;
+    width: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow: hidden;
+    padding: 5px 7px;
+    border-radius: var(--radius-sm);
+    background-color: var(--status-warn-bg);
+    color: var(--status-warn-text);
+    border: 1px solid var(--status-warn-text);
+    border-inline-start: 3px solid var(--course-dot);
+    text-align: start;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.7rem;
+    line-height: 1.25;
+  }
+
+  .calendar-exam-card:hover {
+    filter: brightness(0.97);
+  }
+
+  .calendar-exam-badge {
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .calendar-exam-title {
+    display: block;
+    font-size: 0.71rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-inline-size: 0;
+  }
+
   /* Task Deliveries Overlay (Task 2.2) */
   .calendar-day-tasks-overlay {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    min-width: 0;
+    gap: 4px;
+    min-inline-size: 0;
   }
 
   .calendar-task-card {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 8px;
+    gap: 5px;
+    width: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow: hidden;
+    padding: 4px 7px;
     border-radius: var(--radius-sm);
     background-color: var(--bg-surface-subtle);
     border: 1px solid var(--course-border);
     border-inline-start: 3px solid var(--course-dot);
-    font-size: 0.73rem;
-    line-height: 1.3;
-    min-width: 0;
+    font-size: 0.71rem;
+    line-height: 1.25;
   }
 
   .calendar-task-card.is-completed {

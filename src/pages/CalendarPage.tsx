@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  EXAM_CATEGORY_LABELS,
+  formatExamDateLabel,
+} from '../components/exams/ExamList';
 import { formatShortSpanishDate } from '../components/tasks/TaskList';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import {
@@ -15,6 +19,7 @@ import type {
   CourseColor,
   CourseWithSchedules,
   DayOfWeek,
+  ExamWithCourse,
   TaskPriority,
   TaskWithCourse,
 } from '../types/domain';
@@ -50,7 +55,7 @@ export function CalendarPage({
   initialViewMode = 'month',
 }: CalendarPageProps) {
   const dialogTitleId = useId();
-  const taskDialogRef = useRef<HTMLDialogElement | null>(null);
+  const detailDialogRef = useRef<HTMLDialogElement | null>(null);
 
   const [viewMode, setViewMode] = useState<'month' | 'week'>(initialViewMode);
   const [referenceDate, setReferenceDate] = useState<Date>(
@@ -58,7 +63,9 @@ export function CalendarPage({
   );
   const [activeCourses, setActiveCourses] = useState<CourseWithSchedules[]>([]);
   const [periodTasks, setPeriodTasks] = useState<TaskWithCourse[]>([]);
+  const [periodExams, setPeriodExams] = useState<ExamWithCourse[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
 
   const monthDays = useMemo(
     () => getMonthCalendarGrid(referenceDate),
@@ -75,12 +82,14 @@ export function CalendarPage({
   const periodEndIso = visibleDays[visibleDays.length - 1].dateIso;
 
   const loadCalendarData = useCallback(async () => {
-    const [loadedCourses, loadedTasks] = await Promise.all([
+    const [loadedCourses, loadedTasks, loadedExams] = await Promise.all([
       cursadaClient.listCourses({ status: 'active' }),
       cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
+      cursadaClient.listExams({ dateFrom: periodStartIso, dateTo: periodEndIso }),
     ]);
     setActiveCourses(loadedCourses);
     setPeriodTasks(loadedTasks);
+    setPeriodExams(loadedExams);
   }, [periodStartIso, periodEndIso]);
 
   useEffect(() => {
@@ -88,10 +97,12 @@ export function CalendarPage({
     void Promise.all([
       cursadaClient.listCourses({ status: 'active' }),
       cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
-    ]).then(([loadedCourses, loadedTasks]) => {
+      cursadaClient.listExams({ dateFrom: periodStartIso, dateTo: periodEndIso }),
+    ]).then(([loadedCourses, loadedTasks, loadedExams]) => {
       if (!active) return;
       setActiveCourses(loadedCourses);
       setPeriodTasks(loadedTasks);
+      setPeriodExams(loadedExams);
     });
 
     const handleDataChanged = () => {
@@ -110,11 +121,18 @@ export function CalendarPage({
     [periodTasks, selectedTaskId]
   );
 
+  const selectedExam = useMemo(
+    () => periodExams.find((e) => e.id === selectedExamId) ?? null,
+    [periodExams, selectedExamId]
+  );
+
+  const isDialogOpen = Boolean(selectedTask || selectedExam);
+
   useEffect(() => {
-    const dialog = taskDialogRef.current;
+    const dialog = detailDialogRef.current;
     if (!dialog) return;
 
-    if (selectedTask) {
+    if (isDialogOpen) {
       if (typeof dialog.showModal === 'function') {
         if (!dialog.open) {
           dialog.showModal();
@@ -130,7 +148,7 @@ export function CalendarPage({
       }
       dialog.returnValue = '';
     }
-  }, [selectedTask]);
+  }, [isDialogOpen]);
 
   const monthLabel = useMemo(
     () => `${formatMonthYearEs(referenceDate)} · Vista mensual`,
@@ -156,6 +174,20 @@ export function CalendarPage({
     }
     return map;
   }, [visibleDays, periodTasks]);
+
+  const examsByDate = useMemo(() => {
+    const map = new Map<string, ExamWithCourse[]>();
+    for (const day of visibleDays) {
+      map.set(day.dateIso, []);
+    }
+    for (const exam of periodExams) {
+      const list = map.get(exam.examDate);
+      if (list) {
+        list.push(exam);
+      }
+    }
+    return map;
+  }, [visibleDays, periodExams]);
 
   const blocksByDay = useMemo(() => {
     const map = new Map<DayOfWeek, CalendarClassBlock[]>([
@@ -221,8 +253,8 @@ export function CalendarPage({
     await loadCalendarData();
   }
 
-  function handleCloseTaskDialog(): void {
-    const dialog = taskDialogRef.current;
+  function handleCloseDetailDialog(): void {
+    const dialog = detailDialogRef.current;
     if (dialog) {
       dialog.returnValue = '';
       if (typeof dialog.close === 'function' && dialog.open) {
@@ -232,6 +264,91 @@ export function CalendarPage({
       }
     }
     setSelectedTaskId(null);
+    setSelectedExamId(null);
+  }
+
+  function renderDayExamsOverlay(dayExams: ExamWithCourse[], dateIso: string) {
+    if (dayExams.length === 0) return null;
+    return (
+      <div
+        className="calendar-day-exams-overlay"
+        data-testid={`calendar-exams-${dateIso}`}
+      >
+        {dayExams.map((exam) => (
+          <button
+            key={exam.id}
+            type="button"
+            className="calendar-exam-card"
+            data-course-color={exam.courseColor}
+            data-exam-id={exam.id}
+            title={`${EXAM_CATEGORY_LABELS[exam.category]} · ${exam.title} (${exam.courseName})`}
+            onClick={() => {
+              setSelectedTaskId(null);
+              setSelectedExamId(exam.id);
+            }}
+          >
+            <span className="calendar-exam-badge">
+              {EXAM_CATEGORY_LABELS[exam.category]}
+              {exam.examTime ? ` · ${exam.examTime}` : ''}
+            </span>
+            <strong className="calendar-exam-title">{exam.title}</strong>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  function renderDayTasksOverlay(
+    dayTasks: TaskWithCourse[],
+    dateIso: string,
+    dayName: string,
+    dayNumber: string
+  ) {
+    if (dayTasks.length === 0) return null;
+    return (
+      <div
+        className="calendar-day-tasks-overlay"
+        data-testid={`calendar-tasks-${dateIso}`}
+        aria-label={`Entregas del ${dayName} ${dayNumber}`}
+      >
+        {dayTasks.map((task) => {
+          const isCompleted = task.status === 'done';
+          return (
+            <div
+              key={task.id}
+              className={`calendar-task-card is-compact ${
+                isCompleted ? 'is-completed' : ''
+              }`}
+              data-course-color={task.courseColor}
+              data-task-id={task.id}
+              data-status={task.status}
+            >
+              <input
+                type="checkbox"
+                className="calendar-task-checkbox"
+                checked={isCompleted}
+                aria-label={`Marcar entrega ${task.title}`}
+                onChange={() => void handleToggleTask(task.id)}
+              />
+              <button
+                type="button"
+                className="calendar-task-title-btn"
+                title={`${task.title} (${task.courseName})`}
+                onClick={() => {
+                  setSelectedExamId(null);
+                  setSelectedTaskId(task.id);
+                }}
+              >
+                {task.title}
+              </button>
+              <span className="visually-hidden">
+                {isCompleted ? 'Completada' : 'Entrega'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
@@ -255,8 +372,8 @@ export function CalendarPage({
           </h1>
           <p className="page-subtitle">
             {viewMode === 'month'
-              ? 'Vista mensual de cursada y entregas del mes. Hacé clic en una clase para ir a su materia o abrí cada entrega para ver su detalle.'
-              : 'Vista semanal detallada de bloques horarios y entregas de Lunes a Domingo.'}
+              ? 'Vista mensual de cursada, entregas y exámenes. Hacé clic en una clase para ir a su materia o abrí cada entrega o examen para ver su detalle.'
+              : 'Vista semanal detallada de bloques horarios, entregas y exámenes de Lunes a Domingo.'}
           </p>
         </div>
 
@@ -329,13 +446,16 @@ export function CalendarPage({
                 ? (blocksByDay.get(day.dayOfWeek) ?? [])
                 : [];
               const dayTasks = tasksByDate.get(day.dateIso) ?? [];
+              const dayExams = examsByDate.get(day.dateIso) ?? [];
 
               return (
                 <div
                   key={day.dateIso}
                   className={`calendar-day-col calendar-month-cell ${
                     day.isToday ? 'is-today' : ''
-                  } ${!day.isCurrentMonth ? 'is-outside-month' : ''}`}
+                  } ${!day.isCurrentMonth ? 'is-outside-month' : ''} ${
+                    dayExams.length > 0 ? 'has-exam' : ''
+                  }`}
                   data-date={day.dateIso}
                   data-day-of-week={day.dayOfWeek}
                 >
@@ -347,54 +467,23 @@ export function CalendarPage({
                     >
                       {Number(day.dayNumber)}
                     </span>
-                    {dayTasks.length > 0 ? (
-                      <span className="calendar-month-task-indicator">
-                        {dayTasks.length} {dayTasks.length === 1 ? 'entrega' : 'entregas'}
-                      </span>
-                    ) : null}
+                    <div className="calendar-month-cell-dots" aria-hidden="true">
+                      {dayExams.length > 0 ? (
+                        <span className="pulse-dot is-exam" title="Examen" />
+                      ) : null}
+                      {dayTasks.length > 0 ? (
+                        <span className="pulse-dot is-task" title="Entrega" />
+                      ) : null}
+                    </div>
                   </div>
 
-                  {dayTasks.length > 0 ? (
-                    <div
-                      className="calendar-day-tasks-overlay"
-                      data-testid={`calendar-tasks-${day.dateIso}`}
-                      aria-label={`Entregas del ${day.dayName} ${day.dayNumber}`}
-                    >
-                      {dayTasks.map((task) => {
-                        const isCompleted = task.status === 'done';
-                        return (
-                          <div
-                            key={task.id}
-                            className={`calendar-task-card is-compact ${
-                              isCompleted ? 'is-completed' : ''
-                            }`}
-                            data-course-color={task.courseColor}
-                            data-task-id={task.id}
-                            data-status={task.status}
-                          >
-                            <input
-                              type="checkbox"
-                              className="calendar-task-checkbox"
-                              checked={isCompleted}
-                              aria-label={`Marcar entrega ${task.title}`}
-                              onChange={() => void handleToggleTask(task.id)}
-                            />
-                            <button
-                              type="button"
-                              className="calendar-task-title-btn"
-                              title={`${task.title} (${task.courseName})`}
-                              onClick={() => setSelectedTaskId(task.id)}
-                            >
-                              {task.title}
-                            </button>
-                            <span className="visually-hidden">
-                              {isCompleted ? 'Completada' : 'Entrega'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                  {renderDayExamsOverlay(dayExams, day.dateIso)}
+                  {renderDayTasksOverlay(
+                    dayTasks,
+                    day.dateIso,
+                    day.dayName,
+                    day.dayNumber
+                  )}
 
                   {dayBlocks.length > 0 ? (
                     <div className="calendar-month-classes-stack">
@@ -447,6 +536,7 @@ export function CalendarPage({
             {weekDays.map((day) => {
               const dayBlocks = blocksByDay.get(day.dayOfWeek) ?? [];
               const dayTasks = tasksByDate.get(day.dateIso) ?? [];
+              const dayExams = examsByDate.get(day.dateIso) ?? [];
               const emptyLabel =
                 day.dayOfWeek === 6
                   ? 'Sábado libre'
@@ -457,53 +547,23 @@ export function CalendarPage({
               return (
                 <div
                   key={day.dateIso}
-                  className={`calendar-day-col ${day.isToday ? 'is-today' : ''}`}
+                  className={`calendar-day-col ${day.isToday ? 'is-today' : ''} ${
+                    dayExams.length > 0 ? 'has-exam' : ''
+                  }`}
                   data-date={day.dateIso}
                   data-day-of-week={day.dayOfWeek}
                 >
-                  {dayTasks.length > 0 ? (
-                    <div
-                      className="calendar-day-tasks-overlay"
-                      data-testid={`calendar-tasks-${day.dateIso}`}
-                      aria-label={`Entregas del ${day.dayName} ${day.dayNumber}`}
-                    >
-                      {dayTasks.map((task) => {
-                        const isCompleted = task.status === 'done';
-                        return (
-                          <div
-                            key={task.id}
-                            className={`calendar-task-card is-compact ${
-                              isCompleted ? 'is-completed' : ''
-                            }`}
-                            data-course-color={task.courseColor}
-                            data-task-id={task.id}
-                            data-status={task.status}
-                          >
-                            <input
-                              type="checkbox"
-                              className="calendar-task-checkbox"
-                              checked={isCompleted}
-                              aria-label={`Marcar entrega ${task.title}`}
-                              onChange={() => void handleToggleTask(task.id)}
-                            />
-                            <button
-                              type="button"
-                              className="calendar-task-title-btn"
-                              title={`${task.title} (${task.courseName})`}
-                              onClick={() => setSelectedTaskId(task.id)}
-                            >
-                              {task.title}
-                            </button>
-                            <span className="visually-hidden">
-                              {isCompleted ? 'Completada' : 'Entrega'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                  {renderDayExamsOverlay(dayExams, day.dateIso)}
+                  {renderDayTasksOverlay(
+                    dayTasks,
+                    day.dateIso,
+                    day.dayName,
+                    day.dayNumber
+                  )}
 
-                  {dayBlocks.length === 0 && dayTasks.length === 0 ? (
+                  {dayBlocks.length === 0 &&
+                  dayTasks.length === 0 &&
+                  dayExams.length === 0 ? (
                     <span className="calendar-empty-slot">{emptyLabel}</span>
                   ) : (
                     dayBlocks.map((block) => (
@@ -561,10 +621,13 @@ export function CalendarPage({
       </div>
 
       <dialog
-        ref={taskDialogRef}
+        ref={detailDialogRef}
         className="cursada-modal-dialog cursada-confirm-dialog calendar-task-dialog"
         aria-labelledby={dialogTitleId}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={() => {
+          setSelectedTaskId(null);
+          setSelectedExamId(null);
+        }}
       >
         {selectedTask ? (
           <div className="cursada-modal-content" data-course-color={selectedTask.courseColor}>
@@ -619,7 +682,7 @@ export function CalendarPage({
               <button
                 type="button"
                 className="secondary-button"
-                onClick={handleCloseTaskDialog}
+                onClick={handleCloseDetailDialog}
               >
                 Cerrar
               </button>
@@ -628,7 +691,7 @@ export function CalendarPage({
                 className="secondary-button"
                 onClick={() => {
                   const targetCourseId = selectedTask.courseId;
-                  handleCloseTaskDialog();
+                  handleCloseDetailDialog();
                   onSelectCourse(targetCourseId);
                 }}
               >
@@ -642,6 +705,72 @@ export function CalendarPage({
                 {selectedTask.status === 'done'
                   ? 'Marcar como pendiente'
                   : 'Marcar como completada'}
+              </button>
+            </div>
+          </div>
+        ) : selectedExam ? (
+          <div className="cursada-modal-content" data-course-color={selectedExam.courseColor}>
+            <div className="cursada-modal-header">
+              <span className="course-pill" data-course-color={selectedExam.courseColor}>
+                <span
+                  className="course-dot"
+                  data-course-color={selectedExam.courseColor}
+                  aria-hidden="true"
+                />
+                {selectedExam.courseName}
+              </span>
+              <span className="task-due-badge urgency-tomorrow">
+                {EXAM_CATEGORY_LABELS[selectedExam.category]}
+                {selectedExam.grade !== null
+                  ? ` · Nota ${selectedExam.grade.toFixed(1)}`
+                  : ''}
+              </span>
+            </div>
+
+            <div className="calendar-task-dialog-body">
+              <h2 id={dialogTitleId} className="cursada-modal-title">
+                {selectedExam.title}
+              </h2>
+
+              {selectedExam.topics ? (
+                <p className="calendar-task-dialog-desc">{selectedExam.topics}</p>
+              ) : null}
+
+              <dl className="course-meta-list">
+                <div className="course-meta-row">
+                  <dt className="course-detail-label">Fecha y horario</dt>
+                  <dd className="course-detail-value">
+                    {formatExamDateLabel(selectedExam.examDate)}
+                    {selectedExam.examTime ? ` · ${selectedExam.examTime}` : ''}
+                  </dd>
+                </div>
+                {selectedExam.location ? (
+                  <div className="course-meta-row">
+                    <dt className="course-detail-label">Aula / Modalidad</dt>
+                    <dd className="course-detail-value">{selectedExam.location}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+
+            <div className="cursada-modal-footer">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleCloseDetailDialog}
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  const targetCourseId = selectedExam.courseId;
+                  handleCloseDetailDialog();
+                  onSelectCourse(targetCourseId);
+                }}
+              >
+                Ir a {selectedExam.courseName}
               </button>
             </div>
           </div>

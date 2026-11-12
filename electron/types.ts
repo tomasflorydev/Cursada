@@ -66,6 +66,57 @@ export interface CourseDeleteImpact {
   courseId: string;
   courseName: string;
   tasksCount: number;
+  examsCount?: number;
+}
+
+export type ExamCategory = 'parcial' | 'recuperatorio' | 'final' | 'tp';
+
+export interface Exam {
+  id: string;
+  courseId: string;
+  title: string;
+  category: ExamCategory;
+  examDate: string;
+  examTime: string | null;
+  location: string;
+  topics: string;
+  grade: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExamWithCourse extends Exam {
+  courseName: string;
+  courseColor: CourseColor;
+}
+
+export interface CreateExamInput {
+  courseId: string;
+  title: string;
+  category?: ExamCategory;
+  examDate: string;
+  examTime?: string | null;
+  location?: string;
+  topics?: string;
+  grade?: number | null;
+}
+
+export interface UpdateExamInput {
+  courseId?: string;
+  title?: string;
+  category?: ExamCategory;
+  examDate?: string;
+  examTime?: string | null;
+  location?: string;
+  topics?: string;
+  grade?: number | null;
+}
+
+export interface ExamFilters {
+  courseId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  graded?: 'all' | 'graded' | 'ungraded';
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high';

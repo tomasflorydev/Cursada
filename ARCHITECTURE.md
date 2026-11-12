@@ -51,9 +51,9 @@ Toda la aplicación funciona **100% offline/local**:
 
 ### 2.2. Decisiones de Producto Confirmadas por el Product Owner
 1. **Cuatrimestres e historial**: La barra lateral muestra las materias del **cuatrimestre actual**, mientras que las materias de cuatrimestres anteriores quedan agrupadas en una sección desplegable de **Archivo / Cuatrimestres anteriores**.
-2. **Horarios y Calendario Semanal**:
+2. **Horarios y Calendario (Mensual y Semanal)**:
    - Cada bloque de horario de cursada incluye día, hora de inicio, hora de fin y un campo opcional de **Aula / Sede / Modalidad** (`location`).
-   - La grilla del calendario semanal abarca de **Lunes a Domingo** (7 días).
+   - La sección **Calendario** abre por defecto en **Vista Mensual** (semanas completas de Lunes a Domingo cubriendo todo el mes) y cuenta con un selector **`Mensual | Semanal`** para alternar a la vista semanal detallada. Todas las celdas de 7 columnas aplican `min-inline-size: 0` y truncado con elipsis en una línea para evitar desbordes de fuentes en nombres largos de materias, entregas o exámenes.
 3. **Tareas (To-do)**:
    - Dos estados simples y directos: **Pendiente (`pending`)** y **Completada (`done`)**.
    - Todas las tareas pertenecen obligatoriamente a una materia (`course_id NOT NULL`).
@@ -264,17 +264,18 @@ Cursada/
 │       ├── handlers.ts              # Registro central de dominios IPC
 │       ├── systemHandlers.ts        # Canales IPC de backups y directorio de datos
 │       ├── coursesHandlers.ts       # Canales IPC de materias y horarios (con backup pre-borrado)
-│       └── tasksHandlers.ts         # Canales IPC de tareas
+│       ├── tasksHandlers.ts         # Canales IPC de tareas
+│       └── examsHandlers.ts         # Canales IPC de exámenes y calificaciones
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React
     ├── App.tsx                      # Layout principal, contrato de navegación y sincronización de barra lateral
     ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (mockCourses.ts, mockTasks.ts, mockClient.ts)
-    │   ├── dates/                   # Utilidades de calendario (Lunes a Domingo) en español
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (mockCourses.ts, mockTasks.ts, mockExams.ts, mockClient.ts)
+    │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
     │   └── pdf/                     # Extracción de texto de PDFs página por página (pdfjs-dist)
-    ├── components/                  # Componentes de UI por dominio
+    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/)
     ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Notas, Materias, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```

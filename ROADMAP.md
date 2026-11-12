@@ -21,12 +21,12 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
   - Puedo editar los datos o los horarios de una materia existente y los cambios se reflejan inmediatamente en toda la app.
   - Puedo eliminar una materia previa confirmación de seguridad.
 
-### Tarea 1.3: Vista de Calendario con horario semanal de clases
-- **Qué incluye**: Grilla semanal interactiva de **Lunes a Domingo** (7 días, con navegación entre semanas y botón "Hoy") donde se dibujan los bloques horarios de todas las materias activas con su respectivo color, horario y aula/modalidad.
+### Tarea 1.3: Vista de Calendario (Mensual y Semanal) con horarios de clases
+- **Qué incluye**: Calendario interactivo de **Lunes a Domingo** con **Vista Mensual** por defecto (grilla completa del mes con navegación `Mes anterior | Hoy | Mes siguiente`) y selector segmentado **`Mensual | Semanal`** (grilla semanal detallada de 7 días), donde se dibujan los bloques horarios de todas las materias activas con su respectivo color, horario y aula/modalidad, con truncado seguro de una línea para evitar desbordes tipográficos.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo abrir la sección **Calendario** y ver todos mis bloques de cursada ubicados en el día y franja horaria correspondiente con el color de cada materia.
+  - Puedo abrir la sección **Calendario** y ver el mes completo con todos mis bloques de cursada ubicados en cada día con el color de su materia, o alternar a la vista **Semanal** cuando necesito ver el detalle de horarios y aulas.
   - Puedo hacer clic en un bloque de clase dentro del calendario y navegar directamente a la página de esa materia.
-  - Puedo moverme a la semana siguiente, a la semana anterior o volver a la semana actual con el botón **"Hoy"**.
+  - Puedo moverme al mes/semana siguiente, al anterior o volver a la fecha actual con el botón **"Hoy"**.
 
 ---
 

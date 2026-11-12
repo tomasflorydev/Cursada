@@ -10,6 +10,15 @@ import {
   resetMockCourses,
 } from './mockCourses';
 import {
+  mockCountExamsByCourse,
+  mockCreateExam,
+  mockDeleteExam,
+  mockDeleteExamsByCourse,
+  mockListExams,
+  mockUpdateExam,
+  resetMockExams,
+} from './mockExams';
+import {
   mockCountTasksByCourse,
   mockCreateTask,
   mockDeleteTask,
@@ -57,6 +66,8 @@ function createMockBackupSync(reason = 'manual'): BackupInfo {
 registerCourseTaskHooks({
   countTasksByCourse: mockCountTasksByCourse,
   deleteTasksByCourse: mockDeleteTasksByCourse,
+  countExamsByCourse: mockCountExamsByCourse,
+  deleteExamsByCourse: mockDeleteExamsByCourse,
   onBeforeDeleteCourse: () => {
     createMockBackupSync('pre-course-delete');
   },
@@ -65,6 +76,7 @@ registerCourseTaskHooks({
 export function resetAllMocks(): void {
   resetMockCourses();
   resetMockTasks();
+  resetMockExams();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
 }
@@ -85,4 +97,8 @@ export const mockClient: CursadaIpcApi = {
   updateTask: mockUpdateTask,
   toggleTaskStatus: mockToggleTaskStatus,
   deleteTask: mockDeleteTask,
+  listExams: mockListExams,
+  createExam: mockCreateExam,
+  updateExam: mockUpdateExam,
+  deleteExam: mockDeleteExam,
 };

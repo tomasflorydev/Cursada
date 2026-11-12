@@ -1,0 +1,68 @@
+/* Styles for ExamsPage and ExamList component (Phase 3) */
+
+@layer components {
+  .exams-view-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .exams-toolbar-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px 24px;
+  }
+
+  .exam-average-summary-pill {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: var(--status-done-bg);
+    color: var(--status-done-text);
+    white-space: nowrap;
+  }
+
+  .exam-countdown-box.is-graded {
+    background-color: var(--status-done-bg);
+    border-color: var(--status-done-text);
+    color: var(--status-done-text);
+  }
+
+  .exam-ficha-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-block-start: auto;
+    padding-block-start: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .exam-ficha-footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .exam-ficha-footer-meta .exam-location-text::before {
+    content: '· ';
+  }
+
+  @media (hover: hover) {
+    .exam-ficha .exam-ficha-actions {
+      opacity: 0.45;
+    }
+
+    .exam-ficha:hover .exam-ficha-actions,
+    .exam-ficha:focus-within .exam-ficha-actions {
+      opacity: 1;
+    }
+  }
+}

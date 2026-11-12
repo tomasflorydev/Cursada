@@ -66,6 +66,8 @@ function sortSchedules(schedules: ClassSchedule[]): ClassSchedule[] {
 interface CourseTaskHooks {
   countTasksByCourse: (courseId: string) => number;
   deleteTasksByCourse: (courseId: string) => void;
+  countExamsByCourse?: (courseId: string) => number;
+  deleteExamsByCourse?: (courseId: string) => void;
   onBeforeDeleteCourse?: (courseId: string) => void;
 }
 
@@ -349,11 +351,13 @@ export async function mockGetCourseDeleteImpact(
     courseId: found.id,
     courseName: found.name,
     tasksCount: taskHooks.countTasksByCourse(id),
+    examsCount: taskHooks.countExamsByCourse?.(id) ?? 0,
   };
 }
 
 export async function mockDeleteCourse(id: string): Promise<void> {
   taskHooks.onBeforeDeleteCourse?.(id);
   taskHooks.deleteTasksByCourse(id);
+  taskHooks.deleteExamsByCourse?.(id);
   coursesStore = coursesStore.filter((c) => c.id !== id);
 }

@@ -2,9 +2,12 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   CourseStatus,
   CreateCourseInput,
+  CreateExamInput,
   CreateTaskInput,
+  ExamFilters,
   TaskFilters,
   UpdateCourseInput,
+  UpdateExamInput,
   UpdateTaskInput,
 } from './types.js';
 
@@ -31,4 +34,10 @@ contextBridge.exposeInMainWorld('cursadaApi', {
     ipcRenderer.invoke('tasks:update', id, input),
   toggleTaskStatus: (id: string) => ipcRenderer.invoke('tasks:toggleStatus', id),
   deleteTask: (id: string) => ipcRenderer.invoke('tasks:delete', id),
+  // Exams
+  listExams: (filters?: ExamFilters) => ipcRenderer.invoke('exams:list', filters),
+  createExam: (input: CreateExamInput) => ipcRenderer.invoke('exams:create', input),
+  updateExam: (id: string, input: UpdateExamInput) =>
+    ipcRenderer.invoke('exams:update', id, input),
+  deleteExam: (id: string) => ipcRenderer.invoke('exams:delete', id),
 });

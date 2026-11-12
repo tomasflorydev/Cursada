@@ -74,6 +74,10 @@ export function DeleteCourseDialog({
       ? '1 tarea asociada'
       : `${impact.tasksCount} tareas asociadas`;
 
+  const examsCount = impact.examsCount ?? 0;
+  const examsLabel =
+    examsCount === 1 ? '1 examen asociado' : `${examsCount} exámenes asociados`;
+
   return (
     <dialog
       ref={dialogRef}
@@ -95,8 +99,14 @@ export function DeleteCourseDialog({
             <strong>{impact.courseName}</strong>?
           </p>
           <p className="delete-course-warning-impact">
-            Se eliminarán también <strong>{tasksLabel}</strong> y todos sus bloques de
-            horario semanal. Se realizará un backup automático antes del borrado.
+            Se eliminarán también <strong>{tasksLabel}</strong>
+            {examsCount > 0 ? (
+              <>
+                , <strong>{examsLabel}</strong>
+              </>
+            ) : null}{' '}
+            y todos sus bloques de horario semanal. Se realizará un backup automático
+            antes del borrado.
           </p>
         </div>
 

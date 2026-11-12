@@ -67,6 +67,57 @@ export interface CourseDeleteImpact {
   courseId: string;
   courseName: string;
   tasksCount: number;
+  examsCount?: number;
+}
+
+export type ExamCategory = 'parcial' | 'recuperatorio' | 'final' | 'tp';
+
+export interface Exam {
+  id: string;
+  courseId: string;
+  title: string;
+  category: ExamCategory;
+  examDate: string; // ISO 'YYYY-MM-DD'
+  examTime: string | null; // Optional 'HH:MM'
+  location: string;
+  topics: string;
+  grade: number | null; // Scale 1..10 or null
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExamWithCourse extends Exam {
+  courseName: string;
+  courseColor: CourseColor;
+}
+
+export interface CreateExamInput {
+  courseId: string;
+  title: string;
+  category?: ExamCategory;
+  examDate: string;
+  examTime?: string | null;
+  location?: string;
+  topics?: string;
+  grade?: number | null;
+}
+
+export interface UpdateExamInput {
+  courseId?: string;
+  title?: string;
+  category?: ExamCategory;
+  examDate?: string;
+  examTime?: string | null;
+  location?: string;
+  topics?: string;
+  grade?: number | null;
+}
+
+export interface ExamFilters {
+  courseId?: string;
+  dateFrom?: string; // ISO 'YYYY-MM-DD'
+  dateTo?: string;   // ISO 'YYYY-MM-DD'
+  graded?: 'all' | 'graded' | 'ungraded';
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high';
@@ -153,6 +204,11 @@ export interface CursadaIpcApi {
   updateTask: (id: string, input: UpdateTaskInput) => Promise<TaskWithCourse>;
   toggleTaskStatus: (id: string) => Promise<TaskWithCourse>;
   deleteTask: (id: string) => Promise<void>;
+  // Exams (Phase 3)
+  listExams: (filters?: ExamFilters) => Promise<ExamWithCourse[]>;
+  createExam: (input: CreateExamInput) => Promise<ExamWithCourse>;
+  updateExam: (id: string, input: UpdateExamInput) => Promise<ExamWithCourse>;
+  deleteExam: (id: string) => Promise<void>;
 }
 
 declare global {

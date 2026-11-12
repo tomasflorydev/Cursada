@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createBackup } from '../services/backupService.js';
 
-export const LATEST_SCHEMA_VERSION = 1;
+export const LATEST_SCHEMA_VERSION = 2;
 
 const MIGRATION_V1_SQL = `
 CREATE TABLE IF NOT EXISTS courses (
@@ -49,6 +49,24 @@ CREATE TABLE IF NOT EXISTS app_settings (
 );
 `;
 
+const MIGRATION_V2_SQL = `
+CREATE TABLE IF NOT EXISTS exams (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'parcial' CHECK (category IN ('parcial', 'recuperatorio', 'final', 'tp')),
+    exam_date TEXT NOT NULL,
+    exam_time TEXT,
+    location TEXT NOT NULL DEFAULT '',
+    topics TEXT NOT NULL DEFAULT '',
+    grade REAL CHECK (grade IS NULL OR (grade >= 1 AND grade <= 10)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_exams_course ON exams(course_id);
+CREATE INDEX IF NOT EXISTS idx_exams_date ON exams(exam_date);
+`;
+
 export function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   return row?.user_version ?? 0;
@@ -82,6 +100,18 @@ export function runMigrations(
     try {
       db.exec(MIGRATION_V1_SQL);
       db.exec('PRAGMA user_version = 1;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 2) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V2_SQL);
+      db.exec('PRAGMA user_version = 2;');
       db.exec('COMMIT;');
     } catch (err) {
       db.exec('ROLLBACK;');

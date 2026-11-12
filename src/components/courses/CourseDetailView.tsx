@@ -1,10 +1,12 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { cursadaClient, DATA_CHANGED_EVENT } from '../../lib/api/client';
 import {
   DAY_NAMES_ES,
   formatScheduleBlock,
   formatSchedulesSummary,
 } from '../../lib/dates';
-import type { CourseWithSchedules } from '../../types/domain';
+import type { CourseWithSchedules, ExamWithCourse } from '../../types/domain';
+import { calculateAverageFromExams, ExamList } from '../exams/ExamList';
 import { TaskList } from '../tasks/TaskList';
 import { getCourseColorLabel } from './courseColors';
 
@@ -47,10 +49,32 @@ export function CourseDetailView({
 }: CourseDetailViewProps) {
   const baseId = useId();
   const [activeTab, setActiveTab] = useState<CourseTabId>('resumen');
+  const [courseExams, setCourseExams] = useState<ExamWithCourse[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const loadExams = async () => {
+      const loaded = await cursadaClient.listExams({ courseId: course.id });
+      if (active) {
+        setCourseExams(loaded);
+      }
+    };
+    void loadExams();
+
+    const handleChanged = () => {
+      void loadExams();
+    };
+    window.addEventListener(DATA_CHANGED_EVENT, handleChanged);
+    return () => {
+      active = false;
+      window.removeEventListener(DATA_CHANGED_EVENT, handleChanged);
+    };
+  }, [course.id]);
 
   const isArchived = course.status === 'archived';
   const scheduleSummaryText = formatSchedulesSummary(course.schedules);
   const colorLabel = getCourseColorLabel(course.color);
+  const averageGrade = calculateAverageFromExams(courseExams);
 
   function handleTabKeyDown(
     e: React.KeyboardEvent<HTMLButtonElement>,
@@ -86,6 +110,14 @@ export function CourseDetailView({
             >
               {isArchived ? 'Archivada' : 'En curso'}
             </span>
+            {averageGrade !== null ? (
+              <span
+                className="exam-average-summary-pill"
+                data-testid="course-detail-average-pill"
+              >
+                Promedio {averageGrade.toFixed(1)}
+              </span>
+            ) : null}
           </div>
 
           <h1 id="main-title" tabIndex={-1} className="page-title">
@@ -275,15 +307,10 @@ export function CourseDetailView({
           id={`${baseId}-panel-examenes`}
           role="tabpanel"
           aria-labelledby={`${baseId}-tab-examenes`}
-          className="surface-panel course-tab-panel"
+          data-testid="course-exams-tab-panel"
+          className="course-tab-panel"
         >
-          <div className="section-heading-bar">
-            <h2 className="section-title">Exámenes y calificaciones</h2>
-          </div>
-          <p className="course-empty-text">
-            En la Fase 3 podrás agendar parciales, recuperatorios, TPs evaluativos y finales de{' '}
-            {course.name}, con cálculo automático del promedio en escala de 1 a 10.
-          </p>
+          <ExamList courseId={course.id} />
         </section>
       ) : null}
 
