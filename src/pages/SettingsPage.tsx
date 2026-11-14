@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ExportMarkdownButton } from '../components/export/ExportMarkdownButton';
+import { OllamaSettingsSection } from '../components/settings/OllamaSettingsSection';
 import { cursadaClient } from '../lib/api/client';
 import type { BackupInfo, ThemeMode } from '../types';
 
@@ -179,6 +180,8 @@ export function SettingsPage({ themeMode, onChangeThemeMode }: SettingsPageProps
           data-testid="settings-export-all-button"
         />
       </section>
+
+      <OllamaSettingsSection />
 
       <section className="surface-panel settings-section" aria-labelledby="settings-theme-heading">
         <div className="section-heading-bar">
