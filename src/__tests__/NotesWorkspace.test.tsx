@@ -175,7 +175,19 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
     expect(persisted[0].title).toBe('Planificación de Pruebas Unitarias');
     expect(persisted[0].content).toContain('| notesRepo | 100% |');
 
-    // Mode: Dividido (default) shows both editor and GFM preview
+    // Mode: Editar (default) shows editor only, no preview
+    expect(
+      within(workspace).getByLabelText('Contenido en Markdown')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('note-markdown-preview')
+    ).not.toBeInTheDocument();
+
+    // Switch to Lectura mode: hides editor, shows GFM preview
+    fireEvent.click(screen.getByRole('button', { name: 'Lectura' }));
+    expect(
+      within(workspace).queryByLabelText('Contenido en Markdown')
+    ).not.toBeInTheDocument();
     const preview = screen.getByTestId('note-markdown-preview');
     expect(
       within(preview).getByRole('heading', {
@@ -188,13 +200,6 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
       within(preview).getAllByRole('checkbox').length
     ).toBeGreaterThanOrEqual(2);
 
-    // Switch to Lectura mode: hides editor, keeps GFM preview
-    fireEvent.click(screen.getByRole('button', { name: 'Lectura' }));
-    expect(
-      within(workspace).queryByLabelText('Contenido en Markdown')
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId('note-markdown-preview')).toBeInTheDocument();
-
     // Switch to Editar mode: shows editor, hides preview
     fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
     expect(
@@ -203,6 +208,13 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
     expect(
       screen.queryByTestId('note-markdown-preview')
     ).not.toBeInTheDocument();
+
+    // Toggle note list visibility
+    expect(workspace).toHaveClass('is-list-hidden');
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar lista de notas' }));
+    expect(workspace).not.toHaveClass('is-list-hidden');
+    fireEvent.click(screen.getByRole('button', { name: 'Ocultar lista de notas' }));
+    expect(workspace).toHaveClass('is-list-hidden');
 
     // Toggle pin on the created note
     fireEvent.click(screen.getByRole('button', { name: 'Fijar nota' }));

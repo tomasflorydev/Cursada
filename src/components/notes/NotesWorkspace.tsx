@@ -73,6 +73,7 @@ export function NotesWorkspace({
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [pinnedOnly, setPinnedOnly] = useState<boolean>(false);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [isListVisible, setIsListVisible] = useState<boolean>(false);
   const [draftTitle, setDraftTitle] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -183,6 +184,7 @@ export function NotesWorkspace({
       setNotes((prev) => sortNotesForList([created, ...prev]));
       prevSelectedNoteIdRef.current = created.id;
       setSelectedNoteId(created.id);
+      setIsListVisible(false);
       setDraftTitle(created.title);
       onNotesChanged?.();
 
@@ -279,10 +281,11 @@ export function NotesWorkspace({
     pinnedOnly;
 
   const canCreate = Boolean(courseId || courses.length > 0);
+  const isListHidden = Boolean(selectedNote && !isListVisible);
 
   return (
     <div
-      className="notes-workspace"
+      className={`notes-workspace ${isListHidden ? 'is-list-hidden' : ''}`}
       data-testid={
         courseId ? `notes-workspace-${courseId}` : 'notes-workspace-global'
       }
@@ -384,7 +387,10 @@ export function NotesWorkspace({
                       type="button"
                       className="notes-list-item-select"
                       aria-current={isSelected ? 'true' : undefined}
-                      onClick={() => setSelectedNoteId(note.id)}
+                      onClick={() => {
+                        setSelectedNoteId(note.id);
+                        setIsListVisible(false);
+                      }}
                     >
                       <span className="notes-list-item-title">{note.title}</span>
                       <span className="notes-list-item-meta">
@@ -488,6 +494,18 @@ export function NotesWorkspace({
               </div>
 
               <div className="notes-editor-actions">
+                <button
+                  type="button"
+                  className={`secondary-button notes-toggle-list-btn ${isListVisible ? 'is-selected' : ''}`}
+                  aria-label={
+                    isListVisible ? 'Ocultar lista de notas' : 'Mostrar lista de notas'
+                  }
+                  aria-pressed={isListVisible}
+                  onClick={() => setIsListVisible((prev) => !prev)}
+                >
+                  {isListVisible ? 'Ocultar lista' : 'Mostrar lista'}
+                </button>
+
                 <button
                   type="button"
                   className={`secondary-button notes-header-pin-btn ${selectedNote.isPinned ? 'is-selected' : ''}`}

@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 import { cursadaClient } from '../../lib/api/client';
 import type { NoteWithCourse } from '../../types/domain';
 
-export type NoteEditorViewMode = 'edit' | 'split' | 'preview';
+export type NoteEditorViewMode = 'edit' | 'preview';
 export type NoteSaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
 export const NOTE_AUTOSAVE_DELAY_MS = 450;
@@ -27,7 +27,6 @@ const VIEW_MODE_OPTIONS: ReadonlyArray<{
   label: string;
 }> = [
   { id: 'edit', label: 'Editar' },
-  { id: 'split', label: 'Dividido' },
   { id: 'preview', label: 'Lectura' },
 ];
 
@@ -80,7 +79,7 @@ export function NoteEditor({
   note,
   title,
   onNoteSaved,
-  defaultViewMode = 'split',
+  defaultViewMode = 'edit',
 }: NoteEditorProps) {
   const effectiveTitle = title ?? note.title;
   const [viewMode, setViewMode] = useState<NoteEditorViewMode>(defaultViewMode);
@@ -461,7 +460,7 @@ export function NoteEditor({
       ) : null}
 
       <div className={`note-editor-body is-mode-${viewMode}`}>
-        {viewMode !== 'preview' ? (
+        {viewMode === 'edit' ? (
           <div className="note-editor-pane" data-testid="note-editor-pane">
             {useFallbackEditor ? (
               <textarea
@@ -479,9 +478,7 @@ export function NoteEditor({
               />
             )}
           </div>
-        ) : null}
-
-        {viewMode !== 'edit' ? (
+        ) : (
           <div
             className="note-preview-pane"
             data-testid="note-markdown-preview"
@@ -500,7 +497,7 @@ export function NoteEditor({
               </p>
             )}
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

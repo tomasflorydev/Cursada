@@ -9,6 +9,14 @@
     min-block-size: 560px;
   }
 
+  .notes-workspace.is-list-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notes-workspace.is-list-hidden .notes-sidebar-pane {
+    display: none;
+  }
+
   /* Left Pane: Search, Filters & Notes List */
   .notes-sidebar-pane {
     display: flex;
@@ -283,7 +291,8 @@
     flex-shrink: 0;
   }
 
-  .notes-header-pin-btn {
+  .notes-header-pin-btn,
+  .notes-toggle-list-btn {
     min-block-size: 30px;
     padding: 4px 10px;
     font-size: 0.76rem;
@@ -390,17 +399,9 @@
 
   .note-editor-body {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     flex: 1;
     min-block-size: 420px;
-  }
-
-  .note-editor-body.is-mode-edit,
-  .note-editor-body.is-mode-preview {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .note-editor-body.is-mode-split {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .note-editor-pane {
@@ -409,10 +410,6 @@
     min-width: 0;
     min-height: 0;
     background-color: var(--bg-surface);
-  }
-
-  .note-editor-body.is-mode-split .note-editor-pane {
-    border-inline-end: 1px solid var(--border-subtle);
   }
 
   .note-codemirror-host {
@@ -610,15 +607,6 @@
 
     .notes-list {
       max-block-size: 280px;
-    }
-
-    .note-editor-body.is-mode-split {
-      grid-template-columns: 1fr;
-    }
-
-    .note-editor-body.is-mode-split .note-editor-pane {
-      border-inline-end: none;
-      border-block-end: 1px solid var(--border-subtle);
     }
   }
 }
