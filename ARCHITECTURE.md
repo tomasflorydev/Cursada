@@ -60,7 +60,20 @@ Toda la aplicación funciona **100% offline/local**:
 4. **Exámenes y calificaciones**:
    - Escala de **1 a 10**, categorizados en **Parcial, Recuperatorio, Final y TP evaluativo**.
    - La vista de cada materia calcula y muestra el **promedio** de las notas cargadas además de la nota individual de cada examen.
-5. **Fuentes para IA y Reportes**:
+5. **Notas y Apuntes (Markdown con Preview en vivo y FTS5)**:
+   - Editor basado en **CodeMirror 6** con selector segmentado de modos **Editar / Dividido / Lectura**.
+   - Vista previa formateada en tiempo real mediante **GFM** (`react-markdown` + `remark-gfm`) con soporte para tablas, listas de tareas (`- [ ]` / `- [x]`) y bloques de código.
+   - Guardado automático continuo con *debounce* e indicador visual de estado (*Guardando...* / *Guardado*).
+   - Fijado de notas importantes en la parte superior (`is_pinned`).
+   - Búsqueda instantánea FTS5 sin distinción de tildes ni mayúsculas (`unicode61 remove_diacritics 2`), sanitizando operadores para evitar errores de sintaxis en consultas libres.
+6. **Exportación a Markdown (.md) en disco y navegador**:
+   - Exportación nativa a carpetas de macOS vía `dialog.showOpenDialog` y fallback automático de descarga de archivos en modo navegador o pruebas aisladas.
+   - Tres alcances de exportación:
+     1. **Nota individual**: `<nota>.md` con metadatos de cabecera y cuerpo Markdown.
+     2. **Materia completa**: Carpeta de la materia con `00-Resumen-Materia.md` (ficha general, horarios de cursada, tareas pendientes/completadas, exámenes rendidos y promedio) más subcarpeta `notas/` con todos sus apuntes.
+     3. **Toda la cursada**: Carpeta raíz con `README.md` índice navegable y subcarpetas individuales para cada materia.
+   - Sanitización estricta de nombres de archivos para prevenir *path traversal* (`..`) y resolución de nombres duplicados (`-2`, `-3`).
+7. **Fuentes para IA y Reportes**:
    - Soporta archivos **`.pdf`, `.md`, `.txt`** y además **pegar texto directo** como fuente desde la interfaz.
    - En los reportes de **Preguntas de práctica para examen**, el usuario puede **elegir el formato** antes de generarlo (Preguntas a desarrollar, Multiple choice o Mixto).
 
@@ -156,6 +169,21 @@ CREATE VIRTUAL TABLE notes_fts USING fts5(
     content,
     tokenize = 'unicode61 remove_diacritics 2'
 );
+
+CREATE TRIGGER trg_notes_ai AFTER INSERT ON notes BEGIN
+    INSERT INTO notes_fts (note_id, course_id, title, content)
+    VALUES (new.id, new.course_id, new.title, new.content);
+END;
+
+CREATE TRIGGER trg_notes_au AFTER UPDATE OF course_id, title, content ON notes BEGIN
+    DELETE FROM notes_fts WHERE note_id = old.id;
+    INSERT INTO notes_fts (note_id, course_id, title, content)
+    VALUES (new.id, new.course_id, new.title, new.content);
+END;
+
+CREATE TRIGGER trg_notes_ad AFTER DELETE ON notes BEGIN
+    DELETE FROM notes_fts WHERE note_id = old.id;
+END;
 
 -- 6. Fuentes de estudio por materia (PDF, MD, TXT o texto pegado)
 CREATE TABLE sources (
@@ -287,5 +315,5 @@ Cursada/
 ## 5. Aislamiento de Entorno, Navegación y Seguridad Operativa
 
 - **`CURSADA_DATA_DIR`**: `electron/db/database.ts` prioriza la variable de entorno `CURSADA_DATA_DIR` sobre `~/Library/Application Support/com.cursada.app/`, permitiendo que entornos de desarrollo y agentes en paralelo operen sobre directorios aislados. En `VITEST` / `NODE_ENV=test`, cualquier apertura sin directorio explícito usa automáticamente un directorio temporal (`fs.mkdtempSync(path.join(os.tmpdir(), 'cursada-test-'))`).
-- **Borrado seguro de materias**: Antes de eliminar una materia (`courses:delete`), se consulta el impacto (`courses:getDeleteImpact` devuelve cuántas tareas asociadas se eliminarán en cascada para informar en el diálogo de confirmación) y se ejecuta un backup automático (`createBackup(..., 'pre-course-delete')`).
+- **Borrado seguro de materias**: Antes de eliminar una materia (`courses:delete`), se consulta el impacto (`courses:getDeleteImpact` devuelve cuántas tareas, exámenes y notas asociadas se eliminarán en cascada para informar en el diálogo de confirmación) y se ejecuta un backup automático (`createBackup(..., 'pre-course-delete')`).
 - **Contrato de navegación y refresco reactivo**: `App.tsx` inyecta `onSelectCourse(courseId | null)` a las vistas de dominio y escucha el evento `cursada:data-changed` emitido por `cursadaClient` tras cada mutación, manteniendo sincronizados la lista de materias (activas y archivadas) y el contador de tareas pendientes en `Sidebar.tsx`.

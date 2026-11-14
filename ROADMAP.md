@@ -4,24 +4,24 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 1: Base del Proyecto + Materias + Horario Semanal de Clases
+## Fase 1: Base del Proyecto + Materias + Horario Semanal de Clases (Completada y verificada)
 
-### Tarea 1.1: Esqueleto de la app, base de datos SQLite y backups automáticos
+### Tarea 1.1: [x] Esqueleto de la app, base de datos SQLite y backups automáticos
 - **Qué incluye**: Inicialización de Electron + React + Vite + TypeScript (`com.cursada.app`), ventana macOS con semáforos integrados (`titleBarStyle: 'hiddenInset'`), layout base estilo macOS con barra lateral fija, soporte de modo claro/oscuro según el sistema, conexión SQLite con `node:sqlite`, migraciones automáticas versionadas, servicio de backups automáticos y pantalla de Ajustes con botón de backup manual.
 - **Criterios de aceptación (como usuario)**:
   - Puedo abrir la aplicación **Cursada** y ver la barra lateral en español con la navegación principal (**Inicio**, **Calendario**, **Tareas**, **Exámenes**, **Notas**, **Materias** y **Ajustes**).
   - Si cambio mi Mac entre modo claro y modo oscuro, la interfaz de Cursada adapta sus colores automáticamente manteniendo legibilidad y estética nativa.
   - Puedo abrir **Ajustes → Datos y Backups**, hacer clic en **"Crear backup ahora"** y ver confirmada la fecha y ubicación del backup generado.
 
-### Tarea 1.2: CRUD completo de Materias y sus horarios semanales
-- **Qué incluye**: Creación, edición, archivado y eliminación (con confirmación) de materias con nombre, color de la paleta, profesor, cuatrimestre y múltiples bloques de horario semanal (día de la semana, hora de inicio, hora de fin y aula/modalidad opcional).
+### Tarea 1.2: [x] CRUD completo de Materias y sus horarios semanales
+- **Qué incluye**: Creación, edición, archivado y eliminación (con confirmación de impacto de tareas, exámenes y notas) de materias con nombre, color de la paleta, profesor, cuatrimestre y múltiples bloques de horario semanal (día de la semana, hora de inicio, hora de fin y aula/modalidad opcional).
 - **Criterios de aceptación (como usuario)**:
   - Puedo crear una materia con su nombre, color, profesor, cuatrimestre y uno o más horarios semanales (ej. Lunes de 18:30 a 22:30 y Jueves de 18:30 a 22:30), y al cerrar y volver a abrir la app sigue ahí.
   - Puedo hacer clic en una materia en la barra lateral para entrar a su vista dedicada y ver su información de cabecera, sus horarios y sus pestañas estructuradas.
   - Puedo editar los datos o los horarios de una materia existente y los cambios se reflejan inmediatamente en toda la app.
-  - Puedo eliminar una materia previa confirmación de seguridad.
+  - Puedo eliminar una materia previa confirmación de seguridad con backup automático preventivo.
 
-### Tarea 1.3: Vista de Calendario (Mensual y Semanal) con horarios de clases
+### Tarea 1.3: [x] Vista de Calendario (Mensual y Semanal) con horarios de clases
 - **Qué incluye**: Calendario interactivo de **Lunes a Domingo** con **Vista Mensual** por defecto (grilla completa del mes con navegación `Mes anterior | Hoy | Mes siguiente`) y selector segmentado **`Mensual | Semanal`** (grilla semanal detallada de 7 días), donde se dibujan los bloques horarios de todas las materias activas con su respectivo color, horario y aula/modalidad, con truncado seguro de una línea para evitar desbordes tipográficos.
 - **Criterios de aceptación (como usuario)**:
   - Puedo abrir la sección **Calendario** y ver el mes completo con todos mis bloques de cursada ubicados en cada día con el color de su materia, o alternar a la vista **Semanal** cuando necesito ver el detalle de horarios y aulas.
@@ -30,33 +30,33 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 2: Tareas (To-Do)
+## Fase 2: Tareas (To-Do) (Completada y verificada)
 
-### Tarea 2.1: Gestión de tareas por materia y vista global de Tareas
-- **Qué incluye**: Creación, edición, cambio de estado (Pendiente / Completada) y eliminación de tareas asociadas a una materia, con fecha de entrega opcional y prioridad opcional (Baja, Media, Alta). Vista en la pestaña "Tareas" de cada materia y vista global en la sección "Tareas" de la barra lateral con filtros.
+### Tarea 2.1: [x] Gestión de tareas por materia y vista global de Tareas
+- **Qué incluye**: Creación, edición, cambio de estado (Pendiente / Completada) y eliminación de tareas asociadas a una materia, con fecha de entrega opcional y prioridad opcional (Baja, Media, Alta). Vista en la pestaña "Tareas" de cada materia y vista global en la sección "Tareas" de la barra lateral con filtros por estado y por materia.
 - **Criterios de aceptación (como usuario)**:
   - Puedo crear una tarea indicando título, materia, fecha de entrega y prioridad opcional, tanto desde la vista global de **Tareas** como desde adentro de una materia.
   - Puedo marcar una tarea como completada con un solo clic en su casilla y ver que pasa a la lista de completadas; al reabrir la app conserva su estado.
   - Puedo filtrar mis tareas por estado (Pendientes / Completadas / Todas), por materia y ver resaltadas las que vencen hoy o están vencidas.
 
-### Tarea 2.2: Superposición de entregas de tareas en el Calendario semanal
-- **Qué incluye**: Integración de las tareas con fecha de entrega dentro de la semana seleccionada en la vista de **Calendario**.
+### Tarea 2.2: [x] Superposición de entregas de tareas en el Calendario (Mensual y Semanal)
+- **Qué incluye**: Integración de las tareas con fecha de entrega dentro del mes y la semana seleccionada en la vista de **Calendario**.
 - **Criterios de aceptación (como usuario)**:
-  - Cuando creo una tarea con fecha de entrega para un día de la semana, puedo abrir el **Calendario** en esa semana y ver la entrega superpuesta en la cabecera/columna de ese día con el color de su materia y su estado.
+  - Cuando creo una tarea con fecha de entrega, puedo abrir el **Calendario** en esa fecha (mensual o semanal) y ver la entrega superpuesta con el color de su materia y su estado.
   - Puedo marcar o abrir la tarea directamente desde el calendario.
 
 ---
 
-## Fase 3: Exámenes + Pantalla de Inicio
+## Fase 3: Exámenes + Pantalla de Inicio (Completada y verificada)
 
-### Tarea 3.1: Gestión de Exámenes y notas obtenidas
-- **Qué incluye**: Creación, edición y borrado de exámenes por materia (título/instancia, fecha, hora opcional, aula opcional, temas que entran y nota obtenida opcional). Vista en la pestaña "Exámenes" de la materia, vista global de "Exámenes" y superposición destacada en el Calendario semanal.
+### Tarea 3.1: [x] Gestión de Exámenes y notas obtenidas
+- **Qué incluye**: Creación, edición y borrado de exámenes por materia (título/instancia, categoría: parcial / recuperatorio / final / tp, fecha, hora opcional, aula opcional, temas que entran y nota obtenida opcional en escala 1 a 10). Vista en la pestaña "Exámenes" de la materia con cálculo de promedio, vista global de "Exámenes" con filtros (Todos / Próximos / Rendidos) y superposición destacada en el Calendario (mensual y semanal) con modal de detalle.
 - **Criterios de aceptación (como usuario)**:
   - Puedo agendar un examen para una materia indicando fecha, temas a evaluar y horario opcional, sin cargar todavía la nota.
-  - Puedo ver cuántos días faltan para cada próximo examen y ver el examen destacado en el **Calendario** semanal en la fecha correspondiente.
-  - Después de rendir, puedo editar el examen para cargar la nota obtenida (ej. `8.5`) y ver el historial de exámenes rendidos y promedio en la materia.
+  - Puedo ver cuántos días faltan para cada próximo examen y ver el examen destacado en el **Calendario** (mensual y semanal) en la fecha correspondiente.
+  - Después de rendir, puedo editar el examen para cargar la nota obtenida (ej. `8.5`) y ver el historial de exámenes rendidos y el promedio actualizado de la materia.
 
-### Tarea 3.2: Pantalla de Inicio (Conexión de datos en vivo con Bento con Aire)
+### Tarea 3.2: [x] Pantalla de Inicio (Conexión de datos en vivo con Bento con Aire)
 - **Qué incluye**: Conexión de la pantalla principal **Inicio** (diseñada con el layout confirmado **Bento con Aire** en `DESIGN.md`) con los datos persistidos en SQLite:
   1. **Nivel 1 (Columnas asimétricas)**:
      - **Tareas por vencer**: Tareas pendientes ordenadas por urgencia (vencidas, para hoy y próximos 7 días, con checkbox funcional de completado inmediato y badge de materia).
@@ -70,23 +70,27 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 4: Notas por Materia + Exportación a Markdown
+## Fase 4: Notas por Materia + Exportación a Markdown (Completada y verificada)
 
-### Tarea 4.1: Editor Markdown con Preview en vivo, guardado automático y vista global de Notas
-- **Qué incluye**: Sección global **Notas** en la barra lateral para acceder a todos los apuntes del cuatrimestre, más la pestaña **Notas** dentro de cada materia, con buscador instantáneo (FTS5 sin distinción de tildes), fijado de notas importantes y editor Markdown (CodeMirror 6) con modos **Editar / Dividido / Lectura**, soporte GFM (tablas, listas de tareas, bloques de código) y guardado automático.
+### Tarea 4.1: [x] Editor Markdown con Preview en vivo, guardado automático y vista global de Notas
+- **Qué incluye**: Sección global **Notas** en la barra lateral para acceder a todos los apuntes del cuatrimestre, más la pestaña **Notas** dentro de cada materia (`<NotesWorkspace />`), con buscador instantáneo (FTS5 sin distinción de tildes ni mayúsculas), fijado de notas importantes y editor Markdown (CodeMirror 6) con modos **Editar / Dividido / Lectura**, soporte GFM (tablas, listas de tareas, bloques de código), guardado automático con debounce e indicador visual de estado.
 - **Criterios de aceptación (como usuario)**:
   - Puedo acceder a mis notas tanto desde la sección global **Notas** de la barra lateral como desde la pestaña de cada materia, crear una nota nueva y escribir en Markdown viendo el resultado formateado en tiempo real en el panel de preview.
   - Mientras escribo, mis cambios se guardan automáticamente sin tocar ningún botón, y si cierro y reabro la app todo el texto está intacto.
   - Puedo buscar una palabra (con o sin tilde) en el buscador de notas y encontrar al instante las notas que la contienen.
+  - Puedo alternar entre los modos de visualización (Editar, Dividido, Lectura) según la comodidad de mi sesión de estudio.
 
-### Tarea 4.2: Exportación de Notas y Materias a Markdown en disco
-- **Qué incluye**: Función de exportación a archivos `.md` reales en una carpeta elegida por el usuario (tanto para una nota suelta, una materia entera o toda la cursada desde Ajustes).
+### Tarea 4.2: [x] Exportación de Notas y Materias a Markdown en disco
+- **Qué incluye**: Función de exportación a archivos `.md` reales en una carpeta elegida por el usuario mediante diálogo nativo de macOS (`dialog.showOpenDialog`) o descarga en navegador. Soporta tres alcances:
+  1. **Nota individual**: Genera `<nota>.md` con metadatos de cabecera y contenido Markdown completo.
+  2. **Materia completa**: Genera carpeta de la materia con `00-Resumen-Materia.md` (ficha, horarios, tareas pendientes/completadas, exámenes rendidos y promedio) y subcarpeta de notas.
+  3. **Toda la cursada**: Desde Ajustes, genera la estructura completa con `README.md` índice y una carpeta por materia.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo exportar una materia o toda mi cursada a una carpeta de mi Mac y encontrar archivos `.md` limpios con la información de mis materias, tareas, exámenes y todas mis notas.
+  - Puedo exportar una nota suelta, una materia completa o toda mi cursada a una carpeta de mi Mac y encontrar archivos `.md` limpios con la información de mis materias, tareas, exámenes y todas mis notas.
 
 ---
 
-## Fase 5: Fuentes + Indexado Local
+## Fase 5: Fuentes + Indexado Local (Próxima fase)
 
 ### Tarea 5.1: Conexión con Ollama y configuración de modelos locales
 - **Qué incluye**: Panel en **Ajustes → Inteligencia Artificial (Ollama)** que verifica la conexión con `http://localhost:11434`, lista los modelos instalados localmente y permite elegir el **Modelo de Chat** y el **Modelo de Embeddings**.

@@ -79,3 +79,39 @@ La pantalla de **Inicio** se estructura en un layout Bento de dos niveles:
    - **Columna derecha**: Panel de **Próximos exámenes** con cuenta regresiva en días, categoría y temas a evaluar.
 3. **Nivel 2 (Ancho completo)**:
    - **Pulso de la semana**: Grilla horizontal de 7 días (Lunes a Domingo) que muestra el balance de carga académica semanal y resalta el día de hoy y los días con examen.
+
+---
+
+## 5. Calendario Académico: Vistas y Prevención de Desbordes
+
+1. **Vistas Mensual y Semanal**:
+   - Apertura por defecto en **Vista Mensual** para visualizar el panorama del mes con navegación entre meses y botón `Hoy`.
+   - Selector segmentado `Mensual | Semanal` para conmutar al desglose horario detallado de 7 días (Lunes a Domingo).
+2. **Manejo Riguroso de Tipografía en 7 Columnas**:
+   - Para evitar desbordes en resoluciones compactas, toda columna y bloque horario/evento aplica `min-inline-size: 0; max-inline-size: 100%; overflow: hidden;`.
+   - Se apila la etiqueta/horario por encima del nombre de la materia o tarea, y los títulos usan truncado seguro en una línea (`white-space: nowrap; text-overflow: ellipsis; display: block;`). El texto completo permanece accesible mediante el atributo nativo `title`.
+
+---
+
+## 6. Exámenes, Calificaciones y Promedios
+
+1. **Ficha de Examen (`.exam-ficha`)**:
+   - Tarjeta estructurada con bloque izquierdo de cuenta regresiva (`N días` o nota obtenida con badge `nota` si está rendido).
+   - Estado de urgencia destacado cuando restan 5 días o menos (`.is-urgent`).
+   - Etiquetas de categoría (`Parcial`, `Recuperatorio`, `Final`, `TP evaluativo`) y ubicación/aula.
+2. **Resumen de Calificaciones**:
+   - Pill de promedio ponderado (`.exam-average-summary-pill`) en escala 1 a 10, visible en tarjetas de materias, cabecera de la materia y listados de exámenes.
+
+---
+
+## 7. Espacio de Notas y Editor Markdown
+
+1. **Workspace de Dos Paneles (`.notes-workspace`)**:
+   - **Panel lateral izquierdo**: Buscador instantáneo con soporte FTS5 sin acentos, selector de materia, filtro `Solo fijadas`, botón `+ Nueva nota` y lista con pines interactivos y metadatos de actualización.
+   - **Área principal de trabajo**: Cabecera con título editable en línea, selector de modo de vista, estado de guardado y botón de exportación `.md`.
+2. **Modos de Vista Segmentados**:
+   - **Editar**: Editor CodeMirror 6 a ancho completo con resaltado sintáctico nativo de Markdown.
+   - **Dividido**: Pantalla dividida 50/50 con editor sincrónico y previsualización GFM en vivo.
+   - **Lectura**: Previsualización GFM a ancho completo centrada en legibilidad con tipografía cuidada para lectura prolongada.
+3. **Indicador de Guardado Automático**:
+   - Feedback sutil en tiempo real (*Guardando...* / *Guardado*) con *debounce* de 450 ms para evitar llamadas innecesarias a la capa de persistencia.
