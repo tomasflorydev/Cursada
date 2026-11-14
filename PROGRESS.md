@@ -1,12 +1,12 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: **Fases 1, 2, 3, 4 y 5 completadas, integradas y verificadas en `main`**.
+- **Fase actual**: **Fases 1 a 5 completadas en `main`; Fases 6 y 7 en curso (Etapa 0 completada en `main`, Etapa 1 en ramas de subagentes)**.
 - **Última actualización**: 2026-11-14
-- **Métricas de verificación automatizada**:
-  - **20 archivos de test** y **71 tests unitarios y de integración en verde** (`npm test`).
+- **Métricas de verificación automatizada en `main`**:
+  - **20 archivos de test** y **71 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción verificado** (`npm run build`).
+  - **Build de producción verificado** (`npm run build` previo al inicio de Etapa 0 de Fases 6 y 7).
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
 ## Avances Completados
@@ -53,11 +53,11 @@
   - Tests en `src/__tests__/Phase3ExamsAndHome.test.tsx`.
 
 ### Fase 4: Notas por Materia + Exportación a Markdown
-- [x] **Tarea 4.1 — Editor Markdown con Preview en vivo, guardado automático y vista global de Notas**:
+- [x] **Tarea 4.1 — Editor Markdown con Preview en vivo, guardado automático y notas por materia**:
   - Migración SQLite `v3` (`electron/db/migrations.ts`) creando `notes`, la tabla virtual FTS5 `notes_fts` (`unicode61 remove_diacritics 2`) y triggers automáticos de sincronización ante inserción, edición y borrado en cascada.
   - Repositorio parametrizado e IPC handlers (`electron/db/notesRepo.ts`, `electron/ipc/notesHandlers.ts`, `src/lib/api/mockNotes.ts`) con búsqueda sin tildes, fijado (`isPinned`) y validaciones de entrada.
-  - Editor Markdown (`src/components/notes/NoteEditor.tsx`) con **CodeMirror 6**, renderizado GFM seguro (`react-markdown` + `remark-gfm`), selector de modos **Editar / Dividido / Lectura** y guardado automático con *debounce* e indicador de estado.
-  - Workspace reutilizable `<NotesWorkspace courseId? />` (`src/components/notes/NotesWorkspace.tsx`) y vista global (`src/pages/NotesPage.tsx`), integrado tanto en la barra lateral (**Notas**) como en la pestaña **Notas** de cada materia (`src/components/courses/CourseDetailView.tsx`), con estilos adaptativos Claro/Oscuro (`src/styles/notes.css`).
+  - Editor Markdown (`src/components/notes/NoteEditor.tsx`) con **CodeMirror 6**, renderizado GFM seguro (`react-markdown` + `remark-gfm`), selector simplificado de modos **Editar / Lectura** (sin vista dividida, commit `a1a7fc1`) y guardado automático con *debounce* e indicador de estado.
+  - Workspace `<NotesWorkspace courseId />` (`src/components/notes/NotesWorkspace.tsx`) con vista de nota a ancho completo y botón **"Ver lista" / "Ocultar lista"** (`a1a7fc1`), integrado exclusivamente dentro de la pestaña **Notas** de cada materia (`src/components/courses/CourseDetailView.tsx`) tras eliminar la sección global de Notas de la barra lateral (commit `edde0ce`), con estilos adaptativos Claro/Oscuro (`src/styles/notes.css`).
   - Tests en `src/__tests__/notesRepo.test.ts`, `src/__tests__/NotesWorkspace.test.tsx` y `src/__tests__/Phase4Integration.test.tsx`.
 - [x] **Tarea 4.2 — Exportación de Notas y Materias a Markdown en disco**:
   - Servicio backend (`electron/services/exportService.ts`) e IPC (`electron/ipc/exportHandlers.ts`) con selector nativo de carpeta (`dialog.showOpenDialog`), sanitización segura de nombres de archivo y soporte de tres alcances: **nota suelta** (`note`), **materia completa** (`course`: resumen + horarios + tareas + exámenes + carpeta de notas) y **toda la cursada** (`all`: `README.md` índice + subcarpetas por materia), con fallback de descarga para navegador (`src/lib/api/mockExport.ts`).
@@ -77,5 +77,26 @@
   - Tests en `src/__tests__/sourcesRepoAndChunking.test.ts`, `src/__tests__/SourcesWorkspace.test.tsx` y `src/__tests__/Phase5Integration.test.tsx`.
 
 ## Qué sigue
-- [ ] Validación manual del Product Owner sobre la **Fase 5**.
-- [ ] Inicio de la **Fase 6: Chat por materia basado en sus fuentes con citas verificables**.
+- [ ] Retomar Fases 6 y 7: mergear ramas de Etapa 1, completar Etapa 2 (integración) y Etapa 3 (revisión con Argon).
+- [ ] Validación manual del Product Owner sobre las **Fases 6 y 7**.
+- [ ] Inicio de la **Fase 8: Cierre de Cuatrimestre, Empaquetado y Pulido**.
+
+## Checkpoint Actual — Fases 6 y 7 (Para retomar)
+
+### 1. Completado y commiteado en `main` (`9ddfdb0`) — Etapa 0
+- **Contratos TypeScript (Fase 6 y Fase 7)** en `src/types/domain.ts` y `electron/types.ts`: tipos de hilos/mensajes/citas RAG (`ChatCitation`, `ChatThread`, `ChatMessage`, `SendChatMessageInput`, `SaveChatMessageAsNoteInput`) y de generación Map-Reduce (`StudyReportType`, `PracticeExamFormat`, `StudyReportStepInfo`, `GenerateStudyReportInput`, `GenerateStudyReportResult`), más firmas en `CursadaIpcApi`.
+- **Migración SQLite `v5`** (`electron/db/migrations.ts`): tablas `chat_threads` y `chat_messages` con índices `idx_chat_threads_course` e `idx_chat_messages_thread`, verificadas en `src/__tests__/stage0-db-backups.test.ts`.
+- **Cliente Ollama bajo demanda** (`electron/services/ollamaClient.ts` y `electron/services/sourcesService.ts`): `generateChatCompletion` (`/api/chat`) y `generateEmbeddings` (`/api/embed`) con `keep_alive: '0s'` para que Ollama descargue el modelo inmediatamente después de generar y no permanezca activo en segundo plano.
+- **Puente IPC y cliente frontend**: canales expuestos en `electron/preload.ts`, métodos en `src/lib/api/client.ts` y cableado inicial en `src/lib/api/mockClient.ts` (junto con stubs en `src/lib/api/mockChat.ts` y `src/lib/api/mockReports.ts`).
+
+### 2. En progreso / ramas de Etapa 1 (Hydrogen en paralelo)
+> Nota: No se deben eliminar estas ramas ni sus worktrees antes de integrar su trabajo en `main`.
+- **Agente A (Fase 6 — Chat RAG con Citas)**: rama `subagent-Agent-A---Phase-6-RAG-Chat---Citations-self-7d18fe0e`
+  - Archivos asignados: `electron/db/chatRepo.ts`, `electron/services/ragService.ts`, `electron/ipc/chatHandlers.ts`, `src/lib/api/mockChat.ts`, `src/components/assistant/CourseChatPanel.tsx`, `src/__tests__/chatAndRag.test.ts`, `src/__tests__/CourseChatPanel.test.tsx`.
+- **Agente B (Fase 7 — Generador Map-Reduce con Prompt Personalizado)**: rama `subagent-Agent-B---Phase-7-Map-Reduce-Reports-self-6d03b1e2`
+  - Archivos asignados: `electron/services/reportService.ts`, `electron/ipc/reportHandlers.ts`, `src/lib/api/mockReports.ts`, `src/components/assistant/CourseReportGenerator.tsx`, `src/__tests__/reportService.test.ts`, `src/__tests__/CourseReportGenerator.test.tsx`.
+
+### 3. Pasos exactos para retomar en la próxima sesión
+1. Verificar el estado y los commits de las ramas `subagent-Agent-A---Phase-6-RAG-Chat---Citations-self-7d18fe0e` y `subagent-Agent-B---Phase-7-Map-Reduce-Reports-self-6d03b1e2` y hacer merge en `main`.
+2. Ejecutar **Etapa 2 (Integración)**: registrar `registerChatHandlers` y `registerReportHandlers` en `electron/ipc/handlers.ts`, crear `src/components/assistant/CourseAssistantWorkspace.tsx` y `src/styles/assistant.css`, conectar la pestaña `Asistente IA` en `src/components/courses/CourseDetailView.tsx` y crear `src/__tests__/Phase6And7Integration.test.tsx`.
+3. Ejecutar **Etapa 3 (Revisión con Argon)**: correr `npm run typecheck`, `npm test` y `npm run build`, actualizar documentación final (`PROGRESS.md`, `ROADMAP.md`, `ARCHITECTURE.md`) y entregar el resumen final junto con la checklist de validación manual.
