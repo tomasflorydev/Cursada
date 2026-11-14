@@ -87,16 +87,6 @@ export function Sidebar({
       ),
     },
     {
-      id: 'notas',
-      label: 'Notas',
-      icon: (
-        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.65">
-          <path d="M5 3.5h7.5L16 7v9.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1Z" />
-          <path d="M12 3.5V7h3.5M7 10.5h6M7 13.5h4.5" strokeLinecap="round" />
-        </svg>
-      ),
-    },
-    {
       id: 'materias',
       label: 'Materias',
       icon: (

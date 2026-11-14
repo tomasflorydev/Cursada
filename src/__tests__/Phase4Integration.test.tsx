@@ -21,18 +21,11 @@ describe('Phase 4 Integration: NotesPage in App and CourseDetailView Notas + Exp
     }
   });
 
-  it('opens global NotesPage from the Sidebar', async () => {
+  it('does not display global Notes in Sidebar and notes are scoped to courses', async () => {
     render(<App />);
 
     const nav = screen.getByRole('navigation', { name: 'Principal' });
-    fireEvent.click(within(nav).getByRole('button', { name: 'Notas' }));
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Notas' })
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByPlaceholderText(/Buscar en apuntes/i)
-    ).toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: 'Notas' })).not.toBeInTheDocument();
   });
 
   it('mounts contextual NotesWorkspace and course export button inside CourseDetailView', async () => {

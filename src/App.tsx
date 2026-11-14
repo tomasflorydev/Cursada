@@ -11,7 +11,6 @@ import { CalendarPage } from './pages/CalendarPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { ExamsPage } from './pages/ExamsPage';
 import { HomePage } from './pages/HomePage';
-import { NotesPage } from './pages/NotesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TasksPage } from './pages/TasksPage';
 import type { NavSectionId, ThemeMode } from './types';
@@ -21,7 +20,6 @@ const SECTION_TITLES: Record<NavSectionId, string> = {
   calendario: 'Calendario | Cursada',
   tareas: 'Tareas | Cursada',
   examenes: 'Exámenes | Cursada',
-  notas: 'Notas | Cursada',
   materias: 'Materias | Cursada',
   ajustes: 'Ajustes | Cursada',
 };
@@ -184,10 +182,6 @@ export function App() {
                 onSelectCourse={handleSelectCourse}
                 onExamsChanged={() => void refreshSidebarData()}
               />
-            ) : null}
-
-            {activeSection === 'notas' ? (
-              <NotesPage onSelectCourse={handleSelectCourse} />
             ) : null}
 
             {activeSection === 'materias' ? (

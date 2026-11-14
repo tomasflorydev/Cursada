@@ -3,7 +3,6 @@ export type NavSectionId =
   | 'calendario'
   | 'tareas'
   | 'examenes'
-  | 'notas'
   | 'materias'
   | 'ajustes';
 

@@ -17,7 +17,7 @@ describe('Cursada Stage 0 & Task 1.1', () => {
     expect(within(primaryNav).getByRole('button', { name: /Calendario/i })).toBeInTheDocument();
     expect(within(primaryNav).getByRole('button', { name: /Tareas/i })).toBeInTheDocument();
     expect(within(primaryNav).getByRole('button', { name: /Exámenes/i })).toBeInTheDocument();
-    expect(within(primaryNav).getByRole('button', { name: /Notas/i })).toBeInTheDocument();
+    expect(within(primaryNav).queryByRole('button', { name: /Notas/i })).not.toBeInTheDocument();
     expect(within(primaryNav).getByRole('button', { name: /Materias/i })).toBeInTheDocument();
     expect(within(primaryNav).getByRole('button', { name: /Ajustes/i })).toBeInTheDocument();
 
