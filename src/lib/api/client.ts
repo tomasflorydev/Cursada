@@ -1,4 +1,5 @@
 import type {
+  AiSettings,
   BackupInfo,
   CourseDeleteImpact,
   CourseStatus,
@@ -6,16 +7,25 @@ import type {
   CreateCourseInput,
   CreateExamInput,
   CreateNoteInput,
+  CreateSourceFromTextInput,
   CreateTaskInput,
   CursadaIpcApi,
   ExamFilters,
   ExamWithCourse,
   ExportMarkdownRequest,
   ExportMarkdownResult,
+  ImportSourceFileInput,
+  ImportSourceFileResult,
   NoteFilters,
   NoteWithCourse,
+  OllamaHealthCheckResult,
+  SearchSourceChunksInput,
+  Source,
+  SourceChunkSearchResult,
+  SourceWithChunks,
   TaskFilters,
   TaskWithCourse,
+  UpdateAiSettingsInput,
   UpdateCourseInput,
   UpdateExamInput,
   UpdateNoteInput,
@@ -219,5 +229,80 @@ export const cursadaClient: CursadaIpcApi = {
   ): Promise<ExportMarkdownResult> {
     const fn = getBridge()?.exportMarkdown;
     return fn ? fn(request) : mockClient.exportMarkdown(request);
+  },
+
+  // AI & Ollama Settings (Phase 5 - Agent A)
+  async getAiSettings(): Promise<AiSettings> {
+    const fn = getBridge()?.getAiSettings;
+    return fn ? fn() : mockClient.getAiSettings();
+  },
+
+  async updateAiSettings(input: UpdateAiSettingsInput): Promise<AiSettings> {
+    const fn = getBridge()?.updateAiSettings;
+    const updated = fn ? await fn(input) : await mockClient.updateAiSettings(input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async checkOllamaStatus(baseUrl?: string): Promise<OllamaHealthCheckResult> {
+    const fn = getBridge()?.checkOllamaStatus;
+    return fn ? fn(baseUrl) : mockClient.checkOllamaStatus(baseUrl);
+  },
+
+  // Sources & Local Indexing (Phase 5 - Agent B)
+  async listSources(courseId: string): Promise<Source[]> {
+    const fn = getBridge()?.listSources;
+    return fn ? fn(courseId) : mockClient.listSources(courseId);
+  },
+
+  async getSourceWithChunks(sourceId: string): Promise<SourceWithChunks | null> {
+    const fn = getBridge()?.getSourceWithChunks;
+    return fn ? fn(sourceId) : mockClient.getSourceWithChunks(sourceId);
+  },
+
+  async createSourceFromText(input: CreateSourceFromTextInput): Promise<Source> {
+    const fn = getBridge()?.createSourceFromText;
+    const created = fn
+      ? await fn(input)
+      : await mockClient.createSourceFromText(input);
+    notifyCursadaDataChanged();
+    return created;
+  },
+
+  async importSourceFile(
+    input: ImportSourceFileInput
+  ): Promise<ImportSourceFileResult> {
+    const fn = getBridge()?.importSourceFile;
+    const result = fn ? await fn(input) : await mockClient.importSourceFile(input);
+    if (!result.canceled) {
+      notifyCursadaDataChanged();
+    }
+    return result;
+  },
+
+  async reindexSource(sourceId: string): Promise<Source> {
+    const fn = getBridge()?.reindexSource;
+    const reindexed = fn
+      ? await fn(sourceId)
+      : await mockClient.reindexSource(sourceId);
+    notifyCursadaDataChanged();
+    return reindexed;
+  },
+
+  async deleteSource(sourceId: string): Promise<void> {
+    const fn = getBridge()?.deleteSource;
+    if (fn) {
+      await fn(sourceId);
+    } else {
+      await mockClient.deleteSource(sourceId);
+    }
+    notifyCursadaDataChanged();
+  },
+
+  async searchSourceChunks(
+    input: SearchSourceChunksInput
+  ): Promise<SourceChunkSearchResult[]> {
+    const fn = getBridge()?.searchSourceChunks;
+    return fn ? fn(input) : mockClient.searchSourceChunks(input);
   },
 };

@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createBackup } from '../services/backupService.js';
 
-export const LATEST_SCHEMA_VERSION = 3;
+export const LATEST_SCHEMA_VERSION = 4;
 
 const MIGRATION_V1_SQL = `
 CREATE TABLE IF NOT EXISTS courses (
@@ -105,6 +105,62 @@ CREATE TRIGGER IF NOT EXISTS trg_notes_ad AFTER DELETE ON notes BEGIN
 END;
 `;
 
+const MIGRATION_V4_SQL = `
+CREATE TABLE IF NOT EXISTS sources (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('pdf', 'markdown', 'txt', 'pasted_text')),
+    original_path TEXT,
+    stored_filename TEXT,
+    raw_text TEXT NOT NULL DEFAULT '',
+    page_count INTEGER NOT NULL DEFAULT 1,
+    char_count INTEGER NOT NULL DEFAULT 0,
+    indexing_status TEXT NOT NULL DEFAULT 'pending' CHECK (indexing_status IN ('pending', 'indexing', 'ready', 'error')),
+    indexing_error TEXT,
+    embedding_model TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sources_course ON sources(course_id);
+
+CREATE TABLE IF NOT EXISTS source_chunks (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    page_number INTEGER,
+    content TEXT NOT NULL,
+    embedding BLOB,
+    embedding_dim INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_chunks_source ON source_chunks(source_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_course ON source_chunks(course_id);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS source_chunks_fts USING fts5(
+    chunk_id UNINDEXED,
+    source_id UNINDEXED,
+    course_id UNINDEXED,
+    content,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS trg_source_chunks_ai AFTER INSERT ON source_chunks BEGIN
+    INSERT INTO source_chunks_fts (chunk_id, source_id, course_id, content)
+    VALUES (new.id, new.source_id, new.course_id, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_source_chunks_au AFTER UPDATE OF source_id, course_id, content ON source_chunks BEGIN
+    DELETE FROM source_chunks_fts WHERE chunk_id = old.id;
+    INSERT INTO source_chunks_fts (chunk_id, source_id, course_id, content)
+    VALUES (new.id, new.source_id, new.course_id, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_source_chunks_ad AFTER DELETE ON source_chunks BEGIN
+    DELETE FROM source_chunks_fts WHERE chunk_id = old.id;
+END;
+`;
+
 export function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   return row?.user_version ?? 0;
@@ -162,6 +218,18 @@ export function runMigrations(
     try {
       db.exec(MIGRATION_V3_SQL);
       db.exec('PRAGMA user_version = 3;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 4) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V4_SQL);
+      db.exec('PRAGMA user_version = 4;');
       db.exec('COMMIT;');
     } catch (err) {
       db.exec('ROLLBACK;');

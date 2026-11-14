@@ -42,7 +42,7 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     expect(ctx.dataDir).toBe(path.resolve(customDir));
     expect(ctx.dbPath).toBe(path.join(customDir, 'cursada.sqlite'));
     expect(getSchemaVersion(ctx.db)).toBe(LATEST_SCHEMA_VERSION);
-    expect(getSchemaVersion(ctx.db)).toBe(3);
+    expect(getSchemaVersion(ctx.db)).toBe(4);
     ctx.close();
   });
 

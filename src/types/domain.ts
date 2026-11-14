@@ -69,6 +69,7 @@ export interface CourseDeleteImpact {
   tasksCount: number;
   examsCount?: number;
   notesCount?: number;
+  sourcesCount?: number;
 }
 
 export type ExamCategory = 'parcial' | 'recuperatorio' | 'final' | 'tp';
@@ -229,6 +230,116 @@ export interface ExportMarkdownResult {
   mode: 'filesystem' | 'download';
 }
 
+// Phase 5: AI & Ollama Settings
+export type OllamaConnectionStatus = 'connected' | 'disconnected';
+
+export interface OllamaModelInfo {
+  name: string;
+  sizeBytes: number;
+  modifiedAt: string;
+  family?: string;
+  parameterSize?: string;
+  quantizationLevel?: string;
+}
+
+export interface AiSettings {
+  baseUrl: string;
+  chatModel: string;
+  embeddingModel: string;
+}
+
+export interface UpdateAiSettingsInput {
+  baseUrl?: string;
+  chatModel?: string;
+  embeddingModel?: string;
+}
+
+export interface OllamaHealthCheckResult {
+  status: OllamaConnectionStatus;
+  baseUrl: string;
+  version: string | null;
+  models: OllamaModelInfo[];
+  chatModel: string;
+  embeddingModel: string;
+  errorMessage: string | null;
+  checkedAt: string;
+}
+
+// Phase 5: Sources & Local Indexing
+export type SourceType = 'pdf' | 'markdown' | 'txt' | 'pasted_text';
+
+export type SourceIndexingStatus = 'pending' | 'indexing' | 'ready' | 'error';
+
+export interface Source {
+  id: string;
+  courseId: string;
+  title: string;
+  sourceType: SourceType;
+  originalPath: string | null;
+  storedFilename: string | null;
+  rawText: string;
+  pageCount: number;
+  charCount: number;
+  chunkCount: number;
+  indexingStatus: SourceIndexingStatus;
+  indexingError: string | null;
+  embeddingModel: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SourceChunk {
+  id: string;
+  sourceId: string;
+  courseId: string;
+  chunkIndex: number;
+  pageNumber: number | null;
+  content: string;
+  embeddingDim: number | null;
+}
+
+export interface SourceWithChunks extends Source {
+  chunks: SourceChunk[];
+}
+
+export interface SourceChunkSearchResult {
+  chunk: SourceChunk;
+  sourceTitle: string;
+  sourceType: SourceType;
+  score: number;
+  vectorScore: number;
+  ftsScore: number;
+}
+
+export interface CreateSourceFromTextInput {
+  courseId: string;
+  title: string;
+  text: string;
+  sourceType?: SourceType;
+  pageCount?: number;
+  pages?: Array<{ pageNumber: number; text: string }>;
+  originalPath?: string | null;
+}
+
+export interface ImportSourceFileInput {
+  courseId: string;
+  filePath?: string;
+  title?: string;
+  contentBase64?: string;
+  fileName?: string;
+}
+
+export interface ImportSourceFileResult {
+  canceled: boolean;
+  source: Source | null;
+}
+
+export interface SearchSourceChunksInput {
+  courseId: string;
+  query: string;
+  limit?: number;
+}
+
 /**
  * Shared navigation contract injected by App.tsx into domain views.
  * - `onSelectCourse(courseId)`: Navigates to the 'materias' section with `courseId` selected
@@ -275,6 +386,18 @@ export interface CursadaIpcApi {
   deleteNote: (id: string) => Promise<void>;
   // Markdown Export (Phase 4)
   exportMarkdown: (request: ExportMarkdownRequest) => Promise<ExportMarkdownResult>;
+  // AI & Ollama Settings (Phase 5 - Agent A)
+  getAiSettings: () => Promise<AiSettings>;
+  updateAiSettings: (input: UpdateAiSettingsInput) => Promise<AiSettings>;
+  checkOllamaStatus: (baseUrl?: string) => Promise<OllamaHealthCheckResult>;
+  // Sources & Local Indexing (Phase 5 - Agent B)
+  listSources: (courseId: string) => Promise<Source[]>;
+  getSourceWithChunks: (sourceId: string) => Promise<SourceWithChunks | null>;
+  createSourceFromText: (input: CreateSourceFromTextInput) => Promise<Source>;
+  importSourceFile: (input: ImportSourceFileInput) => Promise<ImportSourceFileResult>;
+  reindexSource: (sourceId: string) => Promise<Source>;
+  deleteSource: (sourceId: string) => Promise<void>;
+  searchSourceChunks: (input: SearchSourceChunksInput) => Promise<SourceChunkSearchResult[]>;
 }
 
 declare global {

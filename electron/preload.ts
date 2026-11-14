@@ -4,11 +4,15 @@ import type {
   CreateCourseInput,
   CreateExamInput,
   CreateNoteInput,
+  CreateSourceFromTextInput,
   CreateTaskInput,
   ExamFilters,
   ExportMarkdownRequest,
+  ImportSourceFileInput,
   NoteFilters,
+  SearchSourceChunksInput,
   TaskFilters,
+  UpdateAiSettingsInput,
   UpdateCourseInput,
   UpdateExamInput,
   UpdateNoteInput,
@@ -55,4 +59,22 @@ contextBridge.exposeInMainWorld('cursadaApi', {
   // Export
   exportMarkdown: (request: ExportMarkdownRequest) =>
     ipcRenderer.invoke('export:markdown', request),
+  // AI & Ollama Settings (Phase 5)
+  getAiSettings: () => ipcRenderer.invoke('ai:getSettings'),
+  updateAiSettings: (input: UpdateAiSettingsInput) =>
+    ipcRenderer.invoke('ai:updateSettings', input),
+  checkOllamaStatus: (baseUrl?: string) =>
+    ipcRenderer.invoke('ai:checkStatus', baseUrl),
+  // Sources & Local Indexing (Phase 5)
+  listSources: (courseId: string) => ipcRenderer.invoke('sources:list', courseId),
+  getSourceWithChunks: (sourceId: string) =>
+    ipcRenderer.invoke('sources:getWithChunks', sourceId),
+  createSourceFromText: (input: CreateSourceFromTextInput) =>
+    ipcRenderer.invoke('sources:createFromText', input),
+  importSourceFile: (input: ImportSourceFileInput) =>
+    ipcRenderer.invoke('sources:importFile', input),
+  reindexSource: (sourceId: string) => ipcRenderer.invoke('sources:reindex', sourceId),
+  deleteSource: (sourceId: string) => ipcRenderer.invoke('sources:delete', sourceId),
+  searchSourceChunks: (input: SearchSourceChunksInput) =>
+    ipcRenderer.invoke('sources:searchChunks', input),
 });

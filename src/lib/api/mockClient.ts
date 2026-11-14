@@ -31,6 +31,24 @@ import {
   resetMockNotes,
 } from './mockNotes';
 import {
+  mockCheckOllamaStatus,
+  mockGetAiSettings,
+  mockUpdateAiSettings,
+  resetMockOllama,
+} from './mockOllama';
+import {
+  mockCountSourcesByCourse,
+  mockCreateSourceFromText,
+  mockDeleteSource,
+  mockDeleteSourcesByCourse,
+  mockGetSourceWithChunks,
+  mockImportSourceFile,
+  mockListSources,
+  mockReindexSource,
+  mockSearchSourceChunks,
+  resetMockSources,
+} from './mockSources';
+import {
   mockCountTasksByCourse,
   mockCreateTask,
   mockDeleteTask,
@@ -82,6 +100,8 @@ registerCourseTaskHooks({
   deleteExamsByCourse: mockDeleteExamsByCourse,
   countNotesByCourse: mockCountNotesByCourse,
   deleteNotesByCourse: mockDeleteNotesByCourse,
+  countSourcesByCourse: mockCountSourcesByCourse,
+  deleteSourcesByCourse: mockDeleteSourcesByCourse,
   onBeforeDeleteCourse: () => {
     createMockBackupSync('pre-course-delete');
   },
@@ -92,6 +112,8 @@ export function resetAllMocks(): void {
   resetMockTasks();
   resetMockExams();
   resetMockNotes();
+  resetMockOllama();
+  resetMockSources();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
 }
@@ -123,4 +145,14 @@ export const mockClient: CursadaIpcApi = {
   toggleNotePin: mockToggleNotePin,
   deleteNote: mockDeleteNote,
   exportMarkdown: mockExportMarkdown,
+  getAiSettings: mockGetAiSettings,
+  updateAiSettings: mockUpdateAiSettings,
+  checkOllamaStatus: mockCheckOllamaStatus,
+  listSources: mockListSources,
+  getSourceWithChunks: mockGetSourceWithChunks,
+  createSourceFromText: mockCreateSourceFromText,
+  importSourceFile: mockImportSourceFile,
+  reindexSource: mockReindexSource,
+  deleteSource: mockDeleteSource,
+  searchSourceChunks: mockSearchSourceChunks,
 };

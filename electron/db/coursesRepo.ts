@@ -332,8 +332,13 @@ export function getCourseDeleteImpact(
     .prepare('SELECT COUNT(*) AS count FROM notes WHERE course_id = ?')
     .get(id) as { count: number } | undefined;
 
+  const sourcesCountRow = db
+    .prepare('SELECT COUNT(*) AS count FROM sources WHERE course_id = ?')
+    .get(id) as { count: number } | undefined;
+
   const examsCount = Number(examsCountRow?.count ?? 0);
   const notesCount = Number(notesCountRow?.count ?? 0);
+  const sourcesCount = Number(sourcesCountRow?.count ?? 0);
 
   return {
     courseId: course.id,
@@ -341,6 +346,7 @@ export function getCourseDeleteImpact(
     tasksCount: Number(countRow?.count ?? 0),
     ...(examsCount > 0 ? { examsCount } : {}),
     ...(notesCount > 0 ? { notesCount } : {}),
+    ...(sourcesCount > 0 ? { sourcesCount } : {}),
   };
 }
 
