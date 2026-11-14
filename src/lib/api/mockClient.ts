@@ -37,6 +37,16 @@ import {
   resetMockOllama,
 } from './mockOllama';
 import {
+  mockCreateChatThread,
+  mockDeleteChatThread,
+  mockGetChatThread,
+  mockListChatThreads,
+  mockSaveChatMessageAsNote,
+  mockSendChatMessage,
+  resetMockChat,
+} from './mockChat';
+import { mockGenerateStudyReport } from './mockReports';
+import {
   mockCountSourcesByCourse,
   mockCreateSourceFromText,
   mockDeleteSource,
@@ -114,6 +124,7 @@ export function resetAllMocks(): void {
   resetMockNotes();
   resetMockOllama();
   resetMockSources();
+  resetMockChat();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
 }
@@ -155,4 +166,11 @@ export const mockClient: CursadaIpcApi = {
   reindexSource: mockReindexSource,
   deleteSource: mockDeleteSource,
   searchSourceChunks: mockSearchSourceChunks,
+  listChatThreads: mockListChatThreads,
+  getChatThread: mockGetChatThread,
+  createChatThread: mockCreateChatThread,
+  deleteChatThread: mockDeleteChatThread,
+  sendChatMessage: mockSendChatMessage,
+  saveChatMessageAsNote: mockSaveChatMessageAsNote,
+  generateStudyReport: mockGenerateStudyReport,
 };

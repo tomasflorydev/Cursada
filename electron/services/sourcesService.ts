@@ -133,6 +133,7 @@ export function createOllamaSourceEmbedder(
       baseUrl: settings.baseUrl,
       model: settings.embeddingModel,
       inputs: texts,
+      keepAlive: '0s',
       fetchImpl: options?.fetchImpl,
       timeoutMs: options?.timeoutMs,
       allowLocalFallback: options?.allowLocalFallback,

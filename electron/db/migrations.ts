@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createBackup } from '../services/backupService.js';
 
-export const LATEST_SCHEMA_VERSION = 4;
+export const LATEST_SCHEMA_VERSION = 5;
 
 const MIGRATION_V1_SQL = `
 CREATE TABLE IF NOT EXISTS courses (
@@ -161,6 +161,28 @@ CREATE TRIGGER IF NOT EXISTS trg_source_chunks_ad AFTER DELETE ON source_chunks 
 END;
 `;
 
+const MIGRATION_V5_SQL = `
+CREATE TABLE IF NOT EXISTS chat_threads (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_threads_course ON chat_threads(course_id);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    model_used TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_thread ON chat_messages(thread_id);
+`;
+
 export function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   return row?.user_version ?? 0;
@@ -230,6 +252,18 @@ export function runMigrations(
     try {
       db.exec(MIGRATION_V4_SQL);
       db.exec('PRAGMA user_version = 4;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 5) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V5_SQL);
+      db.exec('PRAGMA user_version = 5;');
       db.exec('COMMIT;');
     } catch (err) {
       db.exec('ROLLBACK;');

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   CourseStatus,
+  CreateChatThreadInput,
   CreateCourseInput,
   CreateExamInput,
   CreateNoteInput,
@@ -8,9 +9,12 @@ import type {
   CreateTaskInput,
   ExamFilters,
   ExportMarkdownRequest,
+  GenerateStudyReportInput,
   ImportSourceFileInput,
   NoteFilters,
+  SaveChatMessageAsNoteInput,
   SearchSourceChunksInput,
+  SendChatMessageInput,
   TaskFilters,
   UpdateAiSettingsInput,
   UpdateCourseInput,
@@ -77,4 +81,20 @@ contextBridge.exposeInMainWorld('cursadaApi', {
   deleteSource: (sourceId: string) => ipcRenderer.invoke('sources:delete', sourceId),
   searchSourceChunks: (input: SearchSourceChunksInput) =>
     ipcRenderer.invoke('sources:searchChunks', input),
+  // Chat RAG with Citations (Phase 6)
+  listChatThreads: (courseId: string) =>
+    ipcRenderer.invoke('chat:listThreads', courseId),
+  getChatThread: (threadId: string) =>
+    ipcRenderer.invoke('chat:getThread', threadId),
+  createChatThread: (input: CreateChatThreadInput) =>
+    ipcRenderer.invoke('chat:createThread', input),
+  deleteChatThread: (threadId: string) =>
+    ipcRenderer.invoke('chat:deleteThread', threadId),
+  sendChatMessage: (input: SendChatMessageInput) =>
+    ipcRenderer.invoke('chat:sendMessage', input),
+  saveChatMessageAsNote: (input: SaveChatMessageAsNoteInput) =>
+    ipcRenderer.invoke('chat:saveMessageAsNote', input),
+  // AI Study Reports & Material Generator (Phase 7)
+  generateStudyReport: (input: GenerateStudyReportInput) =>
+    ipcRenderer.invoke('reports:generate', input),
 });

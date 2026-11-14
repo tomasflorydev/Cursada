@@ -30,6 +30,15 @@ interface OllamaEmbedResponse {
   embeddings?: unknown;
 }
 
+interface OllamaChatApiResponse {
+  message?: {
+    role?: string;
+    content?: string;
+  };
+  response?: string;
+  model?: string;
+}
+
 export interface CheckOllamaHealthOptions {
   baseUrl?: string;
   chatModel?: string;
@@ -42,6 +51,7 @@ export interface GenerateEmbeddingsOptions {
   baseUrl: string;
   model: string;
   inputs: string[];
+  keepAlive?: string | number;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   allowLocalFallback?: boolean;
@@ -51,6 +61,25 @@ export interface GenerateEmbeddingsResult {
   embeddings: Float32Array[];
   modelUsed: string;
   usedFallback: boolean;
+}
+
+export interface OllamaChatMessageInput {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface GenerateChatCompletionOptions {
+  baseUrl: string;
+  model: string;
+  messages: OllamaChatMessageInput[];
+  keepAlive?: string | number;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}
+
+export interface GenerateChatCompletionResult {
+  content: string;
+  modelUsed: string;
 }
 
 function isAbortOrTimeoutError(err: unknown): boolean {
@@ -360,6 +389,9 @@ export async function generateEmbeddings(
       body: JSON.stringify({
         model: options.model,
         input: options.inputs,
+        ...(options.keepAlive !== undefined
+          ? { keep_alive: options.keepAlive }
+          : {}),
       }),
     });
 
@@ -401,6 +433,136 @@ export async function generateEmbeddings(
         : new Error('No se pudieron generar los embeddings con Ollama.');
     }
     return buildLocalFallbackEmbeddings(options.inputs);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseChatResponsePayload(rawText: string): {
+  content: string;
+  model: string | null;
+} {
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    throw new Error('Ollama /api/chat devolvió una respuesta vacía.');
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as OllamaChatApiResponse | null;
+    const singleContent =
+      typeof parsed?.message?.content === 'string'
+        ? parsed.message.content
+        : typeof parsed?.response === 'string'
+          ? parsed.response
+          : '';
+    if (singleContent) {
+      return {
+        content: singleContent.trim(),
+        model: typeof parsed?.model === 'string' ? parsed.model : null,
+      };
+    }
+  } catch {
+    // Fall through to NDJSON parsing
+  }
+
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) {
+    throw new Error('Ollama /api/chat devolvió una respuesta vacía.');
+  }
+
+  let combined = '';
+  let detectedModel: string | null = null;
+  for (const line of lines) {
+    let chunk: OllamaChatApiResponse | null = null;
+    try {
+      chunk = JSON.parse(line) as OllamaChatApiResponse | null;
+    } catch {
+      throw new Error('Ollama /api/chat devolvió un formato JSON inválido.');
+    }
+    if (typeof chunk?.message?.content === 'string') {
+      combined += chunk.message.content;
+    } else if (typeof chunk?.response === 'string') {
+      combined += chunk.response;
+    }
+    if (typeof chunk?.model === 'string' && chunk.model.trim()) {
+      detectedModel = chunk.model.trim();
+    }
+  }
+
+  if (!combined.trim()) {
+    throw new Error('Ollama /api/chat no devolvió contenido generado.');
+  }
+
+  return {
+    content: combined.trim(),
+    model: detectedModel,
+  };
+}
+
+/**
+ * Generates a single non-streaming chat completion via Ollama's /api/chat endpoint.
+ * Defaults `keep_alive` to '0s' so Ollama unloads the model immediately after responding.
+ */
+export async function generateChatCompletion(
+  options: GenerateChatCompletionOptions
+): Promise<GenerateChatCompletionResult> {
+  if (!Array.isArray(options.messages) || options.messages.length === 0) {
+    throw new Error('La conversación debe incluir al menos un mensaje.');
+  }
+
+  const model = options.model.trim();
+  if (!model) {
+    throw new Error('Tenés que configurar un modelo de chat de Ollama.');
+  }
+
+  const baseUrl = normalizeOllamaBaseUrl(options.baseUrl);
+  const fetchFn = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 60000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const response = await fetchFn(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: options.messages,
+        stream: false,
+        keep_alive: options.keepAlive ?? '0s',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Ollama /api/chat respondió con estado HTTP ${response.status}.`
+      );
+    }
+
+    const rawBody = await response.text();
+    const parsed = parseChatResponsePayload(rawBody);
+    return {
+      content: parsed.content,
+      modelUsed: parsed.model ?? model,
+    };
+  } catch (err) {
+    if (isAbortOrTimeoutError(err)) {
+      throw new Error(
+        `Tiempo de espera agotado al consultar Ollama en ${baseUrl}.`
+      );
+    }
+    throw err instanceof Error
+      ? err
+      : new Error('No se pudo obtener respuesta desde Ollama.');
   } finally {
     clearTimeout(timer);
   }

@@ -1,9 +1,12 @@
 import type {
   AiSettings,
   BackupInfo,
+  ChatThread,
+  ChatThreadWithMessages,
   CourseDeleteImpact,
   CourseStatus,
   CourseWithSchedules,
+  CreateChatThreadInput,
   CreateCourseInput,
   CreateExamInput,
   CreateNoteInput,
@@ -14,12 +17,17 @@ import type {
   ExamWithCourse,
   ExportMarkdownRequest,
   ExportMarkdownResult,
+  GenerateStudyReportInput,
+  GenerateStudyReportResult,
   ImportSourceFileInput,
   ImportSourceFileResult,
   NoteFilters,
   NoteWithCourse,
   OllamaHealthCheckResult,
+  SaveChatMessageAsNoteInput,
   SearchSourceChunksInput,
+  SendChatMessageInput,
+  SendChatMessageResult,
   Source,
   SourceChunkSearchResult,
   SourceWithChunks,
@@ -304,5 +312,63 @@ export const cursadaClient: CursadaIpcApi = {
   ): Promise<SourceChunkSearchResult[]> {
     const fn = getBridge()?.searchSourceChunks;
     return fn ? fn(input) : mockClient.searchSourceChunks(input);
+  },
+
+  // Chat RAG with Citations (Phase 6 - Agent A)
+  async listChatThreads(courseId: string): Promise<ChatThread[]> {
+    const fn = getBridge()?.listChatThreads;
+    return fn ? fn(courseId) : mockClient.listChatThreads(courseId);
+  },
+
+  async getChatThread(threadId: string): Promise<ChatThreadWithMessages | null> {
+    const fn = getBridge()?.getChatThread;
+    return fn ? fn(threadId) : mockClient.getChatThread(threadId);
+  },
+
+  async createChatThread(input: CreateChatThreadInput): Promise<ChatThread> {
+    const fn = getBridge()?.createChatThread;
+    const created = fn ? await fn(input) : await mockClient.createChatThread(input);
+    notifyCursadaDataChanged();
+    return created;
+  },
+
+  async deleteChatThread(threadId: string): Promise<void> {
+    const fn = getBridge()?.deleteChatThread;
+    if (fn) {
+      await fn(threadId);
+    } else {
+      await mockClient.deleteChatThread(threadId);
+    }
+    notifyCursadaDataChanged();
+  },
+
+  async sendChatMessage(input: SendChatMessageInput): Promise<SendChatMessageResult> {
+    const fn = getBridge()?.sendChatMessage;
+    const result = fn ? await fn(input) : await mockClient.sendChatMessage(input);
+    notifyCursadaDataChanged();
+    return result;
+  },
+
+  async saveChatMessageAsNote(
+    input: SaveChatMessageAsNoteInput
+  ): Promise<NoteWithCourse> {
+    const fn = getBridge()?.saveChatMessageAsNote;
+    const note = fn
+      ? await fn(input)
+      : await mockClient.saveChatMessageAsNote(input);
+    notifyCursadaDataChanged();
+    return note;
+  },
+
+  // AI Study Reports & Material Generator (Phase 7 - Agent B)
+  async generateStudyReport(
+    input: GenerateStudyReportInput
+  ): Promise<GenerateStudyReportResult> {
+    const fn = getBridge()?.generateStudyReport;
+    const result = fn
+      ? await fn(input)
+      : await mockClient.generateStudyReport(input);
+    notifyCursadaDataChanged();
+    return result;
   },
 };

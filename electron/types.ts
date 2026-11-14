@@ -338,3 +338,106 @@ export interface SearchSourceChunksInput {
   query: string;
   limit?: number;
 }
+
+// Phase 6: RAG Chat with Verifiable Citations
+export type ChatMessageRole = 'user' | 'assistant';
+
+export interface ChatCitation {
+  citationNumber: number;
+  chunkId: string;
+  sourceId: string;
+  sourceTitle: string;
+  sourceType: SourceType;
+  pageNumber: number | null;
+  excerpt: string;
+  score: number;
+}
+
+export interface ChatThread {
+  id: string;
+  courseId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  role: ChatMessageRole;
+  content: string;
+  citations: ChatCitation[];
+  modelUsed: string | null;
+  createdAt: string;
+}
+
+export interface ChatThreadWithMessages extends ChatThread {
+  messages: ChatMessage[];
+}
+
+export interface CreateChatThreadInput {
+  courseId: string;
+  title?: string;
+}
+
+export interface SendChatMessageInput {
+  courseId: string;
+  threadId?: string;
+  content: string;
+  customInstructions?: string;
+}
+
+export interface SendChatMessageResult {
+  thread: ChatThread;
+  userMessage: ChatMessage;
+  assistantMessage: ChatMessage;
+}
+
+export interface SaveChatMessageAsNoteInput {
+  messageId: string;
+  title?: string;
+}
+
+// Phase 7: Map-Reduce Study Reports & Custom Material Generator
+export type StudyReportType =
+  | 'summary'
+  | 'report'
+  | 'study_guide'
+  | 'practice_exam';
+
+export type PracticeExamFormat = 'develop' | 'multiple_choice' | 'mixed';
+
+export interface StudyReportStepInfo {
+  stepNumber: number;
+  totalSteps: number;
+  stage: 'map' | 'reduce';
+  label: string;
+  sourceId?: string;
+  sourceTitle?: string;
+}
+
+export interface GenerateStudyReportInput {
+  courseId: string;
+  reportType: StudyReportType;
+  sourceIds?: string[];
+  examFormat?: PracticeExamFormat;
+  customInstructions?: string;
+  title?: string;
+  autoSaveAsNote?: boolean;
+}
+
+export interface GenerateStudyReportResult {
+  reportType: StudyReportType;
+  examFormat: PracticeExamFormat | null;
+  title: string;
+  content: string;
+  sourcesUsed: Array<{
+    sourceId: string;
+    title: string;
+    pageCount: number;
+    chunkCount: number;
+  }>;
+  steps: StudyReportStepInfo[];
+  modelUsed: string;
+  note: NoteWithCourse | null;
+}
