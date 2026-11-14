@@ -6,6 +6,7 @@ import {
   listSourcesByCourse,
 } from '../db/sourcesRepo.js';
 import {
+  createOllamaSourceEmbedder,
   createSourceFromTextService,
   importSourceFileService,
   reindexSourceService,
@@ -33,7 +34,9 @@ export function registerSourcesHandlers(): void {
     'sources:createFromText',
     (_event, input: CreateSourceFromTextInput) => {
       const ctx = getAppDatabase();
-      return createSourceFromTextService(ctx.db, input);
+      return createSourceFromTextService(ctx.db, input, {
+        embedder: createOllamaSourceEmbedder(ctx.db),
+      });
     }
   );
 
@@ -73,14 +76,20 @@ export function registerSourcesHandlers(): void {
       return importSourceFileService(
         ctx.db,
         { ...input, filePath: resolvedFilePath },
-        { dataDir: ctx.dataDir }
+        {
+          dataDir: ctx.dataDir,
+          embedder: createOllamaSourceEmbedder(ctx.db),
+        }
       );
     }
   );
 
   ipcMain.handle('sources:reindex', (_event, sourceId: string) => {
     const ctx = getAppDatabase();
-    return reindexSourceService(ctx.db, sourceId, { dataDir: ctx.dataDir });
+    return reindexSourceService(ctx.db, sourceId, {
+      dataDir: ctx.dataDir,
+      embedder: createOllamaSourceEmbedder(ctx.db),
+    });
   });
 
   ipcMain.handle('sources:delete', (_event, sourceId: string) => {
@@ -92,7 +101,9 @@ export function registerSourcesHandlers(): void {
     'sources:searchChunks',
     (_event, input: SearchSourceChunksInput) => {
       const ctx = getAppDatabase();
-      return searchSourceChunksService(ctx.db, input);
+      return searchSourceChunksService(ctx.db, input, {
+        embedder: createOllamaSourceEmbedder(ctx.db),
+      });
     }
   );
 }

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { getAiSettings } from '../db/aiSettingsRepo.js';
 import {
   getSourceById,
   createSourceRecord,
@@ -22,6 +23,7 @@ import {
   extractDocumentPages,
   type ExtractedPage,
 } from './chunkingService.js';
+import { generateEmbeddings } from './ollamaClient.js';
 
 export const FALLBACK_EMBEDDING_MODEL = 'local-fnv1a-128';
 
@@ -112,6 +114,35 @@ const defaultFallbackEmbedder: SourceEmbedder = async (texts: string[]) => ({
   embeddings: texts.map((text) => computeFallbackEmbedding(text, 128)),
   modelUsed: FALLBACK_EMBEDDING_MODEL,
 });
+
+/**
+ * Builds a SourceEmbedder backed by the user's configured Ollama AI settings
+ * (falling back to local deterministic embeddings if Ollama is unreachable).
+ */
+export function createOllamaSourceEmbedder(
+  db: DatabaseSync,
+  options?: {
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+    allowLocalFallback?: boolean;
+  }
+): SourceEmbedder {
+  return async (texts: string[]) => {
+    const settings = getAiSettings(db);
+    const result = await generateEmbeddings({
+      baseUrl: settings.baseUrl,
+      model: settings.embeddingModel,
+      inputs: texts,
+      fetchImpl: options?.fetchImpl,
+      timeoutMs: options?.timeoutMs,
+      allowLocalFallback: options?.allowLocalFallback,
+    });
+    return {
+      embeddings: result.embeddings,
+      modelUsed: result.modelUsed,
+    };
+  };
+}
 
 function resolveEmbedder(override?: SourceEmbedder): SourceEmbedder {
   if (override) {

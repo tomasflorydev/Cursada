@@ -9,6 +9,7 @@ import type { CourseWithSchedules, ExamWithCourse } from '../../types/domain';
 import { calculateAverageFromExams, ExamList } from '../exams/ExamList';
 import { ExportMarkdownButton } from '../export/ExportMarkdownButton';
 import { NotesWorkspace } from '../notes/NotesWorkspace';
+import { SourcesWorkspace } from '../sources/SourcesWorkspace';
 import { TaskList } from '../tasks/TaskList';
 import { getCourseColorLabel } from './courseColors';
 
@@ -343,15 +344,10 @@ export function CourseDetailView({
           id={`${baseId}-panel-fuentes`}
           role="tabpanel"
           aria-labelledby={`${baseId}-tab-fuentes`}
-          className="surface-panel course-tab-panel"
+          data-testid="course-sources-tab-panel"
+          className="course-tab-panel"
         >
-          <div className="section-heading-bar">
-            <h2 className="section-title">Fuentes de estudio</h2>
-          </div>
-          <p className="course-empty-text">
-            En la Fase 5 podrás cargar documentos PDF, Markdown, TXT o pegar texto directo para
-            indexarlos localmente en {course.name}.
-          </p>
+          <SourcesWorkspace courseId={course.id} courseName={course.name} />
         </section>
       ) : null}
 

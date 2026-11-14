@@ -90,15 +90,15 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 5: Fuentes + Indexado Local (Próxima fase)
+## Fase 5: Fuentes + Indexado Local (Completada y verificada)
 
-### Tarea 5.1: Conexión con Ollama y configuración de modelos locales
+### Tarea 5.1: [x] Conexión con Ollama y configuración de modelos locales
 - **Qué incluye**: Panel en **Ajustes → Inteligencia Artificial (Ollama)** que verifica la conexión con `http://localhost:11434`, lista los modelos instalados localmente y permite elegir el **Modelo de Chat** y el **Modelo de Embeddings**.
 - **Criterios de aceptación (como usuario)**:
   - Puedo ver en **Ajustes** si Ollama está conectado o desconectado, y elegir de una lista (o escribir) qué modelo local usar para chatear y cuál usar para embeddings.
   - Si Ollama está apagado, la app me muestra un mensaje claro en español explicando cómo iniciarlo sin que la aplicación falle ni se cuelgue.
 
-### Tarea 5.2: Carga de fuentes (PDF, Markdown, TXT, texto pegado) e indexado local
+### Tarea 5.2: [x] Carga de fuentes (PDF, Markdown, TXT, texto pegado) e indexado local
 - **Qué incluye**: Pestaña **Fuentes** en cada materia para agregar documentos (`.pdf`, `.md`, `.txt` o pegar texto directo), extracción del texto conservando números de página en los PDFs, división en fragmentos (chunks), generación de embeddings locales vía Ollama y guardado en SQLite (búsqueda vectorial + FTS5).
 - **Criterios de aceptación (como usuario)**:
   - Puedo cargar un archivo PDF o de texto en una materia, ver el progreso de indexación y confirmar que pasa al estado **"Indexado"** con la cantidad de páginas y fragmentos procesados.
@@ -106,7 +106,7 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 6: Chat con Citas
+## Fase 6: Chat con Citas (Próxima fase)
 
 ### Tarea 6.1: Chat por materia basado en sus fuentes con citas verificables
 - **Qué incluye**: Pestaña/panel **Asistente IA (Chat)** dentro de cada materia, recuperación híbrida (embeddings + FTS5) sobre las fuentes de esa materia, generación en *streaming* con Ollama y sistema de citas numeradas `[1]`, `[2]` que indican de qué fuente y página salió cada dato.

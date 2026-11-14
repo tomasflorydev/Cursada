@@ -2,6 +2,8 @@ import { registerCoursesHandlers } from './coursesHandlers.js';
 import { registerExamsHandlers } from './examsHandlers.js';
 import { registerExportHandlers } from './exportHandlers.js';
 import { registerNotesHandlers } from './notesHandlers.js';
+import { registerOllamaHandlers } from './ollamaHandlers.js';
+import { registerSourcesHandlers } from './sourcesHandlers.js';
 import { registerSystemHandlers } from './systemHandlers.js';
 import { registerTasksHandlers } from './tasksHandlers.js';
 
@@ -17,5 +19,7 @@ export function registerAllIpcHandlers(): void {
   registerExamsHandlers();
   registerNotesHandlers();
   registerExportHandlers();
+  registerOllamaHandlers();
+  registerSourcesHandlers();
   handlersRegistered = true;
 }

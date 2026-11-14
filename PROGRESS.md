@@ -1,10 +1,10 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: **Fases 1, 2, 3 y 4 completadas, integradas y verificadas en `main`**.
+- **Fase actual**: **Fases 1, 2, 3, 4 y 5 completadas, integradas y verificadas en `main`**.
 - **Última actualización**: 2026-11-14
 - **Métricas de verificación automatizada**:
-  - **15 archivos de test** y **53 tests unitarios y de integración en verde** (`npm test`).
+  - **20 archivos de test** y **71 tests unitarios y de integración en verde** (`npm test`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
   - **Build de producción verificado** (`npm run build`).
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
@@ -64,6 +64,18 @@
   - Componente `<ExportMarkdownButton />` (`src/components/export/ExportMarkdownButton.tsx`) integrado en **Ajustes → Exportar a Markdown** (`src/pages/SettingsPage.tsx`), en la pestaña **Resumen** de cada materia (`src/components/courses/CourseDetailView.tsx`) y en el editor de cada nota (`NoteEditor.tsx`).
   - Tests en `src/__tests__/exportService.test.ts`, `src/__tests__/ExportMarkdownUI.test.tsx` y `src/__tests__/Phase4Integration.test.tsx`.
 
+### Fase 5: Fuentes + Indexado Local
+- [x] **Tarea 5.1 — Conexión con Ollama y configuración de modelos locales**:
+  - Persistencia parametrizada de configuración de IA (`baseUrl`, `chatModel`, `embeddingModel`) en `app_settings` (`electron/db/aiSettingsRepo.ts`) con normalización y validación de URL HTTP/HTTPS.
+  - Cliente local Ollama (`electron/services/ollamaClient.ts`) con `checkOllamaHealth` (`/api/tags` y `/api/version` con `AbortController`, devolviendo mensajes claros en español si Ollama está apagado sin lanzar excepciones) y `generateEmbeddings` (`/api/embed` con fallback local determinístico `local-hash-v1`).
+  - Handlers IPC (`electron/ipc/ollamaHandlers.ts`), mock completo (`src/lib/api/mockOllama.ts`) y panel **Inteligencia Artificial (Ollama)** (`src/components/settings/OllamaSettingsSection.tsx`) montado en `src/pages/SettingsPage.tsx`, con detección de estado, guía en español para iniciar Ollama y selección/edición manual de modelos.
+  - Tests en `src/__tests__/ollamaAndAiSettings.test.ts` y `src/__tests__/OllamaSettingsUI.test.tsx`.
+- [x] **Tarea 5.2 — Carga de fuentes (PDF, Markdown, TXT, texto pegado) e indexado local**:
+  - Migración SQLite `v4` (`electron/db/migrations.ts`) creando `sources`, `source_chunks` (con embeddings `BLOB` en `Float32Array`) y `source_chunks_fts` (`unicode61 remove_diacritics 2`) con triggers automáticos de sincronización, más actualización de impacto de borrado de materias (`sourcesCount`) en `coursesRepo.ts` y `DeleteCourseDialog.tsx`.
+  - Extractor puro de texto PDF página por página (`src/lib/pdf/index.ts`), servicio de extracción y chunking con solapamiento y preservación de número de página (`electron/services/chunkingService.ts`), repositorio con serialización binaria y búsqueda híbrida Coseno + FTS5 RRF (`electron/db/sourcesRepo.ts`), servicio conectado a Ollama (`electron/services/sourcesService.ts`, `createOllamaSourceEmbedder`) y handlers IPC (`electron/ipc/sourcesHandlers.ts`).
+  - Workspace `<SourcesWorkspace />` (`src/components/sources/SourcesWorkspace.tsx`, `src/styles/sources.css`) montado en la pestaña **Fuentes** de `src/components/courses/CourseDetailView.tsx`, con subida de archivos (`.pdf`, `.md`, `.txt`), modal para pegar texto directo, barra `<progress>` de indexación, buscador híbrido de fragmentos, reindexado, previsualización por páginas/fragmentos y eliminación en cascada, con fallback en `src/lib/api/mockSources.ts`.
+  - Tests en `src/__tests__/sourcesRepoAndChunking.test.ts`, `src/__tests__/SourcesWorkspace.test.tsx` y `src/__tests__/Phase5Integration.test.tsx`.
+
 ## Qué sigue
-- [ ] Validación manual del Product Owner sobre la **Fase 4**.
-- [ ] Inicio de la **Fase 5: Fuentes + Indexado Local (Ollama + PDF/TXT + Embeddings + Búsqueda Vectorial Híbrida)**.
+- [ ] Validación manual del Product Owner sobre la **Fase 5**.
+- [ ] Inicio de la **Fase 6: Chat por materia basado en sus fuentes con citas verificables**.
