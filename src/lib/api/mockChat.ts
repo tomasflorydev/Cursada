@@ -1,4 +1,6 @@
 import type {
+  ChatCitation,
+  ChatMessage,
   ChatThread,
   ChatThreadWithMessages,
   CreateChatThreadInput,
@@ -7,39 +9,388 @@ import type {
   SendChatMessageInput,
   SendChatMessageResult,
 } from '../../types/domain';
+import { getMockCourseByIdSync } from './mockCourses';
+import { mockCreateNote } from './mockNotes';
+import { mockGetAiSettings } from './mockOllama';
+import {
+  mockGetSourceWithChunks,
+  mockListSources,
+  mockSearchSourceChunks,
+} from './mockSources';
 
-export function resetMockChat(): void {
-  // Stage 0 stub — implemented by Agent A
+const DEFAULT_CHAT_THREAD_TITLE = 'Nueva consulta';
+const MAX_AUTO_TITLE_LENGTH = 56;
+const DEFAULT_NOTE_TITLE = 'Respuesta del Asistente';
+const MAX_DERIVED_NOTE_TITLE_LENGTH = 72;
+
+interface MockChatStore {
+  threads: ChatThread[];
+  messages: ChatMessage[];
+  sequence: number;
 }
 
-export async function mockListChatThreads(_courseId: string): Promise<ChatThread[]> {
-  return [];
+const store: MockChatStore = {
+  threads: [],
+  messages: [],
+  sequence: 0,
+};
+
+function nextId(prefix: string): string {
+  store.sequence += 1;
+  return `${prefix}-${store.sequence}`;
+}
+
+function nextIsoTimestamp(): string {
+  store.sequence += 1;
+  return new Date(Date.now() + store.sequence * 10).toISOString();
+}
+
+function cloneCitation(citation: ChatCitation): ChatCitation {
+  return { ...citation };
+}
+
+function cloneMessage(message: ChatMessage): ChatMessage {
+  return {
+    ...message,
+    citations: message.citations.map(cloneCitation),
+  };
+}
+
+function cloneThread(thread: ChatThread): ChatThread {
+  return { ...thread };
+}
+
+function summarizeThreadTitle(question: string): string {
+  const normalized = question.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return DEFAULT_CHAT_THREAD_TITLE;
+  }
+  if (normalized.length <= MAX_AUTO_TITLE_LENGTH) {
+    return normalized;
+  }
+  return `${normalized.slice(0, MAX_AUTO_TITLE_LENGTH - 1).trimEnd()}…`;
+}
+
+function truncateInlineText(raw: string, maxLength: number): string {
+  const normalized = raw.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
+}
+
+function deriveNoteTitleFromMessage(content: string): string {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  for (const line of lines) {
+    const cleaned = line
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/^[-*+]\s+/, '')
+      .replace(/^\d+[.)]\s+/, '')
+      .replace(/\[\d+\]/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleaned) {
+      continue;
+    }
+
+    if (cleaned.length <= MAX_DERIVED_NOTE_TITLE_LENGTH) {
+      return cleaned;
+    }
+
+    return `${cleaned.slice(0, MAX_DERIVED_NOTE_TITLE_LENGTH - 1).trimEnd()}…`;
+  }
+
+  return DEFAULT_NOTE_TITLE;
+}
+
+async function retrieveMockCitations(
+  courseId: string,
+  query: string
+): Promise<ChatCitation[]> {
+  const matches = await mockSearchSourceChunks({
+    courseId,
+    query,
+    limit: 5,
+  });
+
+  if (matches.length > 0) {
+    return matches.map((match, index) => ({
+      citationNumber: index + 1,
+      chunkId: match.chunk.id,
+      sourceId: match.chunk.sourceId,
+      sourceTitle: match.sourceTitle,
+      sourceType: match.sourceType,
+      pageNumber: match.chunk.pageNumber,
+      excerpt: match.chunk.content.trim(),
+      score: match.score,
+    }));
+  }
+
+  // Fallback for broad summary questions when a course has ready sources
+  const courseSources = await mockListSources(courseId);
+  const readySources = courseSources.filter(
+    (source) => source.indexingStatus === 'ready'
+  );
+  const fallbackCitations: ChatCitation[] = [];
+
+  for (const source of readySources) {
+    const detailed = await mockGetSourceWithChunks(source.id);
+    if (!detailed || detailed.chunks.length === 0) {
+      continue;
+    }
+    const firstChunk = detailed.chunks[0];
+    const index = fallbackCitations.length;
+    fallbackCitations.push({
+      citationNumber: index + 1,
+      chunkId: firstChunk.id,
+      sourceId: detailed.id,
+      sourceTitle: detailed.title,
+      sourceType: detailed.sourceType,
+      pageNumber: firstChunk.pageNumber,
+      excerpt: firstChunk.content.trim(),
+      score: Math.max(0.35, Number((0.62 - index * 0.08).toFixed(4))),
+    });
+    if (fallbackCitations.length >= 3) {
+      break;
+    }
+  }
+
+  return fallbackCitations;
+}
+
+function buildMockAssistantContent(params: {
+  courseName: string;
+  question: string;
+  customInstructions: string;
+  citations: ChatCitation[];
+}): string {
+  if (params.citations.length === 0) {
+    const base = `No encontré fragmentos indexados en las fuentes de **${params.courseName}** para responder "${truncateInlineText(params.question, 80)}". Subí apuntes, PDFs o texto en la pestaña **Fuentes** para poder citarlos en mis respuestas.`;
+    return params.customInstructions
+      ? `${base}\n\n_(Instrucción recibida: "${params.customInstructions}")_`
+      : base;
+  }
+
+  const lines: string[] = [];
+
+  if (params.customInstructions) {
+    lines.push(`**Instrucción aplicada:** ${params.customInstructions}`, '');
+  }
+
+  lines.push(
+    `Según las fuentes indexadas de **${params.courseName}**, estos son los puntos principales para responder tu consulta:`,
+    ''
+  );
+
+  for (const citation of params.citations) {
+    const pagePart = citation.pageNumber != null ? ` (pág. ${citation.pageNumber})` : '';
+    const cleanExcerpt = citation.excerpt.replace(/^#{1,6}\s+/, '');
+    lines.push(
+      `- ${truncateInlineText(cleanExcerpt, 200)} [${citation.citationNumber}] — *${citation.sourceTitle}*${pagePart}`
+    );
+  }
+
+  return lines.join('\n');
+}
+
+export function resetMockChat(): void {
+  store.threads = [];
+  store.messages = [];
+  store.sequence = 0;
+}
+
+export async function mockListChatThreads(courseId: string): Promise<ChatThread[]> {
+  return store.threads
+    .filter((thread) => thread.courseId === courseId)
+    .sort((a, b) => {
+      if (a.updatedAt !== b.updatedAt) {
+        return b.updatedAt.localeCompare(a.updatedAt);
+      }
+      return b.createdAt.localeCompare(a.createdAt);
+    })
+    .map(cloneThread);
 }
 
 export async function mockGetChatThread(
-  _threadId: string
+  threadId: string
 ): Promise<ChatThreadWithMessages | null> {
-  return null;
+  const thread = store.threads.find((item) => item.id === threadId);
+  if (!thread) {
+    return null;
+  }
+
+  const messages = store.messages
+    .filter((message) => message.threadId === thread.id)
+    .map(cloneMessage);
+
+  return {
+    ...cloneThread(thread),
+    messages,
+  };
 }
 
 export async function mockCreateChatThread(
-  _input: CreateChatThreadInput
+  input: CreateChatThreadInput
 ): Promise<ChatThread> {
-  throw new Error('mockCreateChatThread not implemented');
+  const courseId = input.courseId?.trim();
+  if (!courseId) {
+    throw new Error('courseId is required');
+  }
+  if (!getMockCourseByIdSync(courseId)) {
+    throw new Error(`Course not found: ${courseId}`);
+  }
+
+  const now = nextIsoTimestamp();
+  const title = input.title?.trim() || DEFAULT_CHAT_THREAD_TITLE;
+  const thread: ChatThread = {
+    id: nextId('mock-thread'),
+    courseId,
+    title,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  store.threads.push(thread);
+  return cloneThread(thread);
 }
 
-export async function mockDeleteChatThread(_threadId: string): Promise<void> {
-  // Stage 0 stub
+export async function mockDeleteChatThread(threadId: string): Promise<void> {
+  const trimmedId = threadId?.trim();
+  if (!trimmedId) {
+    return;
+  }
+  store.threads = store.threads.filter((thread) => thread.id !== trimmedId);
+  store.messages = store.messages.filter((message) => message.threadId !== trimmedId);
 }
 
 export async function mockSendChatMessage(
-  _input: SendChatMessageInput
+  input: SendChatMessageInput
 ): Promise<SendChatMessageResult> {
-  throw new Error('mockSendChatMessage not implemented');
+  const courseId = input.courseId?.trim();
+  const content = input.content?.trim() ?? '';
+  const customInstructions = input.customInstructions?.trim() ?? '';
+
+  if (!courseId) {
+    throw new Error('courseId is required');
+  }
+  if (!content) {
+    throw new Error('Message content must not be empty');
+  }
+
+  const course = getMockCourseByIdSync(courseId);
+  if (!course) {
+    throw new Error(`Course not found: ${courseId}`);
+  }
+
+  let thread: ChatThread | undefined;
+  if (input.threadId?.trim()) {
+    thread = store.threads.find((item) => item.id === input.threadId?.trim());
+    if (!thread) {
+      throw new Error(`Chat thread not found: ${input.threadId}`);
+    }
+    if (thread.courseId !== course.id) {
+      throw new Error('Chat thread does not belong to the specified course');
+    }
+  } else {
+    const now = nextIsoTimestamp();
+    thread = {
+      id: nextId('mock-thread'),
+      courseId: course.id,
+      title: DEFAULT_CHAT_THREAD_TITLE,
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.threads.push(thread);
+  }
+
+  const userNow = nextIsoTimestamp();
+  const userMessage: ChatMessage = {
+    id: nextId('mock-msg'),
+    threadId: thread.id,
+    role: 'user',
+    content,
+    citations: [],
+    modelUsed: null,
+    createdAt: userNow,
+  };
+  store.messages.push(userMessage);
+
+  if (thread.title === DEFAULT_CHAT_THREAD_TITLE) {
+    thread.title = summarizeThreadTitle(content);
+  }
+  thread.updatedAt = userNow;
+
+  const citations = await retrieveMockCitations(course.id, content);
+  const settings = await mockGetAiSettings();
+  const assistantContent = buildMockAssistantContent({
+    courseName: course.name,
+    question: content,
+    customInstructions,
+    citations,
+  });
+
+  const assistantNow = nextIsoTimestamp();
+  const assistantMessage: ChatMessage = {
+    id: nextId('mock-msg'),
+    threadId: thread.id,
+    role: 'assistant',
+    content: assistantContent,
+    citations,
+    modelUsed: settings.chatModel,
+    createdAt: assistantNow,
+  };
+  store.messages.push(assistantMessage);
+  thread.updatedAt = assistantNow;
+
+  return {
+    thread: cloneThread(thread),
+    userMessage: cloneMessage(userMessage),
+    assistantMessage: cloneMessage(assistantMessage),
+  };
 }
 
 export async function mockSaveChatMessageAsNote(
-  _input: SaveChatMessageAsNoteInput
+  input: SaveChatMessageAsNoteInput
 ): Promise<NoteWithCourse> {
-  throw new Error('mockSaveChatMessageAsNote not implemented');
+  const messageId = input.messageId?.trim();
+  if (!messageId) {
+    throw new Error('messageId is required');
+  }
+
+  const message = store.messages.find((item) => item.id === messageId);
+  if (!message) {
+    throw new Error(`Chat message not found: ${messageId}`);
+  }
+
+  const thread = store.threads.find((item) => item.id === message.threadId);
+  if (!thread) {
+    throw new Error(`Chat thread not found for message: ${messageId}`);
+  }
+
+  const title = input.title?.trim() || deriveNoteTitleFromMessage(message.content);
+  const sections = [message.content.trim()];
+
+  if (message.citations.length > 0) {
+    const citedLines = message.citations.map((citation) => {
+      const pageSuffix = citation.pageNumber != null ? ` (pág. ${citation.pageNumber})` : '';
+      return `- [${citation.citationNumber}] **${citation.sourceTitle}**${pageSuffix}: ${truncateInlineText(citation.excerpt, 240)}`;
+    });
+
+    sections.push(['## Fuentes citadas', '', ...citedLines].join('\n'));
+  }
+
+  return mockCreateNote({
+    courseId: thread.courseId,
+    title,
+    content: sections.join('\n\n'),
+    origin: 'ai_summary',
+  });
 }
