@@ -13,6 +13,14 @@ export const DEFAULT_CHAT_THREAD_TITLE = 'Nueva consulta';
 const MAX_AUTO_THREAD_TITLE_LENGTH = 56;
 const VALID_CHAT_ROLES = new Set<ChatMessageRole>(['user', 'assistant']);
 
+let lastTimestampMs = 0;
+
+function nextIsoTimestamp(): string {
+  const nowMs = Date.now();
+  lastTimestampMs = nowMs > lastTimestampMs ? nowMs : lastTimestampMs + 1;
+  return new Date(lastTimestampMs).toISOString();
+}
+
 interface ChatThreadRow {
   id: string;
   course_id: string;
@@ -190,7 +198,7 @@ export function createChatThread(
   const courseId = assertCourseExists(db, input.courseId);
   const title = (input.title ?? '').trim() || DEFAULT_CHAT_THREAD_TITLE;
   const id = randomUUID();
-  const now = new Date().toISOString();
+  const now = nextIsoTimestamp();
 
   db.prepare(
     `INSERT INTO chat_threads (id, course_id, title, created_at, updated_at)
@@ -258,7 +266,7 @@ export function appendChatMessage(
   }
 
   const id = randomUUID();
-  const now = new Date().toISOString();
+  const now = nextIsoTimestamp();
   const nextTitle =
     params.role === 'user' && existingThread.title === DEFAULT_CHAT_THREAD_TITLE
       ? summarizeChatThreadTitle(content)
