@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
@@ -10,6 +10,7 @@ import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import { formatSchedulesSummary } from '../lib/dates';
 import type {
   CourseDeleteImpact,
+  CourseTabId,
   CourseWithSchedules,
   CreateCourseInput,
   ExamWithCourse,
@@ -20,6 +21,10 @@ export interface CoursesPageProps {
   selectedCourseId: string | null;
   onSelectCourse: (courseId: string | null) => void;
   onCoursesChanged?: () => void;
+  initialCourseTab?: CourseTabId;
+  initialNoteId?: string | null;
+  courseNavigationVersion?: number;
+  createRequestVersion?: number;
 }
 
 const KNOWN_SHORT_CODES: Record<string, string> = {
@@ -66,6 +71,10 @@ export function CoursesPage({
   selectedCourseId,
   onSelectCourse,
   onCoursesChanged,
+  initialCourseTab,
+  initialNoteId,
+  courseNavigationVersion,
+  createRequestVersion = 0,
 }: CoursesPageProps) {
   const [courses, setCourses] = useState<CourseWithSchedules[]>([]);
   const [pendingByCourse, setPendingByCourse] = useState<Record<string, number>>({});
@@ -75,6 +84,35 @@ export function CoursesPage({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
+  const [detailCreateVersion, setDetailCreateVersion] = useState<number>(0);
+
+  const prevSelectedCourseIdRef = useRef<string | null>(selectedCourseId);
+  const lastCreateRequestVersionRef = useRef<number>(0);
+
+  useEffect(() => {
+    const courseChanged = prevSelectedCourseIdRef.current !== selectedCourseId;
+    prevSelectedCourseIdRef.current = selectedCourseId;
+
+    const hasNewCreateRequest =
+      Boolean(createRequestVersion) &&
+      createRequestVersion > lastCreateRequestVersionRef.current;
+
+    if (hasNewCreateRequest) {
+      lastCreateRequestVersionRef.current = createRequestVersion;
+      if (selectedCourseId === null) {
+        setDetailCreateVersion(0);
+        setEditingCourse(null);
+        setIsFormOpen(true);
+      } else {
+        setDetailCreateVersion((v) => v + 1);
+      }
+      return;
+    }
+
+    if (courseChanged) {
+      setDetailCreateVersion(0);
+    }
+  }, [createRequestVersion, selectedCourseId]);
 
   const loadCourses = useCallback(async () => {
     const [loaded, pendingTasks, allExams] = await Promise.all([
@@ -237,11 +275,16 @@ export function CoursesPage({
     <>
       {activeCourse ? (
         <CourseDetailView
+          key={activeCourse.id}
           course={activeCourse}
           onBackToAll={() => onSelectCourse(null)}
           onEdit={handleOpenEdit}
           onToggleArchive={(c) => void handleToggleArchive(c)}
           onRequestDelete={(id) => void handleRequestDelete(id)}
+          initialTab={initialCourseTab}
+          initialNoteId={initialNoteId}
+          navigationVersion={courseNavigationVersion}
+          createRequestVersion={detailCreateVersion}
         />
       ) : (
         <div className="basic-view">

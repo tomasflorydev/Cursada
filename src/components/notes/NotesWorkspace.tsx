@@ -13,6 +13,8 @@ export interface NotesWorkspaceProps {
   courseId?: string;
   onSelectCourse?: (courseId: string) => void;
   onNotesChanged?: () => void;
+  initialNoteId?: string | null;
+  createRequestVersion?: number;
 }
 
 const ORIGIN_LABELS: Record<NoteOrigin, string> = {
@@ -66,6 +68,8 @@ export function NotesWorkspace({
   courseId,
   onSelectCourse,
   onNotesChanged,
+  initialNoteId,
+  createRequestVersion = 0,
 }: NotesWorkspaceProps) {
   const [notes, setNotes] = useState<NoteWithCourse[]>([]);
   const [courses, setCourses] = useState<CourseWithSchedules[]>([]);
@@ -82,6 +86,12 @@ export function NotesWorkspace({
   const requestSeqRef = useRef<number>(0);
   const prevSelectedNoteIdRef = useRef<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const initialNoteIdRef = useRef<string | null | undefined>(initialNoteId);
+  const appliedInitialNoteIdRef = useRef<string | null>(null);
+  const lastCreateVersionRef = useRef<number>(0);
+  const handleCreateNoteRef = useRef<() => Promise<void>>(async () => {});
+
+  initialNoteIdRef.current = initialNoteId;
 
   const effectiveCourseFilter =
     courseId ?? (courseFilter === 'all' ? undefined : courseFilter);
@@ -117,6 +127,15 @@ export function NotesWorkspace({
     setIsLoading(false);
 
     setSelectedNoteId((currentId) => {
+      const requestedNoteId = initialNoteIdRef.current;
+      if (
+        requestedNoteId &&
+        appliedInitialNoteIdRef.current !== requestedNoteId &&
+        loadedNotes.some((n) => n.id === requestedNoteId)
+      ) {
+        appliedInitialNoteIdRef.current = requestedNoteId;
+        return requestedNoteId;
+      }
       if (currentId && loadedNotes.some((n) => n.id === currentId)) {
         return currentId;
       }
@@ -135,6 +154,21 @@ export function NotesWorkspace({
       window.removeEventListener(DATA_CHANGED_EVENT, handleExternalChange);
     };
   }, [loadData]);
+
+  useEffect(() => {
+    if (!initialNoteId) {
+      appliedInitialNoteIdRef.current = null;
+      return;
+    }
+    if (appliedInitialNoteIdRef.current === initialNoteId) {
+      return;
+    }
+    if (notes.some((n) => n.id === initialNoteId)) {
+      appliedInitialNoteIdRef.current = initialNoteId;
+      setSelectedNoteId(initialNoteId);
+      setIsListVisible(false);
+    }
+  }, [initialNoteId, notes]);
 
   const selectedNote = useMemo(
     () => notes.find((n) => n.id === selectedNoteId) ?? null,
@@ -200,6 +234,21 @@ export function NotesWorkspace({
       setIsCreating(false);
     }
   }
+
+  handleCreateNoteRef.current = handleCreateNote;
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    if (
+      createRequestVersion &&
+      createRequestVersion > lastCreateVersionRef.current
+    ) {
+      lastCreateVersionRef.current = createRequestVersion;
+      void handleCreateNoteRef.current();
+    }
+  }, [createRequestVersion, isLoading]);
 
   async function handleTogglePin(noteId: string): Promise<void> {
     setActionError(null);

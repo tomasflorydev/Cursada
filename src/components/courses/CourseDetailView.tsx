@@ -1,11 +1,15 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../../lib/api/client';
 import {
   DAY_NAMES_ES,
   formatScheduleBlock,
   formatSchedulesSummary,
 } from '../../lib/dates';
-import type { CourseWithSchedules, ExamWithCourse } from '../../types/domain';
+import type {
+  CourseTabId,
+  CourseWithSchedules,
+  ExamWithCourse,
+} from '../../types/domain';
 import { CourseAssistantWorkspace } from '../assistant/CourseAssistantWorkspace';
 import { calculateAverageFromExams, ExamList } from '../exams/ExamList';
 import { ExportMarkdownButton } from '../export/ExportMarkdownButton';
@@ -14,13 +18,7 @@ import { SourcesWorkspace } from '../sources/SourcesWorkspace';
 import { TaskList } from '../tasks/TaskList';
 import { getCourseColorLabel } from './courseColors';
 
-export type CourseTabId =
-  | 'resumen'
-  | 'tareas'
-  | 'examenes'
-  | 'notas'
-  | 'fuentes'
-  | 'asistente';
+export type { CourseTabId } from '../../types/domain';
 
 interface CourseTabDefinition {
   id: CourseTabId;
@@ -42,6 +40,10 @@ export interface CourseDetailViewProps {
   onEdit: (course: CourseWithSchedules) => void;
   onToggleArchive: (course: CourseWithSchedules) => void;
   onRequestDelete: (courseId: string) => void;
+  initialTab?: CourseTabId;
+  initialNoteId?: string | null;
+  navigationVersion?: number;
+  createRequestVersion?: number;
 }
 
 export function CourseDetailView({
@@ -50,10 +52,41 @@ export function CourseDetailView({
   onEdit,
   onToggleArchive,
   onRequestDelete,
+  initialTab,
+  initialNoteId,
+  navigationVersion,
+  createRequestVersion = 0,
 }: CourseDetailViewProps) {
   const baseId = useId();
-  const [activeTab, setActiveTab] = useState<CourseTabId>('resumen');
+  const [activeTab, setActiveTab] = useState<CourseTabId>(initialTab ?? 'resumen');
   const [courseExams, setCourseExams] = useState<ExamWithCourse[]>([]);
+  const [taskCreateVersion, setTaskCreateVersion] = useState<number>(0);
+  const [examCreateVersion, setExamCreateVersion] = useState<number>(0);
+  const [noteCreateVersion, setNoteCreateVersion] = useState<number>(0);
+  const lastCreateVersionRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, navigationVersion]);
+
+  useEffect(() => {
+    if (!createRequestVersion || createRequestVersion <= lastCreateVersionRef.current) {
+      return;
+    }
+    lastCreateVersionRef.current = createRequestVersion;
+    if (activeTab === 'notas') {
+      setNoteCreateVersion((v) => v + 1);
+    } else if (activeTab === 'examenes') {
+      setExamCreateVersion((v) => v + 1);
+    } else {
+      if (activeTab !== 'tareas') {
+        setActiveTab('tareas');
+      }
+      setTaskCreateVersion((v) => v + 1);
+    }
+  }, [createRequestVersion, activeTab]);
 
   useEffect(() => {
     let active = true;
@@ -80,6 +113,13 @@ export function CourseDetailView({
   const colorLabel = getCourseColorLabel(course.color);
   const averageGrade = calculateAverageFromExams(courseExams);
 
+  function handleSelectTab(tabId: CourseTabId): void {
+    setActiveTab(tabId);
+    setTaskCreateVersion(0);
+    setExamCreateVersion(0);
+    setNoteCreateVersion(0);
+  }
+
   function handleTabKeyDown(
     e: React.KeyboardEvent<HTMLButtonElement>,
     currentIndex: number
@@ -91,7 +131,7 @@ export function CourseDetailView({
     const delta = e.key === 'ArrowRight' ? 1 : -1;
     const nextIndex = (currentIndex + delta + COURSE_TABS.length) % COURSE_TABS.length;
     const nextTab = COURSE_TABS[nextIndex];
-    setActiveTab(nextTab.id);
+    handleSelectTab(nextTab.id);
     const nextButton = document.getElementById(`${baseId}-tab-${nextTab.id}`);
     nextButton?.focus();
   }
@@ -183,7 +223,7 @@ export function CourseDetailView({
               aria-controls={`${baseId}-panel-${tab.id}`}
               tabIndex={isSelected ? 0 : -1}
               className={`course-tab-button ${isSelected ? 'is-active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleSelectTab(tab.id)}
               onKeyDown={(e) => handleTabKeyDown(e, index)}
             >
               {tab.label}
@@ -312,7 +352,10 @@ export function CourseDetailView({
           data-testid="course-tasks-tab-panel"
           className="course-tab-panel"
         >
-          <TaskList courseId={course.id} />
+          <TaskList
+            courseId={course.id}
+            createRequestVersion={taskCreateVersion}
+          />
         </section>
       ) : null}
 
@@ -324,7 +367,10 @@ export function CourseDetailView({
           data-testid="course-exams-tab-panel"
           className="course-tab-panel"
         >
-          <ExamList courseId={course.id} />
+          <ExamList
+            courseId={course.id}
+            createRequestVersion={examCreateVersion}
+          />
         </section>
       ) : null}
 
@@ -336,7 +382,11 @@ export function CourseDetailView({
           data-testid="course-notes-tab-panel"
           className="course-tab-panel"
         >
-          <NotesWorkspace courseId={course.id} />
+          <NotesWorkspace
+            courseId={course.id}
+            initialNoteId={initialNoteId}
+            createRequestVersion={noteCreateVersion}
+          />
         </section>
       ) : null}
 
@@ -363,7 +413,7 @@ export function CourseDetailView({
           <CourseAssistantWorkspace
             courseId={course.id}
             courseName={course.name}
-            onOpenNotesTab={() => setActiveTab('notas')}
+            onOpenNotesTab={() => handleSelectTab('notas')}
           />
         </section>
       ) : null}

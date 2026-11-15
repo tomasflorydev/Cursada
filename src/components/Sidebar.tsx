@@ -20,6 +20,7 @@ interface SidebarProps {
   onSelectSection: (section: NavSectionId) => void;
   onSelectCourse: (courseId: string) => void;
   onChangeThemeMode: (mode: ThemeMode) => void;
+  onOpenCommandPalette?: () => void;
 }
 
 interface NavItemConfig {
@@ -39,6 +40,7 @@ export function Sidebar({
   onSelectSection,
   onSelectCourse,
   onChangeThemeMode,
+  onOpenCommandPalette,
 }: SidebarProps) {
   const activeCourses = courses.filter((c) => c.status !== 'archived');
   const archivedCourses = courses.filter((c) => c.status === 'archived');
@@ -123,6 +125,29 @@ export function Sidebar({
           <span className="sidebar-term-caption">{CURRENT_TERM_LABEL}</span>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="sidebar-command-trigger"
+        data-testid="sidebar-command-palette-trigger"
+        onClick={() => onOpenCommandPalette?.()}
+      >
+        <span className="sidebar-command-trigger-left">
+          <svg
+            className="sidebar-command-trigger-icon"
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
+            <circle cx="8.75" cy="8.75" r="5.25" />
+            <path d="m12.8 12.8 3.7 3.7" strokeLinecap="round" />
+          </svg>
+          <span className="sidebar-command-trigger-label">Buscar…</span>
+        </span>
+        <kbd className="sidebar-command-trigger-kbd">⌘K</kbd>
+      </button>
 
       <nav className="sidebar-nav-section" aria-label="Principal">
         <ul className="sidebar-nav-list">
