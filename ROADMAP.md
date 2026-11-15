@@ -72,13 +72,13 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ## Fase 4: Notas por Materia + Exportación a Markdown (Completada y verificada)
 
-### Tarea 4.1: [x] Editor Markdown con Preview en vivo, guardado automático y vista global de Notas
-- **Qué incluye**: Sección global **Notas** en la barra lateral para acceder a todos los apuntes del cuatrimestre, más la pestaña **Notas** dentro de cada materia (`<NotesWorkspace />`), con buscador instantáneo (FTS5 sin distinción de tildes ni mayúsculas), fijado de notas importantes y editor Markdown (CodeMirror 6) con modos **Editar / Dividido / Lectura**, soporte GFM (tablas, listas de tareas, bloques de código), guardado automático con debounce e indicador visual de estado.
+### Tarea 4.1: [x] Editor Markdown con Preview en vivo, guardado automático y notas por materia
+- **Qué incluye**: Pestaña **Notas** dentro de cada materia (`<NotesWorkspace courseId />`), con vista a ancho completo y lista colapsable (`Mostrar lista` / `Ocultar lista`), buscador instantáneo (FTS5 sin distinción de tildes ni mayúsculas), fijado de notas importantes y editor Markdown (CodeMirror 6) con modos **Editar / Lectura**, soporte GFM (tablas, listas de tareas, bloques de código), guardado automático con debounce e indicador visual de estado.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo acceder a mis notas tanto desde la sección global **Notas** de la barra lateral como desde la pestaña de cada materia, crear una nota nueva y escribir en Markdown viendo el resultado formateado en tiempo real en el panel de preview.
+  - Puedo acceder a mis notas dentro de cada materia, crear una nota nueva y escribir en Markdown o cambiar a modo Lectura.
   - Mientras escribo, mis cambios se guardan automáticamente sin tocar ningún botón, y si cierro y reabro la app todo el texto está intacto.
   - Puedo buscar una palabra (con o sin tilde) en el buscador de notas y encontrar al instante las notas que la contienen.
-  - Puedo alternar entre los modos de visualización (Editar, Dividido, Lectura) según la comodidad de mi sesión de estudio.
+  - Puedo alternar entre los modos de visualización (Editar / Lectura) según la comodidad de mi sesión de estudio.
 
 ### Tarea 4.2: [x] Exportación de Notas y Materias a Markdown en disco
 - **Qué incluye**: Función de exportación a archivos `.md` reales en una carpeta elegida por el usuario mediante diálogo nativo de macOS (`dialog.showOpenDialog`) o descarga en navegador. Soporta tres alcances:
@@ -106,32 +106,28 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 6: Chat con Citas (Próxima fase)
+## Fase 6: Chat con Citas (Completada y verificada)
 
-### Tarea 6.1: Chat por materia basado en sus fuentes con citas verificables
-- **Qué incluye**: Pestaña/panel **Asistente IA (Chat)** dentro de cada materia, recuperación híbrida (embeddings + FTS5) sobre las fuentes de esa materia, generación en *streaming* con Ollama y sistema de citas numeradas `[1]`, `[2]` que indican de qué fuente y página salió cada dato.
+### Tarea 6.1: [x] Chat por materia basado en sus fuentes con citas verificables
+- **Qué incluye**: Pestaña **Asistente IA → Chat con Fuentes (RAG)** dentro de cada materia, recuperación híbrida (embeddings + FTS5) sobre las fuentes de esa materia, consultas a Ollama bajo demanda (`keep_alive: '0s'`), soporte de instrucciones/prompt personalizado por consulta (`customInstructions`), fallback extractivo offline, citas numeradas clicables `[1]`, `[2]` con visor modal nativo del fragmento y página de origen, historial persistido en SQLite (`chat_threads`, `chat_messages`) y guardado de respuestas como **Nota** editable con sección `## Fuentes citadas`.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo hacer una pregunta sobre mi materia en el chat y recibir en tiempo real una respuesta en español basada en las fuentes que cargué, con citas numeradas al pie o en el texto.
-  - Puedo hacer clic en cualquiera de las citas de la respuesta y ver exactamente el nombre de la fuente, el número de página y el fragmento original del cual salió la información.
+  - Puedo hacer una pregunta sobre mi materia en el chat (con o sin instrucciones personalizadas) y recibir una respuesta en español basada en las fuentes que cargué, con citas numeradas clicables.
+  - Puedo hacer clic en cualquiera de las citas de la respuesta y ver en un diálogo nativo el nombre de la fuente, el número de página y el fragmento original completo.
   - Puedo guardar cualquier respuesta útil del chat como una **Nota** de la materia con un clic, y mi historial de conversación queda guardado al cerrar y reabrir la app.
 
 ---
 
-## Fase 7: Reportes con IA
+## Fase 7: Reportes y Material de Estudio con IA (Completada y verificada)
 
-### Tarea 7.1: Generador de reportes por partes (Resumen, Guía de estudio y Examen de práctica)
-- **Qué incluye**: Función de generación de reportes dentro de cada materia seleccionando qué fuentes incluir (o todas) y el tipo de reporte:
-  1. **Resumen ejecutivo de las fuentes**
-  2. **Guía de estudio estructurada**
-  3. **Preguntas de práctica para examen (con respuestas)**
-  Utiliza un flujo por etapas (*Map-Reduce*: resumir cada fuente/bloque y luego combinar) pensado para modelos locales con ventana de contexto limitada, mostrando progreso paso a paso y guardando el resultado automáticamente como una **Nota** editable en Markdown.
+### Tarea 7.1: [x] Generador de reportes y material por partes (Resumen, Informe, Guía de estudio y Examen de práctica)
+- **Qué incluye**: Pestaña **Asistente IA → Generar Resumen / Informe / Examen** dentro de cada materia seleccionando qué fuentes incluir (o todas), tipo de material (**Resumen**, **Informe**, **Guía de estudio** o **Examen de práctica** con formato elegible **Desarrollo / Multiple Choice / Mixto** y clave de corrección) e **Instrucciones / Prompt personalizado** libre. Utiliza un flujo por etapas (*Map-Reduce*: sintetizar cada fuente seleccionada hasta 4500 chars y combinar el resultado final) ejecutando Ollama estrictamente bajo demanda (`keep_alive: '0s'`), con fallback local determinístico offline, barra de progreso nativa, visualización de pasos Map-Reduce, exportación a `.md` y guardado automático en **Notas** de la materia.
 - **Criterios de aceptación (como usuario)**:
-  - Puedo elegir una o varias fuentes largas de mi materia, pedir un **Resumen**, una **Guía de estudio** o **Preguntas de práctica**, y ver el avance etapa por etapa mientras se procesa cada fuente y se combina el resultado.
-  - Al finalizar, el reporte generado se guarda automáticamente como una **Nota** dentro de la materia, lista para leer en el preview, editar en Markdown o exportar.
+  - Puedo elegir una o varias fuentes de mi materia, pedir un **Resumen**, **Informe**, **Guía de estudio** o **Examen de práctica** e indicarle con un prompt propio cómo quiero el material.
+  - Al finalizar, el material generado se guarda automáticamente en la pestaña **Notas** de la materia (o manualmente), listo para leer, editar en Markdown o exportar a `.md`.
 
 ---
 
-## Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app`
+## Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app` (Próxima fase)
 
 ### Tarea 8.1: Atajos de teclado de macOS y paleta de búsqueda rápida (`Cmd+K`)
 - **Qué incluye**: Buscador global rápido con `Cmd+K` (para saltar a cualquier materia, nota, tarea o examen al instante) y atajos nativos (`Cmd+N` para nueva tarea/nota según contexto, `Cmd+1..4` para cambiar de sección, `Cmd+,` para Ajustes).

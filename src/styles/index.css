@@ -5,6 +5,7 @@
 @import './exams.css';
 @import './notes.css';
 @import './sources.css';
+@import './assistant.css';
 
 @layer reset {
   :where(

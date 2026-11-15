@@ -1,12 +1,12 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: **Fases 1 a 5 completadas en `main`; Fases 6 y 7 en curso (Etapa 0 completada en `main`, Etapa 1 en ramas de subagentes)**.
-- **Última actualización**: 2026-11-14
+- **Fase actual**: **Fases 1 a 7 completadas, integradas y verificadas en `main`**.
+- **Última actualización**: 2026-11-15
 - **Métricas de verificación automatizada en `main`**:
-  - **20 archivos de test** y **71 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
+  - **25 archivos de test** y **90 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción verificado** (`npm run build` previo al inicio de Etapa 0 de Fases 6 y 7).
+  - **Build de producción verificado** (`npm run build`).
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
 ## Avances Completados
@@ -76,27 +76,22 @@
   - Workspace `<SourcesWorkspace />` (`src/components/sources/SourcesWorkspace.tsx`, `src/styles/sources.css`) montado en la pestaña **Fuentes** de `src/components/courses/CourseDetailView.tsx`, con subida de archivos (`.pdf`, `.md`, `.txt`), modal para pegar texto directo, barra `<progress>` de indexación, buscador híbrido de fragmentos, reindexado, previsualización por páginas/fragmentos y eliminación en cascada, con fallback en `src/lib/api/mockSources.ts`.
   - Tests en `src/__tests__/sourcesRepoAndChunking.test.ts`, `src/__tests__/SourcesWorkspace.test.tsx` y `src/__tests__/Phase5Integration.test.tsx`.
 
+### Fase 6: Chat con Citas Verificables y Prompt Personalizado
+- [x] **Tarea 6.1 — Chat por materia basado en sus fuentes con citas verificables**:
+  - Migración SQLite `v5` (`electron/db/migrations.ts`) creando `chat_threads`, `chat_messages` y los índices `idx_chat_threads_course` / `idx_chat_messages_thread` con eliminación en cascada, más repositorio parametrizado (`electron/db/chatRepo.ts`) con titulado automático en base a la primera consulta.
+  - Cliente Ollama (`/api/chat` en `electron/services/ollamaClient.ts` y `generateEmbeddings` en `sourcesService.ts`) ejecutado estrictamente **bajo demanda** mediante `keep_alive: '0s'` para liberar memoria al finalizar sin mantener modelos residentes en segundo plano.
+  - Servicio RAG (`electron/services/ragService.ts`) e IPC (`electron/ipc/chatHandlers.ts`): recuperación híbrida Coseno + FTS5, soporte de instrucciones personalizadas (`customInstructions`), citas numeradas `[1]`, `[2]`, fallback local extractivo (`local-rag-extractive`) cuando Ollama no responde y guardado como **Nota** editable con sección `## Fuentes citadas`.
+  - Interfaz `<CourseChatPanel />` (`src/components/assistant/CourseChatPanel.tsx`), mock con estado en `src/lib/api/mockChat.ts`, diálogo modal nativo (`<dialog>` vía `.showModal()` y cierre limpio reseteando `returnValue`) para inspeccionar fragmento y página de cada cita, y envío seguro frente a composición IME.
+  - Tests en `src/__tests__/chatAndRag.test.ts` (5 tests) y `src/__tests__/CourseChatPanel.test.tsx` (4 tests).
+
+### Fase 7: Generador Map-Reduce de Resúmenes, Informes, Guías y Exámenes de Práctica
+- [x] **Tarea 7.1 — Generador de material de estudio y reportes con prompt personalizado**:
+  - Servicio Map-Reduce (`electron/services/reportService.ts`) e IPC (`electron/ipc/reportHandlers.ts`): selección por materia de fuentes `ready`, muestreo uniforme hasta 4500 caracteres por fuente en fase **Map** y síntesis final en fase **Reduce** vía `/api/chat` con `keep_alive: '0s'`.
+  - Soporte de cuatro formatos (**Resumen**, **Informe**, **Guía de estudio**, **Examen de práctica** con formato elegible **Desarrollo / Multiple Choice / Mixto** y clave de corrección al final), aplicación prioritaria de `customInstructions` en Map y Reduce, fallback local determinístico (`local-map-reduce-fallback`) y guardado automático opcional en **Notas** de la materia (`ai_summary`, `ai_study_guide`, `ai_practice_exam`).
+  - Interfaz `<CourseReportGenerator />` (`src/components/assistant/CourseReportGenerator.tsx`), mock en `src/lib/api/mockReports.ts`, `<fieldset>`/`<legend>` accesibles, barra `<progress>` indeterminada, vista previa GFM con badges Map-Reduce y exportación `.md`.
+  - Workspace unificado `<CourseAssistantWorkspace />` (`src/components/assistant/CourseAssistantWorkspace.tsx`, `src/styles/assistant.css`) integrado en la pestaña **Asistente IA** de `src/components/courses/CourseDetailView.tsx`.
+  - Tests en `src/__tests__/reportService.test.ts` (5 tests), `src/__tests__/CourseReportGenerator.test.tsx` (4 tests) y `src/__tests__/Phase6And7Integration.test.tsx`.
+
 ## Qué sigue
-- [ ] Retomar Fases 6 y 7: mergear ramas de Etapa 1, completar Etapa 2 (integración) y Etapa 3 (revisión con Argon).
 - [ ] Validación manual del Product Owner sobre las **Fases 6 y 7**.
-- [ ] Inicio de la **Fase 8: Cierre de Cuatrimestre, Empaquetado y Pulido**.
-
-## Checkpoint Actual — Fases 6 y 7 (Para retomar)
-
-### 1. Completado y commiteado en `main` (`9ddfdb0`) — Etapa 0
-- **Contratos TypeScript (Fase 6 y Fase 7)** en `src/types/domain.ts` y `electron/types.ts`: tipos de hilos/mensajes/citas RAG (`ChatCitation`, `ChatThread`, `ChatMessage`, `SendChatMessageInput`, `SaveChatMessageAsNoteInput`) y de generación Map-Reduce (`StudyReportType`, `PracticeExamFormat`, `StudyReportStepInfo`, `GenerateStudyReportInput`, `GenerateStudyReportResult`), más firmas en `CursadaIpcApi`.
-- **Migración SQLite `v5`** (`electron/db/migrations.ts`): tablas `chat_threads` y `chat_messages` con índices `idx_chat_threads_course` e `idx_chat_messages_thread`, verificadas en `src/__tests__/stage0-db-backups.test.ts`.
-- **Cliente Ollama bajo demanda** (`electron/services/ollamaClient.ts` y `electron/services/sourcesService.ts`): `generateChatCompletion` (`/api/chat`) y `generateEmbeddings` (`/api/embed`) con `keep_alive: '0s'` para que Ollama descargue el modelo inmediatamente después de generar y no permanezca activo en segundo plano.
-- **Puente IPC y cliente frontend**: canales expuestos en `electron/preload.ts`, métodos en `src/lib/api/client.ts` y cableado inicial en `src/lib/api/mockClient.ts` (junto con stubs en `src/lib/api/mockChat.ts` y `src/lib/api/mockReports.ts`).
-
-### 2. En progreso / ramas de Etapa 1 (Hydrogen en paralelo)
-> Nota: No se deben eliminar estas ramas ni sus worktrees antes de integrar su trabajo en `main`.
-- **Agente A (Fase 6 — Chat RAG con Citas)**: rama `subagent-Agent-A---Phase-6-RAG-Chat---Citations-self-7d18fe0e`
-  - Archivos asignados: `electron/db/chatRepo.ts`, `electron/services/ragService.ts`, `electron/ipc/chatHandlers.ts`, `src/lib/api/mockChat.ts`, `src/components/assistant/CourseChatPanel.tsx`, `src/__tests__/chatAndRag.test.ts`, `src/__tests__/CourseChatPanel.test.tsx`.
-- **Agente B (Fase 7 — Generador Map-Reduce con Prompt Personalizado)**: rama `subagent-Agent-B---Phase-7-Map-Reduce-Reports-self-6d03b1e2`
-  - Archivos asignados: `electron/services/reportService.ts`, `electron/ipc/reportHandlers.ts`, `src/lib/api/mockReports.ts`, `src/components/assistant/CourseReportGenerator.tsx`, `src/__tests__/reportService.test.ts`, `src/__tests__/CourseReportGenerator.test.tsx`.
-
-### 3. Pasos exactos para retomar en la próxima sesión
-1. Verificar el estado y los commits de las ramas `subagent-Agent-A---Phase-6-RAG-Chat---Citations-self-7d18fe0e` y `subagent-Agent-B---Phase-7-Map-Reduce-Reports-self-6d03b1e2` y hacer merge en `main`.
-2. Ejecutar **Etapa 2 (Integración)**: registrar `registerChatHandlers` y `registerReportHandlers` en `electron/ipc/handlers.ts`, crear `src/components/assistant/CourseAssistantWorkspace.tsx` y `src/styles/assistant.css`, conectar la pestaña `Asistente IA` en `src/components/courses/CourseDetailView.tsx` y crear `src/__tests__/Phase6And7Integration.test.tsx`.
-3. Ejecutar **Etapa 3 (Revisión con Argon)**: correr `npm run typecheck`, `npm test` y `npm run build`, actualizar documentación final (`PROGRESS.md`, `ROADMAP.md`, `ARCHITECTURE.md`) y entregar el resumen final junto con la checklist de validación manual.
+- [ ] Inicio de la **Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app`**.

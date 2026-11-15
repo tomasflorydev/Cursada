@@ -6,6 +6,7 @@ import {
   formatSchedulesSummary,
 } from '../../lib/dates';
 import type { CourseWithSchedules, ExamWithCourse } from '../../types/domain';
+import { CourseAssistantWorkspace } from '../assistant/CourseAssistantWorkspace';
 import { calculateAverageFromExams, ExamList } from '../exams/ExamList';
 import { ExportMarkdownButton } from '../export/ExportMarkdownButton';
 import { NotesWorkspace } from '../notes/NotesWorkspace';
@@ -356,15 +357,14 @@ export function CourseDetailView({
           id={`${baseId}-panel-asistente`}
           role="tabpanel"
           aria-labelledby={`${baseId}-tab-asistente`}
-          className="surface-panel course-tab-panel"
+          className="course-tab-panel"
+          data-testid="course-assistant-tab-panel"
         >
-          <div className="section-heading-bar">
-            <h2 className="section-title">Asistente IA de la materia</h2>
-          </div>
-          <p className="course-empty-text">
-            En las Fases 6 y 7 podrás conversar con el asistente local (Ollama) sobre las fuentes de{' '}
-            {course.name} con citas verificables y generar resúmenes, guías y exámenes de práctica.
-          </p>
+          <CourseAssistantWorkspace
+            courseId={course.id}
+            courseName={course.name}
+            onOpenNotesTab={() => setActiveTab('notas')}
+          />
         </section>
       ) : null}
     </div>

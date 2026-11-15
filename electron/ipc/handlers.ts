@@ -1,8 +1,10 @@
+import { registerChatHandlers } from './chatHandlers.js';
 import { registerCoursesHandlers } from './coursesHandlers.js';
 import { registerExamsHandlers } from './examsHandlers.js';
 import { registerExportHandlers } from './exportHandlers.js';
 import { registerNotesHandlers } from './notesHandlers.js';
 import { registerOllamaHandlers } from './ollamaHandlers.js';
+import { registerReportHandlers } from './reportHandlers.js';
 import { registerSourcesHandlers } from './sourcesHandlers.js';
 import { registerSystemHandlers } from './systemHandlers.js';
 import { registerTasksHandlers } from './tasksHandlers.js';
@@ -21,5 +23,7 @@ export function registerAllIpcHandlers(): void {
   registerExportHandlers();
   registerOllamaHandlers();
   registerSourcesHandlers();
+  registerChatHandlers();
+  registerReportHandlers();
   handlersRegistered = true;
 }

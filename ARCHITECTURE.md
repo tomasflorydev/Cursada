@@ -60,9 +60,10 @@ Toda la aplicación funciona **100% offline/local**:
 4. **Exámenes y calificaciones**:
    - Escala de **1 a 10**, categorizados en **Parcial, Recuperatorio, Final y TP evaluativo**.
    - La vista de cada materia calcula y muestra el **promedio** de las notas cargadas además de la nota individual de cada examen.
-5. **Notas y Apuntes (Markdown con Preview en vivo y FTS5)**:
-   - Editor basado en **CodeMirror 6** con selector segmentado de modos **Editar / Dividido / Lectura**.
-   - Vista previa formateada en tiempo real mediante **GFM** (`react-markdown` + `remark-gfm`) con soporte para tablas, listas de tareas (`- [ ]` / `- [x]`) y bloques de código.
+5. **Notas y Apuntes por Materia (Markdown con Preview en vivo y FTS5)**:
+   - Acceso contextualizado exclusivamente dentro de la pestaña **Notas** de cada materia (`<NotesWorkspace courseId />`), con vista a ancho completo y lista colapsable.
+   - Editor basado en **CodeMirror 6** con selector de modos **Editar / Lectura**.
+   - Vista previa formateada mediante **GFM** (`react-markdown` + `remark-gfm`) con soporte para tablas, listas de tareas (`- [ ]` / `- [x]`) y bloques de código.
    - Guardado automático continuo con *debounce* e indicador visual de estado (*Guardando...* / *Guardado*).
    - Fijado de notas importantes en la parte superior (`is_pinned`).
    - Búsqueda instantánea FTS5 sin distinción de tildes ni mayúsculas (`unicode61 remove_diacritics 2`), sanitizando operadores para evitar errores de sintaxis en consultas libres.
@@ -73,9 +74,11 @@ Toda la aplicación funciona **100% offline/local**:
      2. **Materia completa**: Carpeta de la materia con `00-Resumen-Materia.md` (ficha general, horarios de cursada, tareas pendientes/completadas, exámenes rendidos y promedio) más subcarpeta `notas/` con todos sus apuntes.
      3. **Toda la cursada**: Carpeta raíz con `README.md` índice navegable y subcarpetas individuales para cada materia.
    - Sanitización estricta de nombres de archivos para prevenir *path traversal* (`..`) y resolución de nombres duplicados (`-2`, `-3`).
-7. **Fuentes para IA y Reportes**:
-   - Soporta archivos **`.pdf`, `.md`, `.txt`** y además **pegar texto directo** como fuente desde la interfaz.
-   - En los reportes de **Preguntas de práctica para examen**, el usuario puede **elegir el formato** antes de generarlo (Preguntas a desarrollar, Multiple choice o Mixto).
+7. **Fuentes para IA, Chat RAG y Generador Map-Reduce bajo demanda**:
+   - Soporta archivos **`.pdf`, `.md`, `.txt`** y **pegar texto directo** como fuente desde la pestaña **Fuentes**.
+   - **Ejecución estrictamente bajo demanda en Ollama**: Todas las llamadas a `/api/embed` y `/api/chat` en `ollamaClient.ts`, `sourcesService.ts`, `ragService.ts` y `reportService.ts` envían `keep_alive: '0s'` para que Ollama libere el modelo de memoria inmediatamente después de generar cada respuesta o embedding, evitando consumo en segundo plano.
+   - **Chat RAG con citas verificables** (`ragService.ts`, migración SQLite `v5` con `chat_threads` y `chat_messages`): recupera los fragmentos más relevantes vía búsqueda híbrida Coseno + FTS5, acepta instrucciones personalizadas (`customInstructions`), arma citas numeradas `[1]`, `[2]` clicables mediante `<dialog>` nativo, cuenta con fallback local extractivo (`local-rag-extractive`) y permite guardar respuestas como **Nota** con sección `## Fuentes citadas`.
+   - **Generador de material de estudio Map-Reduce** (`reportService.ts`): soporta **Resumen** (`summary`), **Informe** (`report`), **Guía de estudio** (`study_guide`) y **Examen de práctica** (`practice_exam`) con formato elegible (`develop`, `multiple_choice`, `mixed`) y clave de corrección. Ejecuta una etapa *Map* por cada fuente seleccionada (muestreando uniformemente hasta 4500 caracteres) y una etapa *Reduce* final respetando prioritariamente el prompt libre del usuario (`customInstructions`), con fallback local determinístico (`local-map-reduce-fallback`) y guardado automático opcional en **Notas**.
 
 ### 2.3. Base de Datos: SQLite + FTS5 + Búsqueda Vectorial Híbrida
 - **FTS5 nativo con soporte para español**: Con el tokenizador `unicode61 remove_diacritics 2`, buscar `"algebra"`, `"limite"` o `"programacion"` encuentra `"Álgebra"`, `"Límite"` o `"Programación"`.
@@ -287,8 +290,8 @@ Cursada/
 │   │   ├── exportService.ts         # Exportación completa o por materia/nota a carpetas Markdown (.md)
 │   │   ├── chunkingService.ts       # División de fuentes en fragmentos con solapamiento y página
 │   │   ├── sourcesService.ts        # Carga/extracción de fuentes (.pdf/.md/.txt/texto), embeddings y reindexado
-│   │   ├── ragService.ts            # Búsqueda híbrida (Coseno + FTS5) y armado de contexto citado
-│   │   ├── reportService.ts         # Generación Map-Reduce de resúmenes, guías y exámenes (con formato elegible)
+│   │   ├── ragService.ts            # Búsqueda híbrida (Coseno + FTS5), prompt citado, keep_alive '0s' y guardado como nota
+│   │   ├── reportService.ts         # Generación Map-Reduce de resúmenes, informes, guías y exámenes (keep_alive '0s')
 │   │   └── ollamaClient.ts          # Cliente HTTP hacia localhost:11434 (/api/tags, /api/embed, /api/chat)
 │   └── ipc/
 │       ├── handlers.ts              # Registro central de dominios IPC
@@ -299,18 +302,20 @@ Cursada/
 │       ├── notesHandlers.ts         # Canales IPC de notas y búsqueda FTS5
 │       ├── exportHandlers.ts        # Canales IPC de exportación a Markdown con selector nativo de carpeta
 │       ├── ollamaHandlers.ts        # Canales IPC de estado, modelos y ajustes de Ollama
-│       └── sourcesHandlers.ts       # Canales IPC de importación, reindexado y búsqueda de fuentes
+│       ├── sourcesHandlers.ts       # Canales IPC de importación, reindexado y búsqueda de fuentes
+│       ├── chatHandlers.ts          # Canales IPC de hilos y mensajes RAG con citas (chat:*)
+│       └── reportHandlers.ts        # Canal IPC de generación Map-Reduce de material (reports:generate)
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React
     ├── App.tsx                      # Layout principal, contrato de navegación y sincronización de barra lateral
-    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio)
+    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio, incl. assistant.css)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (mockCourses.ts, mockTasks.ts, mockExams.ts, mockNotes.ts, mockExport.ts, mockOllama.ts, mockSources.ts, mockClient.ts)
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockChat.ts y mockReports.ts)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
     │   └── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
-    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/, settings/, sources/)
-    ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Notas, Materias, Ajustes)
+    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/, settings/, sources/, assistant/)
+    ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Materias, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```
 
