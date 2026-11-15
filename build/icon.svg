@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="cursada-bg" x1="120" y1="80" x2="904" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b5bdb" />
+      <stop offset="100%" stop-color="#2b44b8" />
+    </linearGradient>
+    <radialGradient id="cursada-sheen" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(320 240) rotate(45) scale(640)">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="cursada-bookmark" x1="712" y1="80" x2="712" y2="332" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#dbe4ff" />
+      <stop offset="100%" stop-color="#91a7ff" />
+    </linearGradient>
+  </defs>
+
+  <!-- macOS Squircle Base -->
+  <rect x="80" y="80" width="864" height="864" rx="196" fill="url(#cursada-bg)" />
+  <rect x="80" y="80" width="864" height="864" rx="196" fill="url(#cursada-sheen)" />
+  <rect x="84" y="84" width="856" height="856" rx="192" stroke="#ffffff" stroke-opacity="0.18" stroke-width="8" />
+
+  <!-- Subtle Academic Bookmark Accent -->
+  <path
+    d="M668 80 H756 V316 C756 325 745.5 330 738.5 324 L712 301 L685.5 324 C678.5 330 668 325 668 316 V80 Z"
+    fill="url(#cursada-bookmark)"
+    fill-opacity="0.9"
+  />
+
+  <!-- Stylized Geometric Letter "C" -->
+  <path
+    d="M653.1 364.9 A208 208 0 1 0 653.1 659.1"
+    stroke="#ffffff"
+    stroke-width="104"
+    stroke-linecap="round"
+  />
+
+  <!-- Subtle Dot Accent in Opening -->
+  <circle cx="672" cy="512" r="34" fill="#bac8ff" />
+</svg>
