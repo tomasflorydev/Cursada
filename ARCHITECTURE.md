@@ -311,7 +311,7 @@ Cursada/
     ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio, incl. assistant.css)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockChat.ts y mockReports.ts)
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockChat.ts y mockReports.ts con llamada directa a Ollama /api/chat en modo navegador)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
     │   └── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
     ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/, settings/, sources/, assistant/)

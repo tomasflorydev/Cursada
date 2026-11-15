@@ -91,6 +91,9 @@
   - Interfaz `<CourseReportGenerator />` (`src/components/assistant/CourseReportGenerator.tsx`), mock en `src/lib/api/mockReports.ts`, `<fieldset>`/`<legend>` accesibles, barra `<progress>` indeterminada, vista previa GFM con badges Map-Reduce y exportación `.md`.
   - Workspace unificado `<CourseAssistantWorkspace />` (`src/components/assistant/CourseAssistantWorkspace.tsx`, `src/styles/assistant.css`) integrado en la pestaña **Asistente IA** de `src/components/courses/CourseDetailView.tsx`.
   - Tests en `src/__tests__/reportService.test.ts` (5 tests), `src/__tests__/CourseReportGenerator.test.tsx` (4 tests) y `src/__tests__/Phase6And7Integration.test.tsx`.
+- [x] **Ajuste post-Fase 7 — Ollama en vivo en modo web y apertura automática en `dev`**:
+  - Helper compartido `tryBrowserOllamaChatCompletion` en `src/lib/api/mockOllama.ts` conectado desde `src/lib/api/mockChat.ts` y `src/lib/api/mockReports.ts` (`POST /api/chat` con `stream: false` y `keep_alive: '0s'`), manteniendo fallback determinístico en Vitest o si Ollama no responde.
+  - Script `"dev"` en `package.json` actualizado a `vite --port 5173 --open`.
 
 ## Qué sigue
 - [ ] Validación manual del Product Owner sobre las **Fases 6 y 7**.
