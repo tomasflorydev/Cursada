@@ -6,7 +6,7 @@
 - **Métricas de verificación automatizada en `main`**:
   - **29 archivos de test** y **109 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción y paquete nativo macOS verificados** (`npm run build` y `npm run package` generando `release/Cursada.app`).
+  - **Build de producción y paquete nativo macOS verificados** (`npm run build` y `npm run package` generando `release/Cursada.app` sobre Electron `44.11.0` con Node `24.22.2` y smoke test directo positivo).
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
 ## Avances Completados
@@ -105,6 +105,9 @@
   - Motor de evaluación de recordatorios (`electron/services/notificationService.ts`) e IPC (`electron/ipc/notificationHandlers.ts`) para clases próximas, entregas de hoy y exámenes cercanos con deduplicación por sesión, planificador cada 5 minutos en `electron/main.ts`, fallback completo en `src/lib/api/mockNotifications.ts` y panel `<NotificationSettingsSection />` (`src/components/settings/NotificationSettingsSection.tsx`) integrado en `src/pages/SettingsPage.tsx`.
   - Ícono vectorial y rasterizado de macOS (`build/icon.svg`, `build/icon.png`, `build/icon.icns`) y empaquetador ESM (`scripts/package-macos-app.mjs`, comando `npm run package`) generando `release/Cursada.app` con `Info.plist` actualizado (`com.cursada.app`) y firma ad-hoc.
   - Tests en `src/__tests__/notificationsAndPackaging.test.ts` (5 tests), `src/__tests__/NotificationSettingsUI.test.tsx` (2 tests) y `src/__tests__/Phase8Integration.test.tsx` (3 tests).
+- [x] **Ajustes post-Fase 8 — Runtime nativo `node:sqlite` en Electron y arranque del `.app` empaquetado**:
+  - Actualización de `electron` a `44.11.0` (Node.js `24.22.2` embebido) en `package.json` y `package-lock.json` (`5cc9887`) para contar con `node:sqlite` (`DatabaseSync`) dentro del proceso principal empaquetado.
+  - Detección explícita de ejecución empaquetada en `electron/main.ts` (`app.isPackaged`, ruta `Contents/Resources/app` o ausencia de `src/`) para cargar `dist/index.html` sin depender de Vite (`localhost:5173`), más listeners de diagnóstico (`preload-error`, `did-fail-load`) y verificación por smoke test directo sobre `release/Cursada.app` (`dec38fc`).
 
 ## Qué sigue
 - [ ] Validación manual del Product Owner sobre las **Fases 6, 7 y 8** (incluyendo prueba de `release/Cursada.app` en `/Applications`).

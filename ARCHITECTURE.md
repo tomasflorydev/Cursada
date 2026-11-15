@@ -44,10 +44,10 @@ Toda la aplicación funciona **100% offline/local**:
 ## 2. Decisiones Técnicas y de Producto Acordadas
 
 ### 2.1. Shell de Escritorio: Electron + TypeScript + `node:sqlite`
-- **Decisión confirmada**: **Electron + React + Vite + TypeScript + `node:sqlite` (`DatabaseSync`)**.
+- **Decisión confirmada**: **Electron (`44.11.0`, Node.js `24.22.2` embebido) + React + Vite + TypeScript + `node:sqlite` (`DatabaseSync`)**.
 - **Por qué**:
   - Todo el código (frontend, proceso principal de Electron, repositorios SQLite, motor RAG y suite de tests en Vitest) está escrito 100% en **TypeScript**, con compilación instantánea (< 2s) y sin requerir toolchain de Rust.
-  - Usamos el módulo nativo integrado `node:sqlite` (`DatabaseSync`), que ya incluye **FTS5** (`unicode61 remove_diacritics 2`), **`VACUUM INTO`** para backups en caliente y soporte de `Uint8Array` para vectores, evitando problemas de recompilación de addons C++ (`node-gyp` / `electron-rebuild`) entre Vitest y Electron.
+  - Usamos el módulo nativo integrado `node:sqlite` (`DatabaseSync`) habilitado nativamente en Node `24.22.2` dentro de Electron `44.11.0`, que ya incluye **FTS5** (`unicode61 remove_diacritics 2`), **`VACUUM INTO`** para backups en caliente y soporte de `Uint8Array` para vectores, evitando problemas de recompilación de addons C++ (`node-gyp` / `electron-rebuild`) entre Vitest y Electron.
 
 ### 2.2. Decisiones de Producto Confirmadas por el Product Owner
 1. **Cuatrimestres e historial**: La barra lateral muestra las materias del **cuatrimestre actual**, mientras que las materias de cuatrimestres anteriores quedan agrupadas en una sección desplegable de **Archivo / Cuatrimestres anteriores**.
@@ -82,7 +82,7 @@ Toda la aplicación funciona **100% offline/local**:
 8. **Atajos de macOS, Paleta `Cmd+K`, Notificaciones Nativas y Empaquetado `Cursada.app`**:
    - **Paleta rápida (`Cmd+K`) y navegación profunda** (`src/lib/shortcuts/commandPaletteSearch.ts`, `src/components/command-palette/CommandPalette.tsx`): indexado en memoria con normalización sin tildes ni mayúsculas de materias, notas, tareas, exámenes y acciones rápidas, con salto directo al ítem (`CourseDetailView` + pestaña + nota seleccionada) y atajos globales (`Cmd+1..5`, `Cmd+,`, `Cmd+N` contextual).
    - **Recordatorios locales y notificaciones nativas** (`electron/db/notificationSettingsRepo.ts`, `electron/services/notificationService.ts`, `electron/ipc/notificationHandlers.ts`, `src/components/settings/NotificationSettingsSection.tsx`): preferencias persistidas en `app_settings`, evaluación periódica en `main.ts` cada 5 minutos para clases próximas, entregas del día y exámenes cercanos (con deduplicación de sesión) y envío nativo vía `Notification` de Electron o prueba manual desde **Ajustes**.
-   - **Ícono y empaquetado macOS** (`build/icon.svg`, `build/icon.png`, `build/icon.icns`, `scripts/package-macos-app.mjs`): script ESM puro que genera el ícono de Cursada en formato `.png` / `.icns` y arma `release/Cursada.app` (`com.cursada.app`) a partir de `dist/`, `dist-electron/` y `Electron.app` con actualización de `Info.plist` (`plutil`) y firma ad-hoc (`codesign`).
+   - **Ícono y empaquetado macOS** (`build/icon.svg`, `build/icon.png`, `build/icon.icns`, `scripts/package-macos-app.mjs`, `electron/main.ts`): script ESM puro que genera el ícono de Cursada en formato `.png` / `.icns` y arma `release/Cursada.app` (`com.cursada.app`) a partir de `dist/`, `dist-electron/` y `Electron.app` (en `Contents/Resources/app/`, sin `.asar`), con actualización de `Info.plist` (`plutil`) y firma ad-hoc (`codesign`). Dado que el bundle se copia sin `.asar`, `electron/main.ts` detecta el entorno empaquetado verificando `app.isPackaged`, la ruta `Contents/Resources/app` o la ausencia de `src/` para cargar `dist/index.html` directamente.
 
 ### 2.3. Base de Datos: SQLite + FTS5 + Búsqueda Vectorial Híbrida
 - **FTS5 nativo con soporte para español**: Con el tokenizador `unicode61 remove_diacritics 2`, buscar `"algebra"`, `"limite"` o `"programacion"` encuentra `"Álgebra"`, `"Límite"` o `"Programación"`.
