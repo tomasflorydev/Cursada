@@ -11,7 +11,11 @@ import type {
 } from '../../types/domain';
 import { getMockCourseByIdSync } from './mockCourses';
 import { mockCreateNote } from './mockNotes';
-import { mockGetAiSettings } from './mockOllama';
+import {
+  mockGetAiSettings,
+  tryBrowserOllamaChatCompletion,
+  type BrowserOllamaChatMessage,
+} from './mockOllama';
 import {
   mockGetSourceWithChunks,
   mockListSources,
@@ -330,12 +334,56 @@ export async function mockSendChatMessage(
 
   const citations = await retrieveMockCitations(course.id, content);
   const settings = await mockGetAiSettings();
-  const assistantContent = buildMockAssistantContent({
-    courseName: course.name,
-    question: content,
-    customInstructions,
-    citations,
+
+  const historyMessages: BrowserOllamaChatMessage[] = store.messages
+    .filter((message) => message.threadId === thread.id && message.id !== userMessage.id)
+    .slice(-6)
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+
+  const contextBlock =
+    citations.length > 0
+      ? citations
+          .map(
+            (citation, index) =>
+              `[${index + 1}] Fuente: "${citation.sourceTitle}" (${citation.sourceType})\n${citation.excerpt}`
+          )
+          .join('\n\n')
+      : 'No se encontraron fragmentos relevantes en las fuentes subidas de esta materia.';
+
+  const systemPrompt = [
+    `Sos un asistente de estudio universitario para la materia "${course.name}".`,
+    'Respondé siempre en español claro y conciso.',
+    'Basate en los fragmentos de fuentes provistos cuando existan y citalos como [1], [2], etc. Si la información no está en las fuentes, aclaralo sin inventar datos.',
+    customInstructions ? `Instrucciones del estudiante: ${customInstructions}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const liveReply = await tryBrowserOllamaChatCompletion({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...historyMessages,
+      {
+        role: 'user',
+        content: `Fragmentos relevantes:\n${contextBlock}\n\nConsulta:\n${content}`,
+      },
+    ],
   });
+
+  const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
+  const assistantContent =
+    liveReply?.content ??
+    buildMockAssistantContent({
+      courseName: course.name,
+      question: content,
+      customInstructions,
+      citations,
+    });
+  const modelUsed =
+    liveReply?.modelUsed ?? (isVitest ? settings.chatModel : 'local-rag-extractive');
 
   const assistantNow = nextIsoTimestamp();
   const assistantMessage: ChatMessage = {
@@ -344,7 +392,7 @@ export async function mockSendChatMessage(
     role: 'assistant',
     content: assistantContent,
     citations,
-    modelUsed: settings.chatModel,
+    modelUsed,
     createdAt: assistantNow,
   };
   store.messages.push(assistantMessage);

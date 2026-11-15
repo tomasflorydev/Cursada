@@ -213,3 +213,71 @@ export async function mockCheckOllamaStatus(
     checkedAt: new Date().toISOString(),
   };
 }
+
+export interface BrowserOllamaChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface BrowserOllamaChatResult {
+  content: string;
+  modelUsed: string;
+}
+
+/**
+ * Calls a local Ollama server directly from browser/web mode using on-demand loading
+ * (`keep_alive: '0s'`). Returns null in Vitest or when Ollama is unreachable so callers
+ * can fall back to deterministic local templates.
+ */
+export async function tryBrowserOllamaChatCompletion(options: {
+  messages: BrowserOllamaChatMessage[];
+  timeoutMs?: number;
+}): Promise<BrowserOllamaChatResult | null> {
+  if (
+    typeof fetch !== 'function' ||
+    (typeof process !== 'undefined' && Boolean(process.env?.VITEST)) ||
+    connectionStatus !== 'connected'
+  ) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 60_000);
+
+  try {
+    const response = await fetch(`${aiSettingsStore.baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: aiSettingsStore.chatModel,
+        messages: options.messages,
+        stream: false,
+        keep_alive: '0s',
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as {
+      model?: string;
+      message?: { content?: string };
+      response?: string;
+    };
+    const content = (data.message?.content ?? data.response ?? '').trim();
+    if (!content) {
+      return null;
+    }
+
+    return {
+      content,
+      modelUsed: data.model?.trim() || aiSettingsStore.chatModel,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

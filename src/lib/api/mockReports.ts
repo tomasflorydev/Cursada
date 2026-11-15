@@ -11,7 +11,11 @@ import type {
 } from '../../types/domain';
 import { mockGetCourse } from './mockCourses';
 import { mockCreateNote } from './mockNotes';
-import { mockCheckOllamaStatus, mockGetAiSettings } from './mockOllama';
+import {
+  mockCheckOllamaStatus,
+  mockGetAiSettings,
+  tryBrowserOllamaChatCompletion,
+} from './mockOllama';
 import { mockGetSourceWithChunks, mockListSources } from './mockSources';
 
 const VALID_REPORT_TYPES = new Set<StudyReportType>([
@@ -487,25 +491,120 @@ export async function mockGenerateStudyReport(
     mockGetAiSettings(),
     mockCheckOllamaStatus(),
   ]);
-  const modelUsed =
-    health.status === 'connected'
-      ? aiSettings.chatModel
-      : 'local-map-reduce-fallback';
+  const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
 
   const customInstructions = (input.customInstructions ?? '').trim();
   const title =
     input.title?.trim() ||
     `${DEFAULT_TITLE_PREFIXES[input.reportType]} — ${course.name}`;
 
-  const content = buildMockReportMarkdown({
-    title,
-    courseName: course.name,
-    courseTerm: course.term,
-    reportType: input.reportType,
-    examFormat: resolvedExamFormat,
-    customInstructions,
-    sources: selectedSourcesWithChunks,
-  });
+  let liveMarkdown: string | null = null;
+  let liveModelUsed: string | null = null;
+
+  if (health.status === 'connected' && !isVitest) {
+    const mappedSummaries: string[] = [];
+    let mapFailed = false;
+
+    for (const src of selectedSourcesWithChunks) {
+      const sourceText = src.chunks
+        .map((chunk) => chunk.content.trim())
+        .filter(Boolean)
+        .join('\n\n')
+        .slice(0, 6000);
+
+      if (!sourceText) {
+        mappedSummaries.push(`### ${src.title}\nSin contenido indexado disponible.`);
+        continue;
+      }
+
+      const mapReply = await tryBrowserOllamaChatCompletion({
+        timeoutMs: 90_000,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Sos un asistente académico universitario. Extraé los conceptos clave, definiciones, fórmulas, ejemplos y temas evaluables del material en español, de forma estructurada y fiel al texto.',
+          },
+          {
+            role: 'user',
+            content: [
+              `Materia: ${course.name}`,
+              `Tipo de material objetivo: ${REPORT_TYPE_LABELS[input.reportType]}`,
+              customInstructions ? `Instrucciones del estudiante: ${customInstructions}` : '',
+              `Fuente: "${src.title}" (${src.sourceType})`,
+              `\nContenido:\n${sourceText}`,
+            ]
+              .filter(Boolean)
+              .join('\n'),
+          },
+        ],
+      });
+
+      if (!mapReply) {
+        mapFailed = true;
+        break;
+      }
+      mappedSummaries.push(`### ${src.title}\n${mapReply.content}`);
+    }
+
+    if (!mapFailed && mappedSummaries.length > 0) {
+      const examConstraint =
+        input.reportType === 'practice_exam'
+          ? `Formato de parcial requerido: ${resolvedExamFormat}. Incluí obligatoriamente una sección final llamada "## Clave de respuestas / corrección" con las respuestas o criterios de corrección.`
+          : '';
+
+      const reduceReply = await tryBrowserOllamaChatCompletion({
+        timeoutMs: 120_000,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              `Sos un docente y asistente de estudio universitario para la materia "${course.name}".`,
+              'Generá un documento en Markdown limpio, claro y bien estructurado en español.',
+              'Usá únicamente la información sintetizada de las fuentes provistas.',
+              examConstraint,
+            ]
+              .filter(Boolean)
+              .join(' '),
+          },
+          {
+            role: 'user',
+            content: [
+              `Título: ${title}`,
+              `Tipo de material: ${REPORT_TYPE_LABELS[input.reportType]}`,
+              customInstructions ? `Instrucciones del estudiante: ${customInstructions}` : '',
+              `\nSíntesis por fuente:\n${mappedSummaries.join('\n\n')}`,
+            ]
+              .filter(Boolean)
+              .join('\n'),
+          },
+        ],
+      });
+
+      if (reduceReply) {
+        liveMarkdown = reduceReply.content;
+        liveModelUsed = reduceReply.modelUsed;
+      }
+    }
+  }
+
+  const modelUsed =
+    liveModelUsed ??
+    (isVitest && health.status === 'connected'
+      ? aiSettings.chatModel
+      : 'local-map-reduce-fallback');
+
+  const content =
+    liveMarkdown ??
+    buildMockReportMarkdown({
+      title,
+      courseName: course.name,
+      courseTerm: course.term,
+      reportType: input.reportType,
+      examFormat: resolvedExamFormat,
+      customInstructions,
+      sources: selectedSourcesWithChunks,
+    });
 
   let note: NoteWithCourse | null = null;
   if (input.autoSaveAsNote !== false) {
