@@ -441,3 +441,51 @@ export interface GenerateStudyReportResult {
   modelUsed: string;
   note: NoteWithCourse | null;
 }
+
+// Phase 8: Native macOS Notifications & Configurable Reminders (Agent B)
+export interface NotificationSettings {
+  enabled: boolean;
+  upcomingClassesEnabled: boolean;
+  classLeadMinutes: number; // 5..180, default 15
+  tasksDueTodayEnabled: boolean;
+  upcomingExamsEnabled: boolean;
+  examLeadDays: number;     // 1..30, default 2
+}
+
+export interface UpdateNotificationSettingsInput {
+  enabled?: boolean;
+  upcomingClassesEnabled?: boolean;
+  classLeadMinutes?: number;
+  tasksDueTodayEnabled?: boolean;
+  upcomingExamsEnabled?: boolean;
+  examLeadDays?: number;
+}
+
+export type ReminderKind = 'upcoming_class' | 'task_due_today' | 'upcoming_exam';
+
+export interface ReminderCandidate {
+  id: string;
+  kind: ReminderKind;
+  title: string;
+  body: string;
+  courseId: string;
+  courseName: string;
+  referenceIso: string;
+}
+
+export interface NotificationDispatchResult {
+  supported: boolean;
+  dispatched: boolean;
+  title: string;
+  body: string;
+  dispatchedAt: string;
+  mode: 'electron-native' | 'web-notification' | 'simulated';
+}
+
+export interface CheckRemindersResult {
+  evaluatedAt: string;
+  settings: NotificationSettings;
+  candidates: ReminderCandidate[];
+  dispatchedCount: number;
+  results: NotificationDispatchResult[];
+}

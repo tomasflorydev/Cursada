@@ -3,6 +3,7 @@ import type {
   BackupInfo,
   ChatThread,
   ChatThreadWithMessages,
+  CheckRemindersResult,
   CourseDeleteImpact,
   CourseStatus,
   CourseWithSchedules,
@@ -23,6 +24,8 @@ import type {
   ImportSourceFileResult,
   NoteFilters,
   NoteWithCourse,
+  NotificationDispatchResult,
+  NotificationSettings,
   OllamaHealthCheckResult,
   SaveChatMessageAsNoteInput,
   SearchSourceChunksInput,
@@ -37,6 +40,7 @@ import type {
   UpdateCourseInput,
   UpdateExamInput,
   UpdateNoteInput,
+  UpdateNotificationSettingsInput,
   UpdateTaskInput,
 } from '../../types/domain';
 import { mockClient } from './mockClient';
@@ -370,5 +374,35 @@ export const cursadaClient: CursadaIpcApi = {
       : await mockClient.generateStudyReport(input);
     notifyCursadaDataChanged();
     return result;
+  },
+
+  // Native Notifications & Reminders (Phase 8 - Agent B)
+  async getNotificationSettings(): Promise<NotificationSettings> {
+    const fn = getBridge()?.getNotificationSettings;
+    return fn ? fn() : mockClient.getNotificationSettings();
+  },
+
+  async updateNotificationSettings(
+    input: UpdateNotificationSettingsInput
+  ): Promise<NotificationSettings> {
+    const fn = getBridge()?.updateNotificationSettings;
+    const updated = fn
+      ? await fn(input)
+      : await mockClient.updateNotificationSettings(input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async sendTestNotification(): Promise<NotificationDispatchResult> {
+    const fn = getBridge()?.sendTestNotification;
+    return fn ? fn() : mockClient.sendTestNotification();
+  },
+
+  async checkDueReminders(opts?: {
+    referenceIso?: string;
+    dispatch?: boolean;
+  }): Promise<CheckRemindersResult> {
+    const fn = getBridge()?.checkDueReminders;
+    return fn ? fn(opts) : mockClient.checkDueReminders(opts);
   },
 };

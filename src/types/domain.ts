@@ -443,6 +443,98 @@ export interface GenerateStudyReportResult {
   note: NoteWithCourse | null;
 }
 
+// Phase 8: Command Palette (Cmd+K) & Global Shortcuts (Agent A)
+export type CourseTabId =
+  | 'resumen'
+  | 'tareas'
+  | 'examenes'
+  | 'notas'
+  | 'fuentes'
+  | 'asistente';
+
+export type CommandPaletteItemKind =
+  | 'course'
+  | 'note'
+  | 'task'
+  | 'exam'
+  | 'action';
+
+export type CommandPaletteTarget =
+  | {
+      type: 'section';
+      section: 'inicio' | 'calendario' | 'tareas' | 'examenes' | 'materias' | 'ajustes';
+      triggerCreate?: boolean;
+    }
+  | {
+      type: 'course';
+      courseId: string;
+      tab?: CourseTabId;
+      noteId?: string;
+      triggerCreate?: boolean;
+    };
+
+export interface CommandPaletteItem {
+  id: string;
+  kind: CommandPaletteItemKind;
+  title: string;
+  subtitle: string;
+  badge?: string;
+  courseId?: string;
+  courseName?: string;
+  courseColor?: CourseColor;
+  shortcutHint?: string;
+  keywords?: string;
+  target: CommandPaletteTarget;
+}
+
+// Phase 8: Native macOS Notifications & Configurable Reminders (Agent B)
+export interface NotificationSettings {
+  enabled: boolean;
+  upcomingClassesEnabled: boolean;
+  classLeadMinutes: number; // 5..180, default 15
+  tasksDueTodayEnabled: boolean;
+  upcomingExamsEnabled: boolean;
+  examLeadDays: number;     // 1..30, default 2
+}
+
+export interface UpdateNotificationSettingsInput {
+  enabled?: boolean;
+  upcomingClassesEnabled?: boolean;
+  classLeadMinutes?: number;
+  tasksDueTodayEnabled?: boolean;
+  upcomingExamsEnabled?: boolean;
+  examLeadDays?: number;
+}
+
+export type ReminderKind = 'upcoming_class' | 'task_due_today' | 'upcoming_exam';
+
+export interface ReminderCandidate {
+  id: string;
+  kind: ReminderKind;
+  title: string;
+  body: string;
+  courseId: string;
+  courseName: string;
+  referenceIso: string;
+}
+
+export interface NotificationDispatchResult {
+  supported: boolean;
+  dispatched: boolean;
+  title: string;
+  body: string;
+  dispatchedAt: string;
+  mode: 'electron-native' | 'web-notification' | 'simulated';
+}
+
+export interface CheckRemindersResult {
+  evaluatedAt: string;
+  settings: NotificationSettings;
+  candidates: ReminderCandidate[];
+  dispatchedCount: number;
+  results: NotificationDispatchResult[];
+}
+
 /**
  * Shared navigation contract injected by App.tsx into domain views.
  * - `onSelectCourse(courseId)`: Navigates to the 'materias' section with `courseId` selected
@@ -510,6 +602,16 @@ export interface CursadaIpcApi {
   saveChatMessageAsNote: (input: SaveChatMessageAsNoteInput) => Promise<NoteWithCourse>;
   // AI Study Reports & Material Generator (Phase 7 - Agent B)
   generateStudyReport: (input: GenerateStudyReportInput) => Promise<GenerateStudyReportResult>;
+  // Native Notifications & Reminders (Phase 8 - Agent B)
+  getNotificationSettings: () => Promise<NotificationSettings>;
+  updateNotificationSettings: (
+    input: UpdateNotificationSettingsInput
+  ) => Promise<NotificationSettings>;
+  sendTestNotification: () => Promise<NotificationDispatchResult>;
+  checkDueReminders: (opts?: {
+    referenceIso?: string;
+    dispatch?: boolean;
+  }) => Promise<CheckRemindersResult>;
 }
 
 declare global {

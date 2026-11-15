@@ -31,6 +31,13 @@ import {
   resetMockNotes,
 } from './mockNotes';
 import {
+  mockCheckDueReminders,
+  mockGetNotificationSettings,
+  mockSendTestNotification,
+  mockUpdateNotificationSettings,
+  resetMockNotifications,
+} from './mockNotifications';
+import {
   mockCheckOllamaStatus,
   mockGetAiSettings,
   mockUpdateAiSettings,
@@ -125,6 +132,7 @@ export function resetAllMocks(): void {
   resetMockOllama();
   resetMockSources();
   resetMockChat();
+  resetMockNotifications();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
 }
@@ -173,4 +181,8 @@ export const mockClient: CursadaIpcApi = {
   sendChatMessage: mockSendChatMessage,
   saveChatMessageAsNote: mockSaveChatMessageAsNote,
   generateStudyReport: mockGenerateStudyReport,
+  getNotificationSettings: mockGetNotificationSettings,
+  updateNotificationSettings: mockUpdateNotificationSettings,
+  sendTestNotification: mockSendTestNotification,
+  checkDueReminders: mockCheckDueReminders,
 };

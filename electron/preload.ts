@@ -20,6 +20,7 @@ import type {
   UpdateCourseInput,
   UpdateExamInput,
   UpdateNoteInput,
+  UpdateNotificationSettingsInput,
   UpdateTaskInput,
 } from './types.js';
 
@@ -97,4 +98,11 @@ contextBridge.exposeInMainWorld('cursadaApi', {
   // AI Study Reports & Material Generator (Phase 7)
   generateStudyReport: (input: GenerateStudyReportInput) =>
     ipcRenderer.invoke('reports:generate', input),
+  // Native Notifications & Reminders (Phase 8)
+  getNotificationSettings: () => ipcRenderer.invoke('notifications:getSettings'),
+  updateNotificationSettings: (input: UpdateNotificationSettingsInput) =>
+    ipcRenderer.invoke('notifications:updateSettings', input),
+  sendTestNotification: () => ipcRenderer.invoke('notifications:sendTest'),
+  checkDueReminders: (opts?: { referenceIso?: string; dispatch?: boolean }) =>
+    ipcRenderer.invoke('notifications:checkReminders', opts),
 });
