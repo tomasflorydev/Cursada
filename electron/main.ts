@@ -48,19 +48,50 @@ function createMainWindow(): void {
     },
   });
 
+  const isPackagedBundle =
+    app.isPackaged ||
+    __dirname.includes(`${path.sep}Contents${path.sep}Resources${path.sep}app`) ||
+    !fs.existsSync(path.join(__dirname, '../src'));
+
   const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
 
-  if (!app.isPackaged && !process.env.CURSADA_LOAD_DIST) {
+  if (!isPackagedBundle && !process.env.CURSADA_LOAD_DIST) {
     void mainWindow.loadURL(devServerUrl);
   } else {
     void mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+    console.error(`[preload-error] ${preloadPath}:`, error);
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[did-fail-load] ${errorCode} ${errorDescription} (${validatedURL})`);
+  });
+
   if (process.env.CURSADA_SMOKE_TEST === '1') {
+    mainWindow.webContents.on('console-message', (_event, level, message) => {
+      if (level >= 2) {
+        console.error(`[renderer-console:${level}] ${message}`);
+      }
+    });
     mainWindow.webContents.once('did-finish-load', () => {
-      setTimeout(() => {
+      setTimeout(async () => {
+        try {
+          const info = await mainWindow.webContents.executeJavaScript(
+            `({
+              hasApi: typeof window.cursadaApi,
+              rootLen: document.getElementById('root')?.innerHTML?.length ?? -1,
+              rootText: document.getElementById('root')?.innerText?.slice(0, 120) ?? '',
+              title: document.title,
+            })`
+          );
+          console.log('[CURSADA_SMOKE_TEST]', JSON.stringify(info));
+        } catch (err) {
+          console.error('[CURSADA_SMOKE_TEST] eval failed:', err);
+        }
         app.quit();
-      }, 300);
+      }, 600);
     });
   }
 }
