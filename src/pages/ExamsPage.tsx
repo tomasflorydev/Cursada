@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { calculateAverageFromExams, ExamList } from '../components/exams/ExamList';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 
@@ -6,16 +6,31 @@ export interface ExamsPageProps {
   onSelectCourse: (courseId: string | null) => void;
   onExamsChanged?: () => void;
   referenceDate?: Date;
+  externalCreateVersion?: number;
 }
 
 export function ExamsPage({
   onSelectCourse,
   onExamsChanged,
   referenceDate,
+  externalCreateVersion = 0,
 }: ExamsPageProps) {
   const [upcomingCount, setUpcomingCount] = useState<number>(0);
   const [overallAverage, setOverallAverage] = useState<number | null>(null);
   const [createRequestVersion, setCreateRequestVersion] = useState<number>(0);
+  const lastExternalCreateVersionRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (
+      externalCreateVersion > 0 &&
+      externalCreateVersion !== lastExternalCreateVersionRef.current
+    ) {
+      lastExternalCreateVersionRef.current = externalCreateVersion;
+      setCreateRequestVersion((v) => v + 1);
+    } else if (externalCreateVersion === 0) {
+      lastExternalCreateVersionRef.current = 0;
+    }
+  }, [externalCreateVersion]);
 
   const loadSummary = useCallback(async () => {
     const allExams = await cursadaClient.listExams();

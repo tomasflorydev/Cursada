@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TaskList } from '../components/tasks/TaskList';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import { toIsoDateString } from '../lib/dates';
@@ -6,13 +6,31 @@ import { toIsoDateString } from '../lib/dates';
 export interface TasksPageProps {
   onSelectCourse: (courseId: string | null) => void;
   onTasksChanged?: () => void;
+  externalCreateVersion?: number;
 }
 
-export function TasksPage({ onSelectCourse, onTasksChanged }: TasksPageProps) {
+export function TasksPage({
+  onSelectCourse,
+  onTasksChanged,
+  externalCreateVersion = 0,
+}: TasksPageProps) {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [overdueCount, setOverdueCount] = useState<number>(0);
   const [dueTodayCount, setDueTodayCount] = useState<number>(0);
   const [createRequestVersion, setCreateRequestVersion] = useState<number>(0);
+  const lastExternalCreateVersionRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (
+      externalCreateVersion > 0 &&
+      externalCreateVersion !== lastExternalCreateVersionRef.current
+    ) {
+      lastExternalCreateVersionRef.current = externalCreateVersion;
+      setCreateRequestVersion((v) => v + 1);
+    } else if (externalCreateVersion === 0) {
+      lastExternalCreateVersionRef.current = 0;
+    }
+  }, [externalCreateVersion]);
 
   const loadSummary = useCallback(async () => {
     const pendingTasks = await cursadaClient.listTasks({ status: 'pending' });

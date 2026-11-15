@@ -78,7 +78,11 @@ Toda la aplicación funciona **100% offline/local**:
    - Soporta archivos **`.pdf`, `.md`, `.txt`** y **pegar texto directo** como fuente desde la pestaña **Fuentes**.
    - **Ejecución estrictamente bajo demanda en Ollama**: Todas las llamadas a `/api/embed` y `/api/chat` en `ollamaClient.ts`, `sourcesService.ts`, `ragService.ts` y `reportService.ts` envían `keep_alive: '0s'` para que Ollama libere el modelo de memoria inmediatamente después de generar cada respuesta o embedding, evitando consumo en segundo plano.
    - **Chat RAG con citas verificables** (`ragService.ts`, migración SQLite `v5` con `chat_threads` y `chat_messages`): recupera los fragmentos más relevantes vía búsqueda híbrida Coseno + FTS5, acepta instrucciones personalizadas (`customInstructions`), arma citas numeradas `[1]`, `[2]` clicables mediante `<dialog>` nativo, cuenta con fallback local extractivo (`local-rag-extractive`) y permite guardar respuestas como **Nota** con sección `## Fuentes citadas`.
-   - **Generador de material de estudio Map-Reduce** (`reportService.ts`): soporta **Resumen** (`summary`), **Informe** (`report`), **Guía de estudio** (`study_guide`) y **Examen de práctica** (`practice_exam`) con formato elegible (`develop`, `multiple_choice`, `mixed`) y clave de corrección. Ejecuta una etapa *Map* por cada fuente seleccionada (muestreando uniformemente hasta 4500 caracteres) y una etapa *Reduce* final respetando prioritariamente el prompt libre del usuario (`customInstructions`), con fallback local determinístico (`local-map-reduce-fallback`) y guardado automático opcional en **Notas**.
+   - **Generador Map-Reduce de Reportes** (`reportService.ts`): soporta **Resumen** (`summary`), **Informe** (`report`), **Guía de estudio** (`study_guide`) y **Examen de práctica** (`practice_exam`) con formato elegible (`develop`, `multiple_choice`, `mixed`) y clave de corrección. Ejecuta una etapa *Map* por cada fuente seleccionada (muestreando uniformemente hasta 4500 caracteres) y una etapa *Reduce* final respetando prioritariamente el prompt libre del usuario (`customInstructions`), con fallback local determinístico (`local-map-reduce-fallback`) y guardado automático opcional en **Notas**.
+8. **Atajos de macOS, Paleta `Cmd+K`, Notificaciones Nativas y Empaquetado `Cursada.app`**:
+   - **Paleta rápida (`Cmd+K`) y navegación profunda** (`src/lib/shortcuts/commandPaletteSearch.ts`, `src/components/command-palette/CommandPalette.tsx`): indexado en memoria con normalización sin tildes ni mayúsculas de materias, notas, tareas, exámenes y acciones rápidas, con salto directo al ítem (`CourseDetailView` + pestaña + nota seleccionada) y atajos globales (`Cmd+1..5`, `Cmd+,`, `Cmd+N` contextual).
+   - **Recordatorios locales y notificaciones nativas** (`electron/db/notificationSettingsRepo.ts`, `electron/services/notificationService.ts`, `electron/ipc/notificationHandlers.ts`, `src/components/settings/NotificationSettingsSection.tsx`): preferencias persistidas en `app_settings`, evaluación periódica en `main.ts` cada 5 minutos para clases próximas, entregas del día y exámenes cercanos (con deduplicación de sesión) y envío nativo vía `Notification` de Electron o prueba manual desde **Ajustes**.
+   - **Ícono y empaquetado macOS** (`build/icon.svg`, `build/icon.png`, `build/icon.icns`, `scripts/package-macos-app.mjs`): script ESM puro que genera el ícono de Cursada en formato `.png` / `.icns` y arma `release/Cursada.app` (`com.cursada.app`) a partir de `dist/`, `dist-electron/` y `Electron.app` con actualización de `Info.plist` (`plutil`) y firma ad-hoc (`codesign`).
 
 ### 2.3. Base de Datos: SQLite + FTS5 + Búsqueda Vectorial Híbrida
 - **FTS5 nativo con soporte para español**: Con el tokenizador `unicode61 remove_diacritics 2`, buscar `"algebra"`, `"limite"` o `"programacion"` encuentra `"Álgebra"`, `"Límite"` o `"Programación"`.
@@ -268,12 +272,15 @@ Cursada/
 ├── ARCHITECTURE.md                  # Diseño técnico, decisiones de stack y esquema de datos
 ├── PROGRESS.md                      # Estado actual, historial de avances y próximos pasos
 ├── ROADMAP.md                       # Plan detallado por fases con tareas y criterios de aceptación
-├── package.json                     # Dependencias y scripts (Vite + Electron + Vitest)
+├── package.json                     # Dependencias y scripts (Vite + Electron + Vitest + Packager)
 ├── tsconfig.json                    # Configuración estricta de TypeScript
 ├── vite.config.ts                   # Configuración de Vite y Vitest
 ├── index.html                       # Entrada HTML de la ventana de Cursada
+├── build/                           # Íconos nativos de macOS (icon.svg, icon.png, icon.icns)
+├── scripts/
+│   └── package-macos-app.mjs        # Generador de íconos y empaquetador nativo release/Cursada.app
 ├── electron/                        # Backend local en Node.js / Electron Main Process
-│   ├── main.ts                      # Creación de BrowserWindow nativa macOS y ciclo de vida
+│   ├── main.ts                      # Creación de BrowserWindow nativa macOS, dock icon y scheduler de recordatorios
 │   ├── preload.ts                   # Puente contextBridge seguro (window.cursadaApi)
 │   ├── db/
 │   │   ├── database.ts              # Conexión node:sqlite, WAL mode y aislamiento en tests
@@ -284,6 +291,7 @@ Cursada/
 │   │   ├── notesRepo.ts             # Persistencia de notas y sincronización FTS5
 │   │   ├── sourcesRepo.ts           # Persistencia de fuentes, chunks y búsqueda híbrida
 │   │   ├── aiSettingsRepo.ts        # Configuración local de Ollama (host y modelos activos)
+│   │   ├── notificationSettingsRepo.ts # Preferencias locales de recordatorios en app_settings
 │   │   └── chatRepo.ts              # Persistencia de conversaciones y mensajes con citas
 │   ├── services/
 │   │   ├── backupService.ts         # Backups automáticos (VACUUM INTO) y rotación de los últimos 15
@@ -292,6 +300,7 @@ Cursada/
 │   │   ├── sourcesService.ts        # Carga/extracción de fuentes (.pdf/.md/.txt/texto), embeddings y reindexado
 │   │   ├── ragService.ts            # Búsqueda híbrida (Coseno + FTS5), prompt citado, keep_alive '0s' y guardado como nota
 │   │   ├── reportService.ts         # Generación Map-Reduce de resúmenes, informes, guías y exámenes (keep_alive '0s')
+│   │   ├── notificationService.ts   # Evaluación de recordatorios (clases, entregas, exámenes) y despacho nativo
 │   │   └── ollamaClient.ts          # Cliente HTTP hacia localhost:11434 (/api/tags, /api/embed, /api/chat)
 │   └── ipc/
 │       ├── handlers.ts              # Registro central de dominios IPC
@@ -304,17 +313,19 @@ Cursada/
 │       ├── ollamaHandlers.ts        # Canales IPC de estado, modelos y ajustes de Ollama
 │       ├── sourcesHandlers.ts       # Canales IPC de importación, reindexado y búsqueda de fuentes
 │       ├── chatHandlers.ts          # Canales IPC de hilos y mensajes RAG con citas (chat:*)
-│       └── reportHandlers.ts        # Canal IPC de generación Map-Reduce de material (reports:generate)
+│       ├── reportHandlers.ts        # Canal IPC de generación Map-Reduce de material (reports:generate)
+│       └── notificationHandlers.ts  # Canales IPC de preferencias, prueba y verificación de recordatorios
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React
-    ├── App.tsx                      # Layout principal, contrato de navegación y sincronización de barra lateral
-    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio, incl. assistant.css)
+    ├── App.tsx                      # Layout principal, atajos globales (Cmd+K, Cmd+N, Cmd+1..5, Cmd+,) y navegación
+    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio, incl. command-palette.css)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockChat.ts y mockReports.ts con llamada directa a Ollama /api/chat en modo navegador)
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockNotifications.ts)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
-    │   └── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
-    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/, settings/, sources/, assistant/)
+    │   ├── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
+    │   └── shortcuts/               # Búsqueda normalizada y resolución de atajos macOS (commandPaletteSearch.ts)
+    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/, settings/, sources/, assistant/, command-palette/)
     ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Materias, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```

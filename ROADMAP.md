@@ -127,14 +127,14 @@ Cada fase está dividida en tareas pequeñas y verificables. Los criterios de ac
 
 ---
 
-## Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app` (Próxima fase)
+## Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app` (Completada y verificada)
 
-### Tarea 8.1: Atajos de teclado de macOS y paleta de búsqueda rápida (`Cmd+K`)
-- **Qué incluye**: Buscador global rápido con `Cmd+K` (para saltar a cualquier materia, nota, tarea o examen al instante) y atajos nativos (`Cmd+N` para nueva tarea/nota según contexto, `Cmd+1..4` para cambiar de sección, `Cmd+,` para Ajustes).
+### Tarea 8.1: [x] Atajos de teclado de macOS y paleta de búsqueda rápida (`Cmd+K`)
+- **Qué incluye**: Buscador global rápido con `Cmd+K` (para saltar a cualquier materia, nota, tarea o examen al instante) y atajos nativos (`Cmd+N` para nueva tarea/nota según contexto, `Cmd+1..5` para cambiar de sección, `Cmd+,` para Ajustes).
 - **Criterios de aceptación (como usuario)**:
   - Puedo presionar `Cmd+K` desde cualquier lugar de la app, escribir parte del nombre de una materia, nota, tarea o examen, y saltar directamente a ese elemento con `Enter`.
 
-### Tarea 8.2: Notificaciones nativas de macOS y empaquetado final `Cursada.app`
+### Tarea 8.2: [x] Notificaciones nativas de macOS y empaquetado final `Cursada.app`
 - **Qué incluye**: Recordatorios locales configurables para clases próximas, entregas del día y exámenes cercanos; ícono cuidado de macOS; y compilación verificada del paquete `Cursada.app` listo para instalar en `/Applications`.
 - **Criterios de aceptación (como usuario)**:
   - Puedo activar o desactivar recordatorios de próximas clases y exámenes desde Ajustes y probar una notificación nativa de macOS.

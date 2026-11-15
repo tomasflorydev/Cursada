@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit && tsc -p tsconfig.electron.json && vite build",
-    "package": "npm run build"
+    "package": "npm run build && node scripts/package-macos-app.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

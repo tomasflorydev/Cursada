@@ -1,12 +1,12 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: **Fases 1 a 7 completadas, integradas y verificadas en `main`**.
+- **Fase actual**: **Fases 1 a 8 completadas, integradas y verificadas en `main`**.
 - **Última actualización**: 2026-11-15
 - **Métricas de verificación automatizada en `main`**:
-  - **25 archivos de test** y **90 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
+  - **29 archivos de test** y **109 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción verificado** (`npm run build`).
+  - **Build de producción y paquete nativo macOS verificados** (`npm run build` y `npm run package` generando `release/Cursada.app`).
 - **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
 
 ## Avances Completados
@@ -95,6 +95,16 @@
   - Helper compartido `tryBrowserOllamaChatCompletion` en `src/lib/api/mockOllama.ts` conectado desde `src/lib/api/mockChat.ts` y `src/lib/api/mockReports.ts` (`POST /api/chat` con `stream: false` y `keep_alive: '0s'`), manteniendo fallback determinístico en Vitest o si Ollama no responde.
   - Script `"dev"` en `package.json` actualizado a `vite --port 5173 --open`.
 
+### Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app`
+- [x] **Tarea 8.1 — Atajos de teclado de macOS y paleta de búsqueda rápida (`Cmd+K`) (Etapa 1 — Agente A)**:
+  - Motor de búsqueda y normalización sin tildes (`src/lib/shortcuts/commandPaletteSearch.ts`) con ranking multi-token sobre materias, notas, tareas, exámenes y acciones rápidas, más resolución de atajos (`Cmd+K`, `Cmd+1..5`, `Cmd+,`, `Cmd+N`).
+  - Paleta accesible `<CommandPalette />` (`src/components/command-palette/CommandPalette.tsx`, `src/styles/command-palette.css`) con filtros por tipo, navegación por teclado (`ArrowUp`/`ArrowDown`/`Enter`/`Escape`), acceso desde `Sidebar.tsx` y salto profundo en `App.tsx` hacia `CoursesPage`, `CourseDetailView` y `NotesWorkspace` (seleccionando pestaña y nota exacta o disparando creación contextual).
+  - Tests en `src/__tests__/commandPaletteAndShortcuts.test.tsx` (9 tests).
+- [x] **Tarea 8.2 — Notificaciones nativas de macOS y empaquetado final `Cursada.app` (Etapa 1 — Agente B)**:
+  - Preferencias persistidas en `app_settings` (`electron/db/notificationSettingsRepo.ts`) con validaciones de rango para anticipación de clases (`5..180` min) y exámenes (`1..30` días).
+  - Motor de evaluación de recordatorios (`electron/services/notificationService.ts`) e IPC (`electron/ipc/notificationHandlers.ts`) para clases próximas, entregas de hoy y exámenes cercanos con deduplicación por sesión, planificador cada 5 minutos en `electron/main.ts`, fallback completo en `src/lib/api/mockNotifications.ts` y panel `<NotificationSettingsSection />` (`src/components/settings/NotificationSettingsSection.tsx`) integrado en `src/pages/SettingsPage.tsx`.
+  - Ícono vectorial y rasterizado de macOS (`build/icon.svg`, `build/icon.png`, `build/icon.icns`) y empaquetador ESM (`scripts/package-macos-app.mjs`, comando `npm run package`) generando `release/Cursada.app` con `Info.plist` actualizado (`com.cursada.app`) y firma ad-hoc.
+  - Tests en `src/__tests__/notificationsAndPackaging.test.ts` (5 tests), `src/__tests__/NotificationSettingsUI.test.tsx` (2 tests) y `src/__tests__/Phase8Integration.test.tsx` (3 tests).
+
 ## Qué sigue
-- [ ] Validación manual del Product Owner sobre las **Fases 6 y 7**.
-- [ ] Inicio de la **Fase 8: Pulido, Atajos, Notificaciones y Empaquetado `.app`**.
+- [ ] Validación manual del Product Owner sobre las **Fases 6, 7 y 8** (incluyendo prueba de `release/Cursada.app` en `/Applications`).
