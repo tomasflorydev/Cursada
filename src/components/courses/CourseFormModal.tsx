@@ -8,6 +8,7 @@ import type {
   DayOfWeek,
   UpdateCourseInput,
 } from '../../types/domain';
+import { SwissButton, SwissErrorAlert, SwissLinkButton, SwissSelect } from '../../ui';
 import { COURSE_COLOR_OPTIONS } from './courseColors';
 
 export interface CourseFormModalProps {
@@ -29,7 +30,6 @@ interface EditableScheduleRow {
   location: string;
 }
 
-const DEFAULT_TERM = '2026 - 2° Cuatrimestre';
 const DAYS_ORDER: readonly DayOfWeek[] = [1, 2, 3, 4, 5, 6, 7];
 
 let rowSeq = 1;
@@ -61,7 +61,7 @@ export function CourseFormModal({
   const [name, setName] = useState('');
   const [color, setColor] = useState<CourseColor>('blue');
   const [professor, setProfessor] = useState('');
-  const [term, setTerm] = useState(DEFAULT_TERM);
+  const [term, setTerm] = useState('');
   const [schedules, setSchedules] = useState<EditableScheduleRow[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,8 +90,8 @@ export function CourseFormModal({
       setName('');
       setColor('blue');
       setProfessor('');
-      setTerm(DEFAULT_TERM);
-      setSchedules([makeScheduleRow({ dayOfWeek: 1, startTime: '18:30', endTime: '22:30' })]);
+      setTerm('');
+      setSchedules([]);
     }
     setErrorMessage(null);
     setIsSubmitting(false);
@@ -168,11 +168,6 @@ export function CourseFormModal({
       return;
     }
 
-    if (!trimmedTerm) {
-      setErrorMessage('El cuatrimestre es obligatorio.');
-      return;
-    }
-
     for (let i = 0; i < schedules.length; i++) {
       const row = schedules[i];
       const dayLabel = DAY_NAMES_ES[row.dayOfWeek];
@@ -233,34 +228,28 @@ export function CourseFormModal({
           <h2 id={titleId} className="cursada-modal-title">
             {isEditing ? 'Editar materia' : 'Nueva materia'}
           </h2>
-          <button
-            type="button"
-            className="ghost-action-button"
-            onClick={handleDialogClose}
-          >
-            Cerrar
-          </button>
+          <SwissLinkButton onClick={handleDialogClose}>Cerrar</SwissLinkButton>
         </header>
 
         <form noValidate onSubmit={(e) => void handleSubmit(e)} className="course-form">
           {errorMessage ? (
-            <div id={errorId} role="alert" className="course-form-alert">
-              {errorMessage}
+            <div id={errorId}>
+              <SwissErrorAlert message={errorMessage} />
             </div>
           ) : null}
 
           <div className="course-form-grid">
             <div className="course-form-field course-form-field-full">
-              <label htmlFor={`${baseId}-name`} className="course-form-label">
-                Nombre de la materia <span aria-hidden="true">*</span>
+              <label htmlFor={`${baseId}-name`} className="swiss-section-label">
+                Nombre de la materia *
               </label>
               <input
                 ref={nameInputRef}
                 id={`${baseId}-name`}
                 name="name"
                 type="text"
-                className="course-form-input"
-                placeholder="Ej. Algoritmos y Estructuras de Datos"
+                className="swiss-input"
+                placeholder="Ej. Ingeniería de Software I"
                 value={name}
                 required
                 autoFocus
@@ -274,14 +263,14 @@ export function CourseFormModal({
             </div>
 
             <div className="course-form-field">
-              <label htmlFor={`${baseId}-professor`} className="course-form-label">
+              <label htmlFor={`${baseId}-professor`} className="swiss-section-label">
                 Profesor / Cátedra
               </label>
               <input
                 id={`${baseId}-professor`}
                 name="professor"
                 type="text"
-                className="course-form-input"
+                className="swiss-input"
                 placeholder="Ej. Martín Echeverría"
                 value={professor}
                 onChange={(e) => {
@@ -292,17 +281,16 @@ export function CourseFormModal({
             </div>
 
             <div className="course-form-field">
-              <label htmlFor={`${baseId}-term`} className="course-form-label">
-                Cuatrimestre <span aria-hidden="true">*</span>
+              <label htmlFor={`${baseId}-term`} className="swiss-section-label">
+                Cuatrimestre / Período
               </label>
               <input
                 id={`${baseId}-term`}
                 name="term"
                 type="text"
-                className="course-form-input"
+                className="swiss-input"
                 placeholder="Ej. 2026 - 2° Cuatrimestre"
                 value={term}
-                required
                 onChange={(e) => {
                   setErrorMessage(null);
                   setTerm(e.target.value);
@@ -311,82 +299,52 @@ export function CourseFormModal({
             </div>
 
             <div className="course-form-field course-form-field-full">
-              <label htmlFor={`${baseId}-color`} className="course-form-label">
-                Color
+              <label htmlFor={`${baseId}-color`} className="swiss-section-label">
+                Referencia interna
               </label>
-              <div className="course-color-selector-row">
-                <select
-                  id={`${baseId}-color`}
-                  name="color"
-                  className="course-form-select"
-                  value={color}
-                  onChange={(e) => {
-                    setErrorMessage(null);
-                    setColor(e.target.value as CourseColor);
-                  }}
-                >
-                  {COURSE_COLOR_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="course-color-swatches" role="group" aria-label="Paleta rápida de colores">
-                  {COURSE_COLOR_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      className={`course-color-swatch ${color === opt.value ? 'is-selected' : ''}`}
-                      data-course-color={opt.value}
-                      aria-label={`Elegir tono ${opt.label}`}
-                      aria-pressed={color === opt.value}
-                      onClick={() => {
-                        setErrorMessage(null);
-                        setColor(opt.value);
-                      }}
-                    >
-                      <span className="course-dot" data-course-color={opt.value} aria-hidden="true" />
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <SwissSelect
+                id={`${baseId}-color`}
+                name="color"
+                value={color}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setColor(e.target.value as CourseColor);
+                }}
+              >
+                {COURSE_COLOR_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </SwissSelect>
             </div>
           </div>
 
           <fieldset className="course-schedules-fieldset">
-            <legend className="course-schedules-legend">Horarios semanales de cursada</legend>
+            <legend className="swiss-section-label">Horarios semanales</legend>
             <div className="course-schedules-toolbar">
-              <span className="course-schedules-hint">
-                Configurá los días y franjas horarias en que cursás esta materia.
-              </span>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleAddScheduleRow}
-              >
-                Agregar horario
-              </button>
+              <SwissButton variant="secondary" onClick={handleAddScheduleRow}>
+                + Agregar horario
+              </SwissButton>
             </div>
 
-            {schedules.length === 0 ? (
-              <p className="course-schedules-empty">
-                No agregaste bloques horarios todavía. Podés agregar uno con &ldquo;Agregar horario&rdquo;.
-              </p>
-            ) : (
+            {schedules.length > 0 ? (
               <div className="course-schedules-rows">
                 {schedules.map((row, idx) => {
                   const rowPrefix = `${baseId}-sched-${idx}`;
                   return (
-                    <div key={row.rowKey} className="course-schedule-row" data-testid={`schedule-row-${idx}`}>
+                    <div
+                      key={row.rowKey}
+                      className="course-schedule-row"
+                      data-testid={`schedule-row-${idx}`}
+                    >
                       <div className="course-form-field">
-                        <label htmlFor={`${rowPrefix}-day`} className="course-form-label">
+                        <label htmlFor={`${rowPrefix}-day`} className="swiss-meta">
                           {idx === 0 ? 'Día' : `Día (${idx + 1})`}
                         </label>
-                        <select
+                        <SwissSelect
                           id={`${rowPrefix}-day`}
                           name={`schedule-day-${idx}`}
-                          className="course-form-select"
                           value={row.dayOfWeek}
                           onChange={(e) =>
                             handleUpdateScheduleRow(row.rowKey, {
@@ -399,18 +357,18 @@ export function CourseFormModal({
                               {DAY_NAMES_ES[d]}
                             </option>
                           ))}
-                        </select>
+                        </SwissSelect>
                       </div>
 
                       <div className="course-form-field">
-                        <label htmlFor={`${rowPrefix}-start`} className="course-form-label">
-                          {idx === 0 ? 'Hora de inicio' : `Hora de inicio (${idx + 1})`}
+                        <label htmlFor={`${rowPrefix}-start`} className="swiss-meta">
+                          {idx === 0 ? 'Inicio' : `Inicio (${idx + 1})`}
                         </label>
                         <input
                           id={`${rowPrefix}-start`}
                           name={`schedule-start-${idx}`}
                           type="time"
-                          className="course-form-input"
+                          className="swiss-input"
                           value={row.startTime}
                           required
                           onChange={(e) =>
@@ -422,14 +380,14 @@ export function CourseFormModal({
                       </div>
 
                       <div className="course-form-field">
-                        <label htmlFor={`${rowPrefix}-end`} className="course-form-label">
-                          {idx === 0 ? 'Hora de fin' : `Hora de fin (${idx + 1})`}
+                        <label htmlFor={`${rowPrefix}-end`} className="swiss-meta">
+                          {idx === 0 ? 'Fin' : `Fin (${idx + 1})`}
                         </label>
                         <input
                           id={`${rowPrefix}-end`}
                           name={`schedule-end-${idx}`}
                           type="time"
-                          className="course-form-input"
+                          className="swiss-input"
                           value={row.endTime}
                           required
                           onChange={(e) =>
@@ -441,17 +399,15 @@ export function CourseFormModal({
                       </div>
 
                       <div className="course-form-field course-schedule-location-field">
-                        <label htmlFor={`${rowPrefix}-location`} className="course-form-label">
-                          {idx === 0
-                            ? 'Aula / Sede / Modalidad'
-                            : `Aula / Sede / Modalidad (${idx + 1})`}
+                        <label htmlFor={`${rowPrefix}-location`} className="swiss-meta">
+                          {idx === 0 ? 'Aula / Sede' : `Aula / Sede (${idx + 1})`}
                         </label>
                         <input
                           id={`${rowPrefix}-location`}
                           name={`schedule-location-${idx}`}
                           type="text"
-                          className="course-form-input"
-                          placeholder="Ej. Aula 402 · Lima o Virtual"
+                          className="swiss-input"
+                          placeholder="Ej. Aula 402 · Lima"
                           value={row.location}
                           onChange={(e) =>
                             handleUpdateScheduleRow(row.rowKey, {
@@ -462,38 +418,35 @@ export function CourseFormModal({
                       </div>
 
                       <div className="course-schedule-remove-col">
-                        <button
-                          type="button"
-                          className="ghost-action-button course-remove-schedule-btn"
+                        <SwissLinkButton
                           aria-label={`Quitar horario ${idx + 1}`}
                           onClick={() => handleRemoveScheduleRow(row.rowKey)}
                         >
-                          Quitar horario
-                        </button>
+                          Quitar
+                        </SwissLinkButton>
                       </div>
                     </div>
                   );
                 })}
               </div>
+            ) : (
+              <p className="swiss-meta-md">
+                Agregá los días y horarios en que cursás esta materia.
+              </p>
             )}
           </fieldset>
 
           <footer className="cursada-modal-footer">
-            <button
-              type="button"
-              className="secondary-button"
+            <SwissButton
+              variant="secondary"
               onClick={handleDialogClose}
               disabled={isSubmitting}
             >
               Cancelar
-            </button>
-            <button
-              type="submit"
-              className="primary-button"
-              disabled={isSubmitting}
-            >
+            </SwissButton>
+            <SwissButton type="submit" variant="primary" disabled={isSubmitting}>
               {isEditing ? 'Guardar cambios' : 'Crear materia'}
-            </button>
+            </SwissButton>
           </footer>
         </form>
       </div>

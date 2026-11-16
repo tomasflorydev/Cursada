@@ -3,55 +3,71 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cursadaClient } from '../lib/api/client';
 import { resetAllMocks } from '../lib/api/mockClient';
 import { CalendarPage } from '../pages/CalendarPage';
-import { CoursesPage } from '../pages/CoursesPage';
+import { TasksPage } from '../pages/TasksPage';
 
-describe('Stage 2 Integration & Task 2.2: Course Tareas Tab and Calendar Deliveries Overlay', () => {
+describe('Stage 2 Integration & Task 2.2: Course-Scoped Tasks and Calendar Entregas Band', () => {
   beforeEach(() => {
     resetAllMocks();
   });
 
-  it('mounts <TaskList courseId /> inside the course Tareas tab and creates tasks scoped to that course', async () => {
+  it('filters tasks by course in TasksPage and quick-adds new tasks scoped to that course', async () => {
     const onSelectCourse = vi.fn();
-    render(
-      <CoursesPage selectedCourseId="ing-soft-1" onSelectCourse={onSelectCourse} />
-    );
+    render(<TasksPage onSelectCourse={onSelectCourse} />);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ingeniería de Software I' })
-    ).toBeInTheDocument();
-
-    const tablist = screen.getByRole('tablist');
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Tareas' }));
-
-    const tabPanel = screen.getByTestId('course-tasks-tab-panel');
-    expect(
-      await within(tabPanel).findByText(
+      await screen.findByText(
         /Completar matriz de trazabilidad de requerimientos/i
       )
     ).toBeInTheDocument();
 
-    // Tasks from other courses should not appear here
+    const sidebar = document.querySelector('aside.swiss-col-3') as HTMLElement;
+    const courseFilterBtn = await within(sidebar).findByRole('button', {
+      name: /Ingeniería de Software I/i,
+    });
+    fireEvent.click(courseFilterBtn);
+
+    expect(courseFilterBtn).toHaveAttribute('aria-pressed', 'true');
     expect(
-      within(tabPanel).queryByText(/Entregar script de índices compuestos/i)
+      screen.getByText(/Completar matriz de trazabilidad de requerimientos/i)
+    ).toBeInTheDocument();
+
+    // Tasks from other courses should not appear while filtered
+    expect(
+      screen.queryByText(/Entregar script de índices compuestos/i)
     ).not.toBeInTheDocument();
 
-    // Create a new task directly inside the course's Tareas tab
-    fireEvent.click(within(tabPanel).getByRole('button', { name: /Nueva tarea/i }));
-    fireEvent.change(within(tabPanel).getByLabelText(/Título/i), {
-      target: { value: 'Preparar presentación de retrospectiva' },
-    });
-    fireEvent.change(within(tabPanel).getByLabelText(/Fecha de entrega/i), {
-      target: { value: '2026-11-14' },
-    });
-    fireEvent.click(within(tabPanel).getByRole('button', { name: /Guardar tarea/i }));
+    // Quick-add a task while filtered to Ingeniería de Software I (without picking course manually)
+    const quickForm = screen.getByRole('form', { name: 'Alta rápida de tarea' });
+    fireEvent.change(
+      within(quickForm).getByLabelText('Título de la nueva tarea'),
+      { target: { value: 'Preparar presentación de retrospectiva' } }
+    );
+    fireEvent.change(
+      within(quickForm).getByLabelText('Fecha de la nueva tarea'),
+      { target: { value: 'custom' } }
+    );
+    fireEvent.change(
+      within(quickForm).getByLabelText('Fecha personalizada de entrega'),
+      { target: { value: '2026-11-14' } }
+    );
+    fireEvent.submit(quickForm);
 
     expect(
-      await within(tabPanel).findByText('Preparar presentación de retrospectiva')
+      await screen.findByText('Preparar presentación de retrospectiva')
     ).toBeInTheDocument();
+
+    const ingSoftTasks = await cursadaClient.listTasks({ courseId: 'ing-soft-1' });
+    expect(
+      ingSoftTasks.some(
+        (t) =>
+          t.title === 'Preparar presentación de retrospectiva' &&
+          t.dueDate === '2026-11-14'
+      )
+    ).toBe(true);
   });
 
-  it('superimposes task deliveries in the weekly calendar and allows marking or opening a task directly', async () => {
-    await cursadaClient.createTask({
+  it('superimposes task deliveries in the weekly Entregas band and updates status or navigates on click', async () => {
+    const createdTask = await cursadaClient.createTask({
       courseId: 'ing-soft-1',
       title: 'Entrega TP Integrador en Calendario',
       description: 'Subir PDF y enlace al repositorio antes de las 23:59.',
@@ -61,50 +77,53 @@ describe('Stage 2 Integration & Task 2.2: Course Tareas Tab and Calendar Deliver
 
     const onSelectCourse = vi.fn();
     const initialDate = new Date(2026, 10, 11); // Wednesday Nov 11, 2026
-    render(
+    const { rerender } = render(
       <CalendarPage onSelectCourse={onSelectCourse} initialDate={initialDate} />
     );
 
-    const saturdayTasksOverlay = await screen.findByTestId('calendar-tasks-2026-11-14');
-    expect(
-      within(saturdayTasksOverlay).getByText('Entrega TP Integrador en Calendario')
-    ).toBeInTheDocument();
+    const weekGrid = await screen.findByLabelText('Grilla semanal de cursada');
+    expect(within(weekGrid).getByText('Entregas')).toBeInTheDocument();
 
-    const taskCard = saturdayTasksOverlay.querySelector(
-      '.calendar-task-card[data-course-color="blue"]'
+    const saturdayDeliverableCell = weekGrid.querySelector(
+      '.calendar-deliverable-cell[data-date="2026-11-14"]'
     ) as HTMLElement;
-    expect(taskCard).not.toBeNull();
-    expect(taskCard.getAttribute('data-status')).toBe('pending');
-    expect(within(taskCard).getByText('Entrega')).toBeInTheDocument();
+    expect(saturdayDeliverableCell).not.toBeNull();
 
-    // Toggle task completion directly from the calendar
-    const checkbox = within(taskCard).getByRole('checkbox', {
-      name: /Marcar entrega Entrega TP Integrador en Calendario/i,
-    });
-    fireEvent.click(checkbox);
+    const deliverableButton = await within(saturdayDeliverableCell).findByRole(
+      'button',
+      { name: 'Entrega TP Integrador en Calendario' }
+    );
+    expect(deliverableButton).toBeInTheDocument();
 
+    // Clicking deliverable without onNavigateSection jumps directly to its course
+    fireEvent.click(deliverableButton);
+    expect(onSelectCourse).toHaveBeenCalledWith('ing-soft-1');
+
+    // Completing the task updates the weekly calendar Entregas band dynamically
+    await cursadaClient.toggleTaskStatus(createdTask.id);
     await waitFor(() => {
-      const updatedCard = screen
-        .getByTestId('calendar-tasks-2026-11-14')
-        .querySelector('.calendar-task-card') as HTMLElement;
-      expect(updatedCard.getAttribute('data-status')).toBe('done');
-      expect(within(updatedCard).getByText('Completada')).toBeInTheDocument();
+      expect(
+        within(saturdayDeliverableCell).getByRole('button', {
+          name: 'Entrega TP Integrador en Calendario (hecha)',
+        })
+      ).toBeInTheDocument();
     });
 
-    // Open the task directly from the calendar and navigate to its course
+    // When onNavigateSection is provided, clicking a task deliverable opens Tareas
+    const onNavigateSection = vi.fn();
+    rerender(
+      <CalendarPage
+        onSelectCourse={onSelectCourse}
+        onNavigateSection={onNavigateSection}
+        initialDate={initialDate}
+      />
+    );
+
     fireEvent.click(
-      within(screen.getByTestId('calendar-tasks-2026-11-14')).getByRole('button', {
-        name: 'Entrega TP Integrador en Calendario',
+      within(saturdayDeliverableCell).getByRole('button', {
+        name: 'Entrega TP Integrador en Calendario (hecha)',
       })
     );
-
-    expect(
-      await screen.findByText(/Subir PDF y enlace al repositorio antes de las 23:59/i)
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /Ir a Ingeniería de Software I/i })
-    );
-    expect(onSelectCourse).toHaveBeenCalledWith('ing-soft-1');
+    expect(onNavigateSection).toHaveBeenCalledWith('tareas');
   });
 });

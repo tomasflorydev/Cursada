@@ -45,7 +45,6 @@ export function NotesPage({ onSelectCourse, onNotesChanged }: NotesPageProps) {
       <header className="page-header">
         <div className="page-header-titles">
           <div className="page-date-row">
-            <span className="page-date-text">Apuntes y documentación</span>
             <span className="page-week-pill">
               {totalCount} {totalCount === 1 ? 'nota' : 'notas'}
             </span>
@@ -58,10 +57,6 @@ export function NotesPage({ onSelectCourse, onNotesChanged }: NotesPageProps) {
           <h1 id="main-title" tabIndex={-1} className="page-title">
             Notas
           </h1>
-          <p className="page-subtitle">
-            Apuntes en Markdown con vista previa en vivo, guardado automático y
-            búsqueda instantánea sin distinción de tildes.
-          </p>
         </div>
       </header>
 

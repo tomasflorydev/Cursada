@@ -231,7 +231,7 @@ export function ExamList({
 
     const targetCourseId = courseId ?? formCourseId;
     if (!targetCourseId) {
-      setFormError('Seleccioná una materia para el examen.');
+      setFormError('Seleccioná un anotador para el examen.');
       return;
     }
 
@@ -345,7 +345,7 @@ export function ExamList({
             {!courseId ? (
               <div className="task-course-filter-field">
                 <label htmlFor="exam-course-filter" className="visually-hidden">
-                  Filtrar exámenes por materia
+                  Filtrar exámenes por anotador
                 </label>
                 <select
                   id="exam-course-filter"
@@ -353,7 +353,7 @@ export function ExamList({
                   value={courseFilter}
                   onChange={(e) => setCourseFilter(e.target.value)}
                 >
-                  <option value="all">Todas las materias</option>
+                  <option value="all">Todos los anotadores</option>
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.name}
@@ -411,7 +411,7 @@ export function ExamList({
               {!courseId ? (
                 <div className="task-form-field">
                   <label htmlFor="exam-form-course" className="task-form-label">
-                    Materia
+                    Anotador
                   </label>
                   <select
                     id="exam-form-course"
@@ -536,10 +536,6 @@ export function ExamList({
       {visibleExams.length === 0 ? (
         <div className="surface-panel task-empty-state">
           <p className="task-empty-title">No hay exámenes para mostrar</p>
-          <p className="task-empty-subtitle">
-            Agendá tus próximos parciales, TPs evaluativos o finales para seguir la cuenta
-            regresiva y calcular tu promedio.
-          </p>
         </div>
       ) : (
         <div className="basic-exams-grid">

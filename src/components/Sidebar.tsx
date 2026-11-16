@@ -1,6 +1,5 @@
 import React from 'react';
 import type { CourseColor, CourseStatus, NavSectionId, ThemeMode } from '../types';
-import { CURRENT_TERM_LABEL } from '../lib/sampleData';
 
 export interface SidebarCourseItem {
   id: string;
@@ -90,7 +89,7 @@ export function Sidebar({
     },
     {
       id: 'materias',
-      label: 'Materias',
+      label: 'Anotadores',
       icon: (
         <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.65">
           <path d="M3.5 5.5A1.5 1.5 0 0 1 5 4h3.4l1.5 1.8H15A1.5 1.5 0 0 1 16.5 7.3v7.2A1.5 1.5 0 0 1 15 16H5a1.5 1.5 0 0 1-1.5-1.5v-9Z" />
@@ -122,7 +121,6 @@ export function Sidebar({
         </div>
         <div className="sidebar-brand-text">
           <span className="sidebar-app-name">Cursada</span>
-          <span className="sidebar-term-caption">{CURRENT_TERM_LABEL}</span>
         </div>
       </div>
 
@@ -178,9 +176,9 @@ export function Sidebar({
 
       <div className="sidebar-divider" role="separator" />
 
-      <nav className="sidebar-courses-section" aria-label="Materias en curso">
+      <nav className="sidebar-courses-section" aria-label="Anotadores en curso">
         <div className="sidebar-section-header">
-          <span className="sidebar-section-title">Cursada actual</span>
+          <span className="sidebar-section-title">Anotadores activos</span>
           <span className="sidebar-section-count">{activeCourses.length}</span>
         </div>
         <ul className="sidebar-course-list">
@@ -205,7 +203,7 @@ export function Sidebar({
         {archivedCourses.length > 0 ? (
           <details className="sidebar-archive-details">
             <summary className="sidebar-archive-summary">
-              <span>Archivo / Cuatrimestres anteriores</span>
+              <span>Archivo</span>
               <span className="sidebar-section-count">{archivedCourses.length}</span>
             </summary>
             <ul className="sidebar-course-list">

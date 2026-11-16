@@ -1,117 +1,61 @@
-# DESIGN.md — Sistema de Diseño Base de Cursada
+# DESIGN.md — Sistema Tipográfico Suizo (Cursada v2.0)
 
-## 1. Identidad Visual y Principios de Diseño
+## 1. Principios de Diseño
 
-**Cursada** es un espacio de trabajo académico nativo para macOS concebido para estudiantes universitarios. Combina la calma visual y la legibilidad de Notion con la velocidad y precisión táctil de aplicaciones nativas de Mac (*Things 3*, *Linear*).
+Estilo tipográfico internacional ("Suizo"): rígido, claro y libre de ornamentos. La jerarquía visual se construye exclusivamente con tamaño tipográfico, peso, reglas (líneas horizontales y verticales) y espacio.
 
-### Decisión de Diseño Confirmada
-- **Estructura elegida**: **Bento con Aire** (diseño sobrio, amplio y despojado de ruido visual).
-- **Enfoque de contenido**: La pantalla de Inicio prioriza las responsabilidades activas (**Tareas por vencer**, **Próximos exámenes** y el **Pulso de la semana**). El bloque de "clases de hoy" fue descartado para mantener el foco en entregas y preparación de parciales (el horario completo de cursada pertenece a la sección **Calendario**).
-- **Tipografía**: Pila nativa de macOS (`SF Pro Display`, `SF Pro Text` y `SF Mono`) para nitidez subpíxel inmediata en pantallas Retina, sin descargas externas.
-- **Espacio en blanco masivo**: Márgenes perimetrales generosos (`32px–48px`), paddings holgados y separación amplia entre paneles (`28px–36px`).
+1. **Cero ornamento**: `border-radius: 0` global, `box-shadow: none`, sin gradientes, sin emojis ni ilustraciones. Símbolos permitidos: `→`, `←`, `‹`, `›`, `+` y `▾`.
+2. **Reglas, no cajas**: líneas de `3px solid var(--ink)` en bloques principales (header, pie, encabezados de sección) y `1px solid var(--rule)` entre filas. Borde de `2px solid var(--ink)` únicamente en botones secundarios, inputs, controles segmentados, bloques del calendario y el campo de preguntas a fuentes.
+3. **Un solo acento por vista (`--acc`)**: reservado exclusivamente para el número del día en Inicio, el examen más próximo / entrega urgente (< 3 días), el subrayado de la pestaña activa (`3px`), la marca vertical de ítem seleccionado (`4px`), el bloque de la próxima clase en Calendario, la acción principal de cada zona (máximo 1), la barra bajo títulos de nota (`64×3px`), el cursor del editor (`2px`), las marcas de cita `[1]` en informes, el interruptor activo y el foco de teclado (`2px`).
+4. **Grilla de 12 columnas**: `gap: 28px` (`24px` en Inicio), márgenes de página `48px` a los lados, `30px` arriba (`36px` con clearance para traffic lights en macOS) y `28px` abajo.
+5. **Números tabulares**: `font-variant-numeric: tabular-nums` en fechas, horas, índices y contadores.
+6. **Alineación a la izquierda**: contenido alineado a la izquierda, salvo celdas numéricas/encabezados de calendario y segmentos de controles.
+7. **Idioma**: español rioplatense con voseo directo ("Tenés", "Agregá", "Preguntale").
 
----
+## 2. Tokens de Color
 
-## 2. Paleta de Colores Confirmada (Paleta 1: Pizarra & Índigo)
+El tema **Oscuro** es el predeterminado (`:root` y `:root[data-theme="dark"]`). El tema Claro (`:root[data-theme="light"]`) y el modo Sistema (`:root[data-theme="system"]` con `@media (prefers-color-scheme: light)`) comparten exactamente el mismo diseño geométrico.
 
-### 2.1. Superficies y Texto Base
+| Token | Oscuro (Default) | Claro | Uso |
+|---|---|---|---|
+| `--bg` | `#1E2023` | `#F4F4F2` | Fondo de página y superficies |
+| `--ink` | `#ECECE7` | `#111111` | Texto principal y reglas fuertes (`3px` / `2px`) |
+| `--soft` | `#DADBDA` | `#444444` | Cuerpo largo de notas e informes |
+| `--mut` | `#AEB0B3` | `#555555` | Texto secundario, fechas, metadatos, tachados |
+| `--rule` | `#C9CACB` | `#111111` | Reglas de `1px` entre filas |
+| `--grid` | `rgba(201, 202, 203, 0.26)` | `rgba(17, 17, 17, 0.15)` | Líneas internas de calendario y fondo de barras de progreso |
+| `--acc` | `#FF5F52` | `#C8201A` | Acento único |
+| `--on-acc` | `#1E2023` | `#FFFFFF` | Texto sobre fondo de acento |
 
-El modo oscuro utiliza **grises pizarra suaves**, evitando intencionalmente el negro absoluto (`#000000`) para descansar la vista durante sesiones nocturnas de estudio.
+## 3. Tipografía
 
-| Token CSS | Rol en la Interfaz | Modo Claro (Alabastro) | Modo Oscuro (Pizarra Suave) |
-| :--- | :--- | :--- | :--- |
-| `--bg-canvas` | Fondo principal de la ventana | `#F6F8FA` | `#21262D` |
-| `--bg-sidebar` | Barra lateral fija de navegación | `#EEF1F6` | `#1B1F26` |
-| `--bg-surface` | Tarjetas, paneles elevados y tablas | `#FFFFFF` | `#282E37` |
-| `--bg-surface-subtle` | Filas al pasar el cursor y cabeceras | `#F2F5F9` | `#2F3640` |
-| `--bg-surface-active` | Elemento seleccionado en navegación | `#E5EBF3` | `#363E4A` |
-| `--text-primary` | Títulos, materias y texto principal | `#1F242D` | `#E6EDF3` |
-| `--text-secondary` | Descripciones, fechas y profesores | `#57606A` | `#9CA6B4` |
-| `--text-muted` | Metadatos secundarios y horas pasadas | `#76808C` | `#7D8796` |
-| `--border-subtle` | Divisores y bordes sutiles (`1px`) | `#D8DEE6` | `#38404C` |
-| `--border-strong` | Bordes en foco o estados destacados | `#BCC5D1` | `#4B5463` |
-| `--accent-primary` | Acción principal y foco de teclado | `#3B5BDB` | `#748FFC` |
-| `--accent-soft` | Fondos de pill y estados activos suaves | `#EDF2FF` | `#26314D` |
+- **Principal**: `Archivo` (`@fontsource/archivo` empaquetado 100% offline con pesos `400`, `500`, `600`, `800`), fallback `Helvetica, Arial, sans-serif`.
+- **Código inline**: `Menlo, monospace`, `15px`.
 
-### 2.2. Semántica de Estados Académicos
+| Rol | Tamaño / Peso | Detalle |
+|---|---|---|
+| Wordmark `Cursada` | `22px / 800` | `letter-spacing: -0.02em` |
+| Título de pantalla | `56px / 800` | `line-height: 1; letter-spacing: -0.045em` |
+| Título de nota | `46px / 800` | `line-height: 1.02; letter-spacing: -0.04em` |
+| Título de informe | `40px / 800` | `letter-spacing: -0.04em` |
+| Número del día (Inicio) | `236px / 800` | `line-height: 0.82; letter-spacing: -0.06em; color: var(--acc)` |
+| Contador de días (Exámenes) | `150px` (1º), `84px` (demás) `/ 800` | `letter-spacing: -0.06em` |
+| Nombre de materia en lista | `32px / 800` | `letter-spacing: -0.03em` |
+| Cuerpo de nota | `17px / 400` (`--note-body-size`) | `line-height: 1.6; max-width: 640px` |
+| Cuerpo de informe | `16px / 400` | `line-height: 1.6; max-width: 660px` |
+| Etiqueta de sección | `11px / 600` | `text-transform: uppercase; letter-spacing: 0.12em` |
 
-| Estado | Uso | Modo Claro | Modo Oscuro |
-| :--- | :--- | :--- | :--- |
-| **Hoy / Próximo** | Entrega del día o evento cercano | `#3B5BDB` sobre `#EDF2FF` | `#748FFC` sobre `#26314D` |
-| **Atención** | Parcial esta semana o entrega mañana | `#B45309` sobre `#FEF6E7` | `#F6C467` sobre `#3D311E` |
-| **Urgente** | Tarea vencida o fecha límite inmediata | `#BE123C` sobre `#FCEEF0` | `#F992A3` sobre `#42262C` |
-| **Completada** | Tarea lista / entregada | `#047857` sobre `#EAFAF4` | `#6EE7B7` sobre `#203B33` |
+## 4. Estructura y Vistas
 
-### 2.3. Paleta de Acento por Materia (8 Tonos Suaves)
-
-Cada materia elige uno de los 8 colores disponibles en `courses.color`. En modo oscuro los tonos de fondo y borde se atenúan para integrarse con la base de pizarra:
-
-| Clave (`color`) | Nombre sugerido | Punto (`--course-dot`) | Modo Claro (Fondo / Texto) | Modo Oscuro (Fondo / Texto) |
-| :--- | :--- | :--- | :--- | :--- |
-| `blue` | Azul Zafiro | `#4C82F7` | `#EEF4FF` / `#1E40AF` | `#26344D` / `#A5C4FF` |
-| `emerald` | Verde Esmeralda | `#20B486` | `#ECFDF6` / `#065F46` | `#213A34` / `#7EE2C0` |
-| `violet` | Violeta Amatista | `#9370F5` | `#F4F1FF` / `#5B21B6` | `#312B47` / `#CDBAFF` |
-| `amber` | Ámbar Cálido | `#EB9E28` | `#FEF8EB` / `#92400E` | `#3D3322` / `#F7CB79` |
-| `rose` | Rosa Coral | `#EE5D77` | `#FFF1F3` / `#9F1239` | `#402830` / `#F9A8B8` |
-| `cyan` | Cian Glaciar | `#1AB3CC` | `#ECFEFF` / `#155E75` | `#203940` / `#84E2F2` |
-| `orange` | Naranja Fuego | `#F27C38` | `#FFF6F0` / `#9A3412` | `#3F2D23` / `#FAB88E` |
-| `slate` | Gris Neutro | `#64748B` | `#F1F5F9` / `#334155` | `#2C3542` / `#CBD5E1` |
-
----
-
-## 3. Tipografía y Jerarquía
-
-- **Cuerpo y Lectura (`--font-sans`)**: `-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif`
-- **Títulos y Encabezados (`--font-display`)**: `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif`
-- **Horarios, Fechas y Números (`--font-mono`)**: `'SF Mono', Menlo, Monaco, monospace` con `font-variant-numeric: tabular-nums`
-
----
-
-## 4. Estructura de Pantalla: Bento con Aire
-
-La pantalla de **Inicio** se estructura en un layout Bento de dos niveles:
-
-1. **Cabecera**:
-   - Fecha completa en español (`Martes 10 de noviembre`) con pill de cuatrimestre/semana.
-   - Título principal `Inicio` y subtítulo resumen de pendientes.
-2. **Nivel 1 (Columnas asimétricas 1.25fr : 1fr)**:
-   - **Columna izquierda**: Panel de **Tareas por vencer** en formato lista interactiva con checkbox rápido, etiquetas compactas de materia y fecha de entrega.
-   - **Columna derecha**: Panel de **Próximos exámenes** con cuenta regresiva en días, categoría y temas a evaluar.
-3. **Nivel 2 (Ancho completo)**:
-   - **Pulso de la semana**: Grilla horizontal de 7 días (Lunes a Domingo) que muestra el balance de carga académica semanal y resalta el día de hoy y los días con examen.
-
----
-
-## 5. Calendario Académico: Vistas y Prevención de Desbordes
-
-1. **Vistas Mensual y Semanal**:
-   - Apertura por defecto en **Vista Mensual** para visualizar el panorama del mes con navegación entre meses y botón `Hoy`.
-   - Selector segmentado `Mensual | Semanal` para conmutar al desglose horario detallado de 7 días (Lunes a Domingo).
-2. **Manejo Riguroso de Tipografía en 7 Columnas**:
-   - Para evitar desbordes en resoluciones compactas, toda columna y bloque horario/evento aplica `min-inline-size: 0; max-inline-size: 100%; overflow: hidden;`.
-   - Se apila la etiqueta/horario por encima del nombre de la materia o tarea, y los títulos usan truncado seguro en una línea (`white-space: nowrap; text-overflow: ellipsis; display: block;`). El texto completo permanece accesible mediante el atributo nativo `title`.
-
----
-
-## 6. Exámenes, Calificaciones y Promedios
-
-1. **Ficha de Examen (`.exam-ficha`)**:
-   - Tarjeta estructurada con bloque izquierdo de cuenta regresiva (`N días` o nota obtenida con badge `nota` si está rendido).
-   - Estado de urgencia destacado cuando restan 5 días o menos (`.is-urgent`).
-   - Etiquetas de categoría (`Parcial`, `Recuperatorio`, `Final`, `TP evaluativo`) y ubicación/aula.
-2. **Resumen de Calificaciones**:
-   - Pill de promedio ponderado (`.exam-average-summary-pill`) en escala 1 a 10, visible en tarjetas de materias, cabecera de la materia y listados de exámenes.
-
----
-
-## 7. Espacio de Notas y Editor Markdown
-
-1. **Workspace de Dos Paneles (`.notes-workspace`)**:
-   - **Panel lateral izquierdo**: Buscador instantáneo con soporte FTS5 sin acentos, selector de materia, filtro `Solo fijadas`, botón `+ Nueva nota` y lista con pines interactivos y metadatos de actualización.
-   - **Área principal de trabajo**: Cabecera con título editable en línea, selector de modo de vista, estado de guardado y botón de exportación `.md`.
-2. **Modos de Vista Segmentados**:
-   - **Editar**: Editor CodeMirror 6 a ancho completo con resaltado sintáctico nativo de Markdown.
-   - **Dividido**: Pantalla dividida 50/50 con editor sincrónico y previsualización GFM en vivo.
-   - **Lectura**: Previsualización GFM a ancho completo centrada en legibilidad con tipografía cuidada para lectura prolongada.
-3. **Indicador de Guardado Automático**:
-   - Feedback sutil en tiempo real (*Guardando...* / *Guardado*) con *debounce* de 450 ms para evitar llamadas innecesarias a la capa de persistencia.
+- **Shell común (`src/ui/SwissHeader.tsx`)**: Header horizontal con `border-bottom: 3px solid var(--ink)` y menú `Inicio · Materias · Calendario · Tareas · Exámenes · Informes` más el enlace `Ajustes` a la derecha.
+- **Vista de detalle de Materia (`CourseDetailView`)**: reemplaza el menú por `← Inicio`, nombre de materia en `22/800` y resumen derecho (`"N notas · N PDFs · parcial en N días"`).
+- **Componentes compartidos (`src/ui/Primitives.tsx`)**: botones primarios y secundarios, casilla de `18px`, interruptor de `46×24px`, control segmentado con borde compartido, inputs con borde `2px`, barra de progreso de `8px`, marca de cita `[N]`, barra de carga horizontal `3px` sin spinners y estado de error con barra izquierda de `4px`.
+- **Las 8 vistas**:
+  1. `Inicio` (`HomePage.tsx`)
+  2. `Materias` (`CoursesPage.tsx`)
+  3. `Materia` (`CourseDetailView.tsx`, 3 paneles: Notas / Editor / Informe con IA)
+  4. `Calendario` (`CalendarPage.tsx`, Semana / Mes)
+  5. `Tareas` (`TasksPage.tsx`)
+  6. `Exámenes` (`ExamsPage.tsx`)
+  7. `Informes` (`ReportsPage.tsx`)
+  8. `Ajustes` (`SettingsPage.tsx`)

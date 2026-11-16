@@ -10,19 +10,18 @@
     overflow: hidden;
     overscroll-behavior: contain;
     background-color: rgba(15, 20, 28, 0.45);
-    backdrop-filter: blur(2px);
   }
 
   .cursada-modal-dialog {
     margin: auto;
     padding: 0;
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
+    border-radius: 0;
     background-color: var(--bg-surface);
     color: var(--text-primary);
     width: min(680px, calc(100vw - 32px));
     max-height: calc(100vh - 48px);
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+    box-shadow: none;
   }
 
   .cursada-modal-dialog.cursada-confirm-dialog {
@@ -72,7 +71,7 @@
   .danger-button {
     min-block-size: 34px;
     padding: 6px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--status-urgent-text);
     background-color: var(--status-urgent-bg);
     color: var(--status-urgent-text);
@@ -88,7 +87,7 @@
   .danger-outline-button {
     min-block-size: 34px;
     padding: 6px 12px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface);
     color: var(--status-urgent-text);
@@ -120,7 +119,7 @@
 
   .course-form-alert {
     padding: 12px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background-color: var(--status-urgent-bg);
     color: var(--status-urgent-text);
     border: 1px solid var(--status-urgent-text);
@@ -156,7 +155,7 @@
     width: 100%;
     min-block-size: 36px;
     padding: 7px 11px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-strong);
     background-color: var(--bg-canvas);
     color: var(--text-primary);
@@ -194,7 +193,7 @@
     place-items: center;
     width: 28px;
     height: 28px;
-    border-radius: 999px;
+    border-radius: 0;
     border: 2px solid transparent;
     background-color: var(--bg-surface-subtle);
     cursor: pointer;
@@ -210,7 +209,7 @@
     margin: 0;
     padding: 16px 18px;
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background-color: var(--bg-surface-subtle);
     display: flex;
     flex-direction: column;
@@ -255,7 +254,7 @@
     gap: 10px;
     align-items: end;
     padding: 12px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface);
   }
@@ -287,7 +286,7 @@
 
   .delete-course-warning-impact {
     padding: 12px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background-color: var(--status-warn-bg);
     color: var(--status-warn-text);
     font-size: 0.84rem;
@@ -316,14 +315,14 @@
 
   .course-overview-card {
     position: relative;
-    transition: border-color 140ms ease, box-shadow 140ms ease;
+    transition: border-color 140ms ease, ;
   }
 
   .course-overview-card:has(.card-link) .card-link::after {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: inherit;
+    border-radius: 0;
   }
 
   .course-overview-card:has(.card-link) .card-link:focus-visible {
@@ -349,7 +348,7 @@
     font-size: 0.7rem;
     font-weight: 600;
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: 0;
   }
 
   .course-status-pill.is-active {
@@ -380,7 +379,7 @@
     align-items: center;
     gap: 4px;
     padding: 4px;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background-color: var(--bg-surface-subtle);
     border: 1px solid var(--border-subtle);
     max-width: 100%;
@@ -391,7 +390,7 @@
     min-block-size: 32px;
     padding: 6px 14px;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background: transparent;
     color: var(--text-secondary);
     font-size: 0.82rem;
@@ -409,7 +408,7 @@
     background-color: var(--bg-surface);
     color: var(--text-primary);
     font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
   }
 
   .course-summary-grid {
@@ -453,7 +452,7 @@
     flex-direction: column;
     gap: 5px;
     padding: 14px 16px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background-color: var(--course-bg);
     color: var(--course-text);
     border-inline-start: 3px solid var(--course-dot);
@@ -571,7 +570,7 @@
     min-width: 24px;
     height: 24px;
     padding-inline: 5px;
-    border-radius: 999px;
+    border-radius: 0;
     font-family: var(--font-mono);
     font-size: 0.76rem;
     font-weight: 600;
@@ -690,7 +689,7 @@
     min-inline-size: 0;
     overflow: hidden;
     padding: 5px 7px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background-color: var(--status-warn-bg);
     color: var(--status-warn-text);
     border: 1px solid var(--status-warn-text);
@@ -743,7 +742,7 @@
     min-inline-size: 0;
     overflow: hidden;
     padding: 4px 7px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     background-color: var(--bg-surface-subtle);
     border: 1px solid var(--course-border);
     border-inline-start: 3px solid var(--course-dot);

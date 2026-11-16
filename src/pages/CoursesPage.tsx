@@ -1,98 +1,141 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
-import {
-  calculateAverageFromExams,
-  formatExamDateLabel,
-} from '../components/exams/ExamList';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
-import { formatSchedulesSummary } from '../lib/dates';
+import {
+  DAY_SHORT_NAMES_ES,
+  MONTH_SHORT_NAMES_ES,
+  parseIsoDateLocal,
+  toIsoDateString,
+} from '../lib/dates';
+import { deleteStoredReportsByCourse } from '../lib/reportsStore';
 import type {
   CourseDeleteImpact,
   CourseTabId,
   CourseWithSchedules,
   CreateCourseInput,
+  DayOfWeek,
+  ExamCategory,
   ExamWithCourse,
+  NoteWithCourse,
   UpdateCourseInput,
 } from '../types';
+import { SwissButton, SwissEmptyState, SwissLinkButton } from '../ui';
 
 export interface CoursesPageProps {
   selectedCourseId: string | null;
-  onSelectCourse: (courseId: string | null) => void;
+  onSelectCourse: (courseId: string | null, opts?: { noteId?: string }) => void;
   onCoursesChanged?: () => void;
+  onCourseDetailHeaderChange?: (header: { name: string; summary: string } | null) => void;
+  onOpenReport?: (reportId: string) => void;
   initialCourseTab?: CourseTabId;
   initialNoteId?: string | null;
   courseNavigationVersion?: number;
   createRequestVersion?: number;
+  newNoteRequestVersion?: number;
 }
 
-const KNOWN_SHORT_CODES: Record<string, string> = {
-  'ing-soft-1': 'IS1',
-  'diseno-sistemas': 'DDS',
-  'bd-2': 'BD2',
-  'proba-estadistica': 'PyE',
-  paradigmas: 'PdeP',
+const EXAM_CATEGORY_LABELS: Record<ExamCategory, string> = {
+  parcial: 'Parcial',
+  recuperatorio: 'Recuperatorio',
+  final: 'Final',
+  tp: 'TP',
 };
 
-function getCourseShortCode(course: CourseWithSchedules): string {
-  if (KNOWN_SHORT_CODES[course.id]) {
-    return KNOWN_SHORT_CODES[course.id];
-  }
-  const stopWords = new Set(['de', 'del', 'la', 'el', 'y', 'e', 'en', 'para']);
-  const tokens = course.name
-    .trim()
-    .split(/\s+/)
-    .filter((w) => w.length > 0 && !stopWords.has(w.toLowerCase()));
-  if (tokens.length === 0) {
-    return course.name.slice(0, 3).toUpperCase();
-  }
-  return tokens
-    .slice(0, 4)
-    .map((w) => (/^[IVX0-9]+$/i.test(w) ? w.toUpperCase() : w[0].toUpperCase()))
-    .join('');
+function diffCalendarDays(targetIso: string, refIso: string): number {
+  const target = parseIsoDateLocal(targetIso);
+  const ref = parseIsoDateLocal(refIso);
+  return Math.round((target.getTime() - ref.getTime()) / 86_400_000);
 }
 
-function formatCourseLocationSummary(course: CourseWithSchedules): string {
-  const locations = Array.from(
-    new Set(
-      course.schedules
-        .map((s) => s.location.trim())
-        .filter((loc) => loc.length > 0)
-    )
-  );
-  if (locations.length === 0) {
-    return 'Sin aula asignada';
+function formatShortExamDate(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return isoDate;
   }
-  return locations.join(' · ');
+  const d = parseIsoDateLocal(isoDate);
+  const monthShort = MONTH_SHORT_NAMES_ES[d.getMonth()] ?? '';
+  return `${d.getDate()} ${monthShort}`;
+}
+
+function formatNextClassLabel(course: CourseWithSchedules, now: Date): string {
+  if (course.schedules.length === 0) {
+    return 'Sin horario';
+  }
+  const jsDay = now.getDay();
+  const todayDow = (jsDay === 0 ? 7 : jsDay) as DayOfWeek;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  let best: { dayOfWeek: DayOfWeek; startTime: string; offsetMinutes: number } | null = null;
+  for (const sched of course.schedules) {
+    const [hh, mm] = sched.startTime.split(':').map(Number);
+    const startMinutes = (hh || 0) * 60 + (mm || 0);
+    let dayOffset = sched.dayOfWeek - todayDow;
+    if (dayOffset < 0 || (dayOffset === 0 && startMinutes < nowMinutes)) {
+      dayOffset += 7;
+    }
+    const offsetMinutes = dayOffset * 1440 + (startMinutes - nowMinutes);
+    if (!best || offsetMinutes < best.offsetMinutes) {
+      best = {
+        dayOfWeek: sched.dayOfWeek,
+        startTime: sched.startTime,
+        offsetMinutes,
+      };
+    }
+  }
+
+  if (!best) {
+    return 'Sin horario';
+  }
+  if (best.dayOfWeek === todayDow && best.offsetMinutes < 1440) {
+    return `Hoy ${best.startTime}`;
+  }
+  return `${DAY_SHORT_NAMES_ES[best.dayOfWeek]} ${best.startTime}`;
+}
+
+function getCommonTermLabel(courses: CourseWithSchedules[]): string {
+  const counts = new Map<string, number>();
+  for (const c of courses) {
+    const t = c.term.trim();
+    if (!t) continue;
+    counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  let topTerm = 'Cursada actual';
+  let topCount = 0;
+  for (const [term, count] of counts.entries()) {
+    if (count > topCount) {
+      topTerm = term;
+      topCount = count;
+    }
+  }
+  return topTerm;
 }
 
 export function CoursesPage({
   selectedCourseId,
   onSelectCourse,
   onCoursesChanged,
-  initialCourseTab,
+  onCourseDetailHeaderChange,
+  onOpenReport,
   initialNoteId,
   courseNavigationVersion,
   createRequestVersion = 0,
+  newNoteRequestVersion = 0,
 }: CoursesPageProps) {
   const [courses, setCourses] = useState<CourseWithSchedules[]>([]);
   const [pendingByCourse, setPendingByCourse] = useState<Record<string, number>>({});
+  const [notesByCourse, setNotesByCourse] = useState<Record<string, number>>({});
   const [examsByCourse, setExamsByCourse] = useState<Record<string, ExamWithCourse[]>>(
     {}
   );
+  const [showArchived, setShowArchived] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
-  const [detailCreateVersion, setDetailCreateVersion] = useState<number>(0);
 
-  const prevSelectedCourseIdRef = useRef<string | null>(selectedCourseId);
   const lastCreateRequestVersionRef = useRef<number>(0);
 
   useEffect(() => {
-    const courseChanged = prevSelectedCourseIdRef.current !== selectedCourseId;
-    prevSelectedCourseIdRef.current = selectedCourseId;
-
     const hasNewCreateRequest =
       Boolean(createRequestVersion) &&
       createRequestVersion > lastCreateRequestVersionRef.current;
@@ -100,30 +143,35 @@ export function CoursesPage({
     if (hasNewCreateRequest) {
       lastCreateRequestVersionRef.current = createRequestVersion;
       if (selectedCourseId === null) {
-        setDetailCreateVersion(0);
         setEditingCourse(null);
         setIsFormOpen(true);
-      } else {
-        setDetailCreateVersion((v) => v + 1);
       }
-      return;
-    }
-
-    if (courseChanged) {
-      setDetailCreateVersion(0);
     }
   }, [createRequestVersion, selectedCourseId]);
 
   const loadCourses = useCallback(async () => {
-    const [loaded, pendingTasks, allExams] = await Promise.all([
+    const [loaded, pendingTasks, allExams, allNotes]: [
+      CourseWithSchedules[],
+      Awaited<ReturnType<typeof cursadaClient.listTasks>>,
+      ExamWithCourse[],
+      NoteWithCourse[],
+    ] = await Promise.all([
       cursadaClient.listCourses({ status: 'all' }),
       cursadaClient.listTasks({ status: 'pending' }),
-      cursadaClient.listExams(),
+      cursadaClient.listExams({ graded: 'all' }),
+      cursadaClient.listNotes(),
     ]);
-    const counts: Record<string, number> = {};
+
+    const taskCounts: Record<string, number> = {};
     for (const task of pendingTasks) {
-      counts[task.courseId] = (counts[task.courseId] ?? 0) + 1;
+      taskCounts[task.courseId] = (taskCounts[task.courseId] ?? 0) + 1;
     }
+
+    const noteCounts: Record<string, number> = {};
+    for (const note of allNotes) {
+      noteCounts[note.courseId] = (noteCounts[note.courseId] ?? 0) + 1;
+    }
+
     const groupedExams: Record<string, ExamWithCourse[]> = {};
     for (const exam of allExams) {
       if (!groupedExams[exam.courseId]) {
@@ -131,8 +179,10 @@ export function CoursesPage({
       }
       groupedExams[exam.courseId].push(exam);
     }
+
     setCourses(loaded);
-    setPendingByCourse(counts);
+    setPendingByCourse(taskCounts);
+    setNotesByCourse(noteCounts);
     setExamsByCourse(groupedExams);
   }, []);
 
@@ -148,13 +198,47 @@ export function CoursesPage({
     };
   }, [loadCourses, selectedCourseId]);
 
-  const activeCourse =
-    selectedCourseId !== null
-      ? courses.find((c) => c.id === selectedCourseId) ?? null
-      : null;
+  const activeCourses = useMemo(
+    () => courses.filter((c) => c.status === 'active'),
+    [courses]
+  );
+  const archivedCourses = useMemo(
+    () => courses.filter((c) => c.status === 'archived'),
+    [courses]
+  );
 
-  const activeCourses = courses.filter((c) => c.status === 'active');
-  const archivedCourses = courses.filter((c) => c.status === 'archived');
+  const now = useMemo(() => new Date(), []);
+  const todayIso = useMemo(() => toIsoDateString(now), [now]);
+
+  const nextExamByCourse = useMemo(() => {
+    const result: Record<string, ExamWithCourse | null> = {};
+    for (const course of activeCourses) {
+      const upcoming = (examsByCourse[course.id] ?? [])
+        .filter((e) => e.grade === null && e.examDate >= todayIso)
+        .sort((a, b) => a.examDate.localeCompare(b.examDate));
+      result[course.id] = upcoming[0] ?? null;
+    }
+    return result;
+  }, [activeCourses, examsByCourse, todayIso]);
+
+  const globalClosestExamId = useMemo(() => {
+    let closest: ExamWithCourse | null = null;
+    for (const course of activeCourses) {
+      const candidate = nextExamByCourse[course.id];
+      if (!candidate) continue;
+      if (!closest || candidate.examDate.localeCompare(closest.examDate) < 0) {
+        closest = candidate;
+      }
+    }
+    return closest?.id ?? null;
+  }, [activeCourses, nextExamByCourse]);
+
+  const totalActiveNotes = useMemo(
+    () => activeCourses.reduce((acc, c) => acc + (notesByCourse[c.id] ?? 0), 0),
+    [activeCourses, notesByCourse]
+  );
+
+  const termLabel = useMemo(() => getCommonTermLabel(activeCourses), [activeCourses]);
 
   function handleOpenCreate(): void {
     setEditingCourse(null);
@@ -182,6 +266,9 @@ export function CoursesPage({
   async function handleToggleArchive(course: CourseWithSchedules): Promise<void> {
     const nextStatus = course.status === 'active' ? 'archived' : 'active';
     await cursadaClient.updateCourse(course.id, { status: nextStatus });
+    if (nextStatus === 'archived' && selectedCourseId === course.id) {
+      onSelectCourse(null);
+    }
     await loadCourses();
     onCoursesChanged?.();
   }
@@ -193,6 +280,7 @@ export function CoursesPage({
 
   async function handleConfirmDelete(courseId: string): Promise<void> {
     await cursadaClient.deleteCourse(courseId);
+    deleteStoredReportsByCourse(courseId);
     setDeleteImpact(null);
     if (selectedCourseId === courseId) {
       onSelectCourse(null);
@@ -201,148 +289,249 @@ export function CoursesPage({
     onCoursesChanged?.();
   }
 
-  function renderCourseCard(course: CourseWithSchedules) {
-    const isArchived = course.status === 'archived';
-    const scheduleSummary = formatSchedulesSummary(course.schedules);
-    const locationSummary = formatCourseLocationSummary(course);
-    const pendingCount = pendingByCourse[course.id] ?? 0;
-    const courseExams = examsByCourse[course.id] ?? [];
-    const averageGrade = calculateAverageFromExams(courseExams);
-    const nextExam = courseExams.find((e) => e.grade === null) ?? null;
-    const shortCode = getCourseShortCode(course);
-
-    return (
-      <article
-        key={course.id}
-        className={`surface-panel course-overview-card ${isArchived ? 'is-archived' : ''}`}
-        data-course-color={course.color}
-      >
-        <div className="course-card-header">
-          <span className="course-pill" data-course-color={course.color}>
-            <span
-              className="course-dot"
-              data-course-color={course.color}
-              aria-hidden="true"
-            />
-            {shortCode}
-          </span>
-          <span className="course-grade-pill">
-            {averageGrade !== null
-              ? `Promedio ${averageGrade.toFixed(1)}`
-              : isArchived
-                ? `Archivada · ${course.term}`
-                : course.term}
-          </span>
-        </div>
-
-        <h2 className="course-card-title">
-          <button
-            type="button"
-            className="inline-course-link card-link"
-            onClick={() => onSelectCourse(course.id)}
-          >
-            {course.name}
-          </button>
-        </h2>
-        <p className="course-card-professor">
-          {course.professor ? `Prof. ${course.professor}` : 'Profesor sin asignar'}
-        </p>
-
-        <div className="course-card-details">
-          <div className="course-detail-row">
-            <span className="course-detail-label">Cursada</span>
-            <span className="course-detail-value">{scheduleSummary}</span>
-          </div>
-          <div className="course-detail-row">
-            <span className="course-detail-label">Aula / Modalidad</span>
-            <span className="course-detail-value">{locationSummary}</span>
-          </div>
-          <div className="course-detail-row">
-            <span className="course-detail-label">Pendientes</span>
-            <span className="course-detail-value">
-              {pendingCount} {pendingCount === 1 ? 'tarea' : 'tareas'}
-              {nextExam
-                ? ` · ${formatExamDateLabel(nextExam.examDate)}`
-                : ''}
-            </span>
-          </div>
-        </div>
-      </article>
-    );
-  }
-
   return (
     <>
-      {activeCourse ? (
+      {selectedCourseId !== null ? (
         <CourseDetailView
-          key={activeCourse.id}
-          course={activeCourse}
-          onBackToAll={() => onSelectCourse(null)}
-          onEdit={handleOpenEdit}
-          onToggleArchive={(c) => void handleToggleArchive(c)}
-          onRequestDelete={(id) => void handleRequestDelete(id)}
-          initialTab={initialCourseTab}
+          key={selectedCourseId}
+          courseId={selectedCourseId}
           initialNoteId={initialNoteId}
           navigationVersion={courseNavigationVersion}
-          createRequestVersion={detailCreateVersion}
+          newNoteRequestVersion={newNoteRequestVersion}
+          onSelectCourse={onSelectCourse}
+          onHeaderMetaChange={onCourseDetailHeaderChange}
+          onOpenReport={onOpenReport}
+          onEditCourse={handleOpenEdit}
+          onArchiveCourse={(c) => void handleToggleArchive(c)}
+          onDeleteCourse={(id) => void handleRequestDelete(id)}
+          onCoursesChanged={() => {
+            void loadCourses();
+            onCoursesChanged?.();
+          }}
         />
       ) : (
-        <div className="basic-view">
-          <header className="page-header">
-            <div className="page-header-titles">
-              <span className="page-date-text">2026 · 2° Cuatrimestre</span>
-              <h1 id="main-title" tabIndex={-1} className="page-title">
+        <section aria-labelledby="main-title">
+          <header className="swiss-page-head">
+            <div className="swiss-page-head-left">
+              <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
                 Materias
               </h1>
-              <p className="page-subtitle">
-                Materias del cuatrimestre actual. Hacé clic en cualquier materia para abrir su ficha,
-                horarios y entregas.
+              <p className="swiss-meta-md">
+                {activeCourses.length} {activeCourses.length === 1 ? 'activa' : 'activas'} ·{' '}
+                {termLabel} · {totalActiveNotes}{' '}
+                {totalActiveNotes === 1 ? 'nota' : 'notas'} en total
               </p>
             </div>
-            <div className="basic-header-actions">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={handleOpenCreate}
-              >
-                Nueva materia
-              </button>
+
+            <div className="swiss-page-actions">
+              <SwissButton variant="secondary" onClick={handleOpenCreate}>
+                + Nueva materia
+              </SwissButton>
             </div>
           </header>
 
           {activeCourses.length === 0 ? (
-            <div className="surface-panel courses-empty-state">
-              <p className="course-empty-text">
-                No tenés materias activas en este cuatrimestre. Creá una con el botón &ldquo;Nueva
-                materia&rdquo;.
-              </p>
-            </div>
+            <SwissEmptyState
+              title="No tenés materias activas"
+              description="Creá una materia para organizar tus notas, fuentes, tareas y próximos exámenes."
+              actionLabel="+ Nueva materia"
+              onAction={handleOpenCreate}
+            />
           ) : (
-            <div className="courses-cards-grid">
-              {activeCourses.map((course) => renderCourseCard(course))}
+            <div className="courses-table" role="table" aria-label="Materias activas">
+              <div className="courses-table-head" role="row">
+                <span className="swiss-section-label" role="columnheader">
+                  Nº
+                </span>
+                <span className="swiss-section-label" role="columnheader">
+                  Materia
+                </span>
+                <span className="swiss-section-label" role="columnheader">
+                  Próxima clase
+                </span>
+                <span className="swiss-section-label" role="columnheader">
+                  Notas
+                </span>
+                <span className="swiss-section-label" role="columnheader">
+                  Tareas
+                </span>
+                <span className="swiss-section-label" role="columnheader">
+                  Próximo examen
+                </span>
+                <span className="visually-hidden" role="columnheader">
+                  Acción
+                </span>
+              </div>
+
+              {activeCourses.map((course, idx) => {
+                const indexText = String(idx + 1).padStart(2, '0');
+                const notesCount = notesByCourse[course.id] ?? 0;
+                const tasksCount = pendingByCourse[course.id] ?? 0;
+                const nextExam = nextExamByCourse[course.id];
+                const isGlobalClosest =
+                  nextExam !== null && nextExam.id === globalClosestExamId;
+                const daysLeft = nextExam
+                  ? Math.max(0, diffCalendarDays(nextExam.examDate, todayIso))
+                  : null;
+
+                return (
+                  <div
+                    key={course.id}
+                    className="courses-table-row"
+                    role="row"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('button')) return;
+                      onSelectCourse(course.id);
+                    }}
+                  >
+                    <span className="courses-row-idx" role="cell">
+                      {indexText}
+                    </span>
+
+                    <div role="cell">
+                      <button
+                        type="button"
+                        className="courses-row-name"
+                        onClick={() => onSelectCourse(course.id)}
+                      >
+                        {course.name}
+                      </button>
+                      <div className="swiss-meta">
+                        {course.professor.trim() ? `${course.professor.trim()} · ` : ''}
+                        <SwissLinkButton
+                          style={{ fontSize: '12px', fontWeight: 500 }}
+                          onClick={() => handleOpenEdit(course)}
+                        >
+                          Editar
+                        </SwissLinkButton>
+                        {' · '}
+                        <SwissLinkButton
+                          style={{ fontSize: '12px', fontWeight: 500 }}
+                          onClick={() => void handleToggleArchive(course)}
+                        >
+                          Archivar
+                        </SwissLinkButton>
+                        {' · '}
+                        <SwissLinkButton
+                          style={{ fontSize: '12px', fontWeight: 500 }}
+                          onClick={() => void handleRequestDelete(course.id)}
+                        >
+                          Eliminar
+                        </SwissLinkButton>
+                      </div>
+                    </div>
+
+                    <span className="courses-row-nextclass" role="cell">
+                      {formatNextClassLabel(course, now)}
+                    </span>
+
+                    <span className="courses-row-num" role="cell">
+                      {notesCount}
+                    </span>
+
+                    <span className="courses-row-num" role="cell">
+                      {tasksCount}
+                    </span>
+
+                    <div className="courses-row-exam" role="cell">
+                      {nextExam && daysLeft !== null ? (
+                        <>
+                          <span
+                            className={`courses-row-exam-label ${isGlobalClosest ? 'is-closest' : ''}`}
+                          >
+                            {EXAM_CATEGORY_LABELS[nextExam.category]} ·{' '}
+                            {daysLeft === 0
+                              ? 'hoy'
+                              : daysLeft === 1
+                                ? 'en 1 día'
+                                : `en ${daysLeft} días`}
+                          </span>
+                          <span className="courses-row-exam-sub">
+                            {formatShortExamDate(nextExam.examDate)} · {nextExam.title}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="swiss-meta">Sin exámenes</span>
+                      )}
+                    </div>
+
+                    <div className="courses-row-actions" role="cell">
+                      <SwissLinkButton
+                        aria-label={`Abrir ${course.name}`}
+                        onClick={() => onSelectCourse(course.id)}
+                      >
+                        →
+                      </SwissLinkButton>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {archivedCourses.length > 0 ? (
-            <section
-              aria-labelledby="archived-courses-heading"
-              className="courses-group-section courses-archived-section"
-            >
-              <div className="section-heading-bar">
-                <div className="section-heading-left">
-                  <h2 id="archived-courses-heading" className="section-title">
-                    Archivo · Cuatrimestres anteriores
-                  </h2>
-                  <span className="section-counter">{archivedCourses.length}</span>
-                </div>
-              </div>
+          <footer className="courses-footer">
+            <span className="swiss-meta-md">
+              Materias archivadas: {archivedCourses.length}
+            </span>
+            <SwissLinkButton onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? 'Ocultar archivadas' : 'Ver archivadas →'}
+            </SwissLinkButton>
+          </footer>
 
-              <div className="courses-cards-grid">
-                {archivedCourses.map((course) => renderCourseCard(course))}
-              </div>
+          {showArchived ? (
+            <section
+              aria-label="Materias archivadas"
+              style={{ marginTop: '16px', paddingTop: '12px' }}
+            >
+              {archivedCourses.length === 0 ? (
+                <p className="swiss-meta-md">No tenés materias archivadas.</p>
+              ) : (
+                <div className="courses-table">
+                  {archivedCourses.map((course, idx) => (
+                    <div key={course.id} className="courses-table-row">
+                      <span className="courses-row-idx">
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          className="courses-row-name"
+                          onClick={() => onSelectCourse(course.id)}
+                        >
+                          {course.name}
+                        </button>
+                        {course.term.trim() ? (
+                          <div className="swiss-meta">{course.term.trim()}</div>
+                        ) : null}
+                      </div>
+                      <span className="swiss-meta">Archivada</span>
+                      <span className="courses-row-num">
+                        {notesByCourse[course.id] ?? 0}
+                      </span>
+                      <span className="courses-row-num">
+                        {pendingByCourse[course.id] ?? 0}
+                      </span>
+                      <div className="courses-row-actions" style={{ gridColumn: 'span 2' }}>
+                        <SwissButton
+                          variant="secondary"
+                          onClick={() => void handleToggleArchive(course)}
+                        >
+                          Restaurar
+                        </SwissButton>
+                        <SwissButton
+                          variant="secondary"
+                          onClick={() => void handleRequestDelete(course.id)}
+                        >
+                          Eliminar
+                        </SwissButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           ) : null}
-        </div>
+        </section>
       )}
 
       <CourseFormModal

@@ -15,7 +15,7 @@ describe('Phase 4 Task 4.2 UI: ExportMarkdownButton, SettingsPage, and mockExpor
     vi.restoreAllMocks();
   });
 
-  it('renders Exportar a Markdown section in SettingsPage and handles filesystem export confirmation', async () => {
+  it('renders Portabilidad en Markdown in SettingsPage Datos section and handles export confirmation', async () => {
     const exportSpy = vi
       .spyOn(cursadaClient, 'exportMarkdown')
       .mockResolvedValueOnce({
@@ -29,46 +29,50 @@ describe('Phase 4 Task 4.2 UI: ExportMarkdownButton, SettingsPage, and mockExpor
     render(<SettingsPage themeMode="system" onChangeThemeMode={() => {}} />);
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Exportar a Markdown' })
+      screen.getByRole('heading', { level: 2, name: 'Datos' })
     ).toBeInTheDocument();
+    expect(screen.getByText('Portabilidad en Markdown')).toBeInTheDocument();
 
-    const exportButton = screen.getByRole('button', {
-      name: 'Exportar toda la cursada (.md)',
-    });
+    const exportButton = screen.getByTestId('settings-export-all-button');
+    expect(exportButton).toHaveTextContent('Exportar Markdown');
     fireEvent.click(exportButton);
 
     await waitFor(() => {
       expect(exportSpy).toHaveBeenCalledWith({
         scope: 'all',
-        courseId: undefined,
-        noteId: undefined,
       });
     });
 
     expect(
-      await screen.findByText(/Exportación completada \(8 archivos\)/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('/Users/toms/Desktop/cursada-export')
+      await screen.findByText(/Exportación Markdown completada \(8 archivos\)\./i)
     ).toBeInTheDocument();
   });
 
   it('handles canceled: true gracefully in SettingsPage without showing errors', async () => {
-    vi.spyOn(cursadaClient, 'exportMarkdown').mockResolvedValueOnce({
-      canceled: true,
-      targetDir: null,
-      filesCreated: [],
-      fileCount: 0,
-      mode: 'filesystem',
-    });
+    const exportSpy = vi
+      .spyOn(cursadaClient, 'exportMarkdown')
+      .mockResolvedValueOnce({
+        canceled: true,
+        targetDir: null,
+        filesCreated: [],
+        fileCount: 0,
+        mode: 'filesystem',
+      });
 
     render(<SettingsPage themeMode="light" onChangeThemeMode={() => {}} />);
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Exportar toda la cursada (.md)' })
-    );
+    const exportButton = screen.getByTestId('settings-export-all-button');
+    fireEvent.click(exportButton);
 
-    expect(await screen.findByText('Exportación cancelada.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(exportSpy).toHaveBeenCalledWith({ scope: 'all' });
+    });
+    await waitFor(() => {
+      expect(exportButton).toBeEnabled();
+    });
+    expect(
+      screen.queryByText(/Exportación Markdown completada/i)
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -86,7 +90,7 @@ describe('Phase 4 Task 4.2 UI: ExportMarkdownButton, SettingsPage, and mockExpor
 
     render(<ExportMarkdownButton scope="course" courseId="ing-soft-1" />);
 
-    const btn = screen.getByRole('button', { name: 'Exportar materia (.md)' });
+    const btn = screen.getByRole('button', { name: 'Exportar anotador (.md)' });
     fireEvent.click(btn);
 
     await waitFor(() => {

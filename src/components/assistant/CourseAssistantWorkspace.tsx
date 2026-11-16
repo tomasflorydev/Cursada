@@ -32,9 +32,6 @@ export function CourseAssistantWorkspace({
         <div className="assistant-workspace-top">
           <div className="assistant-workspace-heading">
             <h2 className="section-title">Asistente IA de {courseName}</h2>
-            <p className="assistant-ondemand-badge" data-testid="assistant-ondemand-badge">
-              IA local bajo demanda (Ollama se activa solo al generar y libera memoria al terminar)
-            </p>
           </div>
 
           <div
@@ -69,7 +66,7 @@ export function CourseAssistantWorkspace({
             data-testid="assistant-last-note-banner"
           >
             <span className="assistant-last-note-text">
-              Último material guardado en Notas de esta materia.
+              Último material guardado en Notas.
             </span>
             <button
               type="button"

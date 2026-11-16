@@ -33,12 +33,12 @@ function createMainWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
-    minWidth: 960,
+    minWidth: 1100,
     minHeight: 640,
     title: 'Cursada',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 14 },
-    backgroundColor: '#21262d',
+    backgroundColor: '#1E2023',
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

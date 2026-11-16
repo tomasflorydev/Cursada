@@ -1,37 +1,39 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import {
+  DAY_NAMES_ES,
   DAY_SHORT_NAMES_ES,
-  formatWeekRangeEs,
-  getWeekDaysMondayToSunday,
+  MONTH_NAMES_ES,
   MONTH_SHORT_NAMES_ES,
   parseIsoDateLocal,
   toIsoDateString,
 } from '../lib/dates';
-import { CURRENT_WEEK_LABEL } from '../lib/sampleData';
+import { getLatestStoredReport, listStoredReports, subscribeReports, type StoredReport } from '../lib/reportsStore';
 import type {
   CourseWithSchedules,
   DayOfWeek,
   ExamCategory,
   ExamWithCourse,
   NavSectionId,
+  NoteWithCourse,
   TaskWithCourse,
-  WeekDayPulse,
 } from '../types';
+import { SwissLinkButton, SwissSectionHeader } from '../ui';
 
 export interface HomePageProps {
-  onNavigateSection: (section: NavSectionId) => void;
-  onSelectCourse: (courseId: string) => void;
+  onNavigateSection: (
+    section: NavSectionId,
+    opts?: { triggerCreate?: boolean; reportId?: string }
+  ) => void;
+  onSelectCourse: (courseId: string, opts?: { noteId?: string }) => void;
   referenceDate?: Date;
 }
-
-const DEFAULT_REFERENCE_DATE = new Date(2026, 10, 10);
 
 const EXAM_CATEGORY_LABELS: Record<ExamCategory, string> = {
   parcial: 'Parcial',
   recuperatorio: 'Recuperatorio',
   final: 'Final',
-  tp: 'Entrega TP',
+  tp: 'TP evaluativo',
 };
 
 const FULL_WEEKDAY_NAMES = [
@@ -44,29 +46,6 @@ const FULL_WEEKDAY_NAMES = [
   'Sábado',
 ];
 
-const FULL_MONTH_NAMES = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
-
-function formatFullSpanishDate(date: Date): string {
-  const dayName = FULL_WEEKDAY_NAMES[date.getDay()];
-  const dayNum = date.getDate();
-  const monthName = FULL_MONTH_NAMES[date.getMonth()];
-  const year = date.getFullYear();
-  return `${dayName}, ${dayNum} de ${monthName} de ${year}`;
-}
-
 function diffCalendarDays(targetIso: string, refIso: string): number {
   const target = parseIsoDateLocal(targetIso);
   const ref = parseIsoDateLocal(refIso);
@@ -74,91 +53,122 @@ function diffCalendarDays(targetIso: string, refIso: string): number {
   return Math.round((target.getTime() - ref.getTime()) / msPerDay);
 }
 
-function formatShortDateEs(isoDate: string): string {
+function formatShortTaskDue(dueDate: string | null, refIso: string): string {
+  if (!dueDate) {
+    return 'Sin fecha';
+  }
+  const diff = diffCalendarDays(dueDate, refIso);
+  if (diff < 0) {
+    return 'Vencida';
+  }
+  if (diff === 0) {
+    return 'Hoy';
+  }
+  if (diff === 1) {
+    return 'Mañana';
+  }
+  const date = parseIsoDateLocal(dueDate);
+  const monthShort = MONTH_SHORT_NAMES_ES[date.getMonth()] ?? '';
+  return `${date.getDate()} ${monthShort}`;
+}
+
+function formatShortExamDate(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return isoDate;
+  }
   const d = parseIsoDateLocal(isoDate);
   const jsDay = d.getDay();
   const dayOfWeek = (jsDay === 0 ? 7 : jsDay) as DayOfWeek;
   const dayShort = DAY_SHORT_NAMES_ES[dayOfWeek];
-  const dayNum = String(d.getDate()).padStart(2, '0');
   const monthShort = MONTH_SHORT_NAMES_ES[d.getMonth()] ?? '';
-  return `${dayShort} ${dayNum} ${monthShort}`;
+  return `${dayShort} ${d.getDate()} ${monthShort}`;
 }
 
-function getTaskDuePresentation(
-  dueDate: string | null,
-  status: 'pending' | 'done',
-  refIso: string
-): { dueLabel: string; urgency: 'today' | 'soon' | 'normal' } {
-  if (status === 'done') {
-    return { dueLabel: 'Completada', urgency: 'normal' };
-  }
-  if (!dueDate) {
-    return { dueLabel: 'Sin fecha', urgency: 'normal' };
-  }
-  const diff = diffCalendarDays(dueDate, refIso);
-  if (diff < 0) {
-    return { dueLabel: `Venció (${formatShortDateEs(dueDate)})`, urgency: 'today' };
-  }
-  if (diff === 0) {
-    return { dueLabel: 'Vence hoy', urgency: 'today' };
-  }
-  if (diff === 1) {
-    return { dueLabel: 'Mañana', urgency: 'soon' };
-  }
-  if (diff <= 4) {
-    return { dueLabel: formatShortDateEs(dueDate), urgency: 'soon' };
-  }
-  return { dueLabel: formatShortDateEs(dueDate), urgency: 'normal' };
+interface NextClassInfo {
+  courseId: string;
+  courseName: string;
+  dayLabel: string;
+  startTime: string;
+  isToday: boolean;
 }
 
-function buildDayPulseSummary(
-  classesCount: number,
-  tasksCount: number,
-  examsCount: number
-): string {
-  const parts: string[] = [];
-  if (examsCount > 0) {
-    parts.push(examsCount === 1 ? '1 examen' : `${examsCount} exámenes`);
+function findNextClass(
+  courses: CourseWithSchedules[],
+  referenceDate: Date
+): NextClassInfo | null {
+  const jsDay = referenceDate.getDay();
+  const todayDow = (jsDay === 0 ? 7 : jsDay) as DayOfWeek;
+  const nowMinutes = referenceDate.getHours() * 60 + referenceDate.getMinutes();
+
+  const candidates: Array<NextClassInfo & { offsetMinutes: number }> = [];
+
+  for (const course of courses) {
+    for (const sched of course.schedules) {
+      const [hh, mm] = sched.startTime.split(':').map(Number);
+      const startMinutes = (hh || 0) * 60 + (mm || 0);
+      let dayOffset = sched.dayOfWeek - todayDow;
+      if (dayOffset < 0 || (dayOffset === 0 && startMinutes < nowMinutes)) {
+        dayOffset += 7;
+      }
+      const offsetMinutes = dayOffset * 1440 + (startMinutes - nowMinutes);
+      candidates.push({
+        courseId: course.id,
+        courseName: course.name,
+        dayLabel: dayOffset === 0 ? 'hoy' : `el ${DAY_NAMES_ES[sched.dayOfWeek].toLowerCase()}`,
+        startTime: sched.startTime,
+        isToday: dayOffset === 0,
+        offsetMinutes,
+      });
+    }
   }
-  if (classesCount > 0 && examsCount === 0) {
-    parts.push(classesCount === 1 ? '1 clase' : `${classesCount} clases`);
-  } else if (classesCount > 0 && tasksCount === 0) {
-    parts.unshift(classesCount === 1 ? '1 clase' : `${classesCount} clases`);
+
+  if (candidates.length === 0) {
+    return null;
   }
-  if (tasksCount > 0) {
-    parts.push(tasksCount === 1 ? '1 entrega' : `${tasksCount} entregas`);
-  }
-  if (parts.length === 0) {
-    return 'Libre';
-  }
-  return parts.join(' · ');
+
+  candidates.sort((a, b) => a.offsetMinutes - b.offsetMinutes);
+  const best = candidates[0];
+  return {
+    courseId: best.courseId,
+    courseName: best.courseName,
+    dayLabel: best.dayLabel,
+    startTime: best.startTime,
+    isToday: best.isToday,
+  };
 }
 
 export function HomePage({
   onNavigateSection,
   onSelectCourse,
-  referenceDate = DEFAULT_REFERENCE_DATE,
+  referenceDate,
 }: HomePageProps) {
   const [tasks, setTasks] = useState<TaskWithCourse[]>([]);
   const [exams, setExams] = useState<ExamWithCourse[]>([]);
   const [courses, setCourses] = useState<CourseWithSchedules[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [notes, setNotes] = useState<NoteWithCourse[]>([]);
+  const [reports, setReports] = useState<StoredReport[]>(() => listStoredReports());
+  const [latestReport, setLatestReport] = useState<StoredReport | null>(() =>
+    getLatestStoredReport()
+  );
 
-  const refIso = useMemo(() => toIsoDateString(referenceDate), [referenceDate]);
+  const effectiveDate = useMemo(
+    () => referenceDate ?? new Date(),
+    [referenceDate]
+  );
+
+  const refIso = useMemo(() => toIsoDateString(effectiveDate), [effectiveDate]);
 
   const loadHomeData = useCallback(async () => {
-    try {
-      const [loadedTasks, loadedExams, loadedCourses] = await Promise.all([
-        cursadaClient.listTasks({ status: 'all' }),
-        cursadaClient.listExams({ graded: 'all' }),
-        cursadaClient.listCourses({ status: 'active' }),
-      ]);
-      setTasks(loadedTasks);
-      setExams(loadedExams);
-      setCourses(loadedCourses);
-    } finally {
-      setLoading(false);
-    }
+    const [loadedTasks, loadedExams, loadedCourses, loadedNotes] = await Promise.all([
+      cursadaClient.listTasks({ status: 'all' }),
+      cursadaClient.listExams({ graded: 'all' }),
+      cursadaClient.listCourses({ status: 'active' }),
+      cursadaClient.listNotes(),
+    ]);
+    setTasks(loadedTasks);
+    setExams(loadedExams);
+    setCourses(loadedCourses);
+    setNotes(loadedNotes);
   }, []);
 
   useEffect(() => {
@@ -167,333 +177,302 @@ export function HomePage({
       void loadHomeData();
     };
     window.addEventListener(DATA_CHANGED_EVENT, handleDataChanged);
+    const unsubscribeReports = subscribeReports(() => {
+      setReports(listStoredReports());
+      setLatestReport(getLatestStoredReport());
+    });
     return () => {
       window.removeEventListener(DATA_CHANGED_EVENT, handleDataChanged);
+      unsubscribeReports();
     };
   }, [loadHomeData]);
 
-  async function handleToggleTask(taskId: string): Promise<void> {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? { ...task, status: task.status === 'done' ? 'pending' : 'done' }
-          : task
-      )
-    );
-    await cursadaClient.toggleTaskStatus(taskId);
-    await loadHomeData();
-  }
-
-  const pendingTasks = useMemo(
-    () => tasks.filter((t) => t.status === 'pending'),
-    [tasks]
-  );
-
-  const visibleHomeTasks = useMemo(() => {
-    return [...tasks]
+  const pendingTasks = useMemo(() => {
+    return tasks
+      .filter((t) => t.status === 'pending')
       .sort((a, b) => {
-        if (a.status !== b.status) {
-          return a.status === 'pending' ? -1 : 1;
-        }
         if (a.dueDate && b.dueDate) {
           return a.dueDate.localeCompare(b.dueDate);
         }
         if (a.dueDate) return -1;
         if (b.dueDate) return 1;
         return 0;
-      })
-      .slice(0, 6);
+      });
   }, [tasks]);
+
+  const visibleTasks = useMemo(() => pendingTasks.slice(0, 4), [pendingTasks]);
+
+  const weeklyClasses = useMemo(() => {
+    const items: Array<{
+      id: string;
+      courseId: string;
+      courseName: string;
+      dayOfWeek: DayOfWeek;
+      startTime: string;
+    }> = [];
+
+    for (const course of courses) {
+      for (const sched of course.schedules) {
+        items.push({
+          id: sched.id,
+          courseId: course.id,
+          courseName: course.name,
+          dayOfWeek: sched.dayOfWeek,
+          startTime: sched.startTime,
+        });
+      }
+    }
+
+    return items.sort((a, b) => {
+      if (a.dayOfWeek !== b.dayOfWeek) {
+        return a.dayOfWeek - b.dayOfWeek;
+      }
+      return a.startTime.localeCompare(b.startTime);
+    });
+  }, [courses]);
 
   const upcomingExams = useMemo(() => {
     return exams
       .filter((exam) => exam.grade === null && exam.examDate >= refIso)
-      .sort((a, b) => a.examDate.localeCompare(b.examDate));
+      .sort((a, b) => a.examDate.localeCompare(b.examDate))
+      .slice(0, 3);
   }, [exams, refIso]);
 
-  const nextExamDaysLeft = useMemo(() => {
-    if (upcomingExams.length === 0) {
-      return null;
+  const notesCountByCourse = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const note of notes) {
+      map[note.courseId] = (map[note.courseId] ?? 0) + 1;
     }
-    return Math.max(0, diffCalendarDays(upcomingExams[0].examDate, refIso));
-  }, [upcomingExams, refIso]);
+    return map;
+  }, [notes]);
 
-  const weekDays = useMemo(
-    () => getWeekDaysMondayToSunday(referenceDate, referenceDate),
-    [referenceDate]
+  const nextClass = useMemo(
+    () => findNextClass(courses, effectiveDate),
+    [courses, effectiveDate]
   );
 
-  const weekPulse: WeekDayPulse[] = useMemo(() => {
-    return weekDays.map((day) => {
-      const classesCount = courses.reduce((acc, course) => {
-        const blocksToday = course.schedules.filter(
-          (s) => s.dayOfWeek === day.dayOfWeek
-        ).length;
-        return acc + blocksToday;
-      }, 0);
+  const dayOfMonth = String(effectiveDate.getDate());
+  const weekdayName = FULL_WEEKDAY_NAMES[effectiveDate.getDay()] ?? '';
+  const monthName = MONTH_NAMES_ES[effectiveDate.getMonth()] ?? '';
 
-      const tasksCount = tasks.filter(
-        (task) => task.dueDate === day.dateIso && task.status === 'pending'
-      ).length;
+  const tasksSummaryText =
+    pendingTasks.length === 0
+      ? 'no tenés tareas abiertas'
+      : pendingTasks.length === 1
+        ? 'tenés 1 tarea abierta'
+        : `tenés ${pendingTasks.length} tareas abiertas`;
 
-      const examsToday = exams.filter((exam) => exam.examDate === day.dateIso);
-      const hasExam = examsToday.length > 0;
+  const reportsSummaryText =
+    reports.length === 0
+      ? 'sin informes generados todavía'
+      : reports.length === 1
+        ? '1 informe listo para repasar'
+        : `${reports.length} informes listos para repasar`;
 
-      return {
-        dayShort: day.dayShort,
-        dayName: day.dayName,
-        dayNumber: day.dayNumber,
-        isToday: day.isToday,
-        classesCount,
-        tasksCount,
-        hasExam,
-        summary: buildDayPulseSummary(classesCount, tasksCount, examsToday.length),
-      };
-    });
-  }, [weekDays, courses, tasks, exams]);
+  const nextClassSummaryText = nextClass
+    ? `Tu próxima clase es ${nextClass.courseName} ${nextClass.dayLabel} a las ${nextClass.startTime}.`
+    : 'No tenés clases semanales cargadas.';
 
-  const weekRangeLabel = useMemo(
-    () => formatWeekRangeEs(referenceDate),
-    [referenceDate]
-  );
+  const footerCourses = useMemo(() => courses.slice(0, 5), [courses]);
 
   return (
-    <div className="home-page bento-airy-layout">
-      {/* Header Bento */}
-      <header className="bento-header">
-        <div className="bento-header-titles">
-          <div className="page-date-row">
-            <span className="page-date-text">{formatFullSpanishDate(referenceDate)}</span>
-            <span className="page-week-pill">{CURRENT_WEEK_LABEL}</span>
-          </div>
-          <h1 id="main-title" tabIndex={-1} className="bento-title">
+    <div className="home-page">
+      <div className="swiss-grid is-home">
+        {/* Columna izquierda: Día + fecha + resumen real */}
+        <section className="swiss-col-4" aria-labelledby="main-title">
+          <h1 id="main-title" tabIndex={-1} className="visually-hidden">
             Inicio
           </h1>
-          <p className="bento-subtitle" data-testid="home-summary-subtitle">
-            Tenés <strong>{pendingTasks.length} entregas pendientes</strong>
-            {nextExamDaysLeft !== null ? (
-              <>
-                {' '}
-                y tu próximo examen es en <strong>{nextExamDaysLeft} días</strong>.
-              </>
-            ) : (
-              <> y no tenés exámenes próximos agendados.</>
-            )}
+
+          <div className="home-day-number">{dayOfMonth}</div>
+          <p className="home-date-label">
+            {weekdayName}
+            <br />
+            de {monthName}
           </p>
-        </div>
-      </header>
-
-      {/* Nivel 1: Columnas asimétricas (Tareas y Exámenes) con aire generoso */}
-      <div className="bento-airy-columns">
-        <section className="surface-panel" aria-label="Tareas por vencer">
-          <div className="section-heading-bar">
-            <div className="section-heading-left">
-              <h2 className="section-title">Tareas por vencer</h2>
-              <span className="section-counter" data-testid="home-pending-tasks-counter">
-                {pendingTasks.length} pendientes
-              </span>
-            </div>
-            <button
-              type="button"
-              className="ghost-action-button"
-              onClick={() => onNavigateSection('tareas')}
-            >
-              Ver todas
-            </button>
-          </div>
-
-          {!loading && visibleHomeTasks.length === 0 ? (
-            <div className="empty-state-box">
-              <p className="empty-state-title">Estás al día con tus entregas</p>
-              <p className="empty-state-text">
-                No hay tareas pendientes cargadas en este momento.
-              </p>
-            </div>
-          ) : (
-            <div className="task-checklist">
-              {visibleHomeTasks.map((task) => {
-                const isDone = task.status === 'done';
-                const checkboxId = `bento-task-${task.id}`;
-                const { dueLabel, urgency } = getTaskDuePresentation(
-                  task.dueDate,
-                  task.status,
-                  refIso
-                );
-                return (
-                  <div
-                    key={task.id}
-                    className={`task-row ${isDone ? 'is-completed' : ''}`}
-                    data-course-color={task.courseColor}
-                    data-testid={`home-task-row-${task.id}`}
-                  >
-                    <div className="task-row-main">
-                      <input
-                        id={checkboxId}
-                        type="checkbox"
-                        className="task-checkbox"
-                        checked={isDone}
-                        onChange={() => void handleToggleTask(task.id)}
-                      />
-                      <label htmlFor={checkboxId} className="task-title-label">
-                        {task.title}
-                      </label>
-                    </div>
-                    <div className="task-row-meta">
-                      {task.priority === 'high' && !isDone ? (
-                        <span className="priority-indicator is-high">Prioridad alta</span>
-                      ) : null}
-                      <span className="course-pill" data-course-color={task.courseColor}>
-                        <span
-                          className="course-dot"
-                          data-course-color={task.courseColor}
-                          aria-hidden="true"
-                        />
-                        {task.courseName}
-                      </span>
-                      <span
-                        className={`task-due-badge urgency-${urgency} ${
-                          isDone ? 'is-done' : ''
-                        }`}
-                      >
-                        {dueLabel}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <p className="home-summary">
+            {nextClassSummaryText} Hoy {tasksSummaryText} y {reportsSummaryText}.
+          </p>
         </section>
 
-        <section className="surface-panel" aria-label="Próximos exámenes">
-          <div className="section-heading-bar">
-            <div className="section-heading-left">
-              <h2 className="section-title">Próximos exámenes</h2>
-              <span className="section-counter" data-testid="home-upcoming-exams-counter">
-                {upcomingExams.length} fechas
-              </span>
-            </div>
+        {/* Columna central: Tareas + Esta semana */}
+        <div className="swiss-col-4 home-col-stack">
+          <section aria-label="Tareas abiertas">
+            <SwissSectionHeader
+              title={`Tareas · ${pendingTasks.length}`}
+              right={
+                <SwissLinkButton onClick={() => onNavigateSection('tareas')}>
+                  Todas →
+                </SwissLinkButton>
+              }
+            />
+
+            {visibleTasks.length === 0 ? (
+              <p className="swiss-meta-md">No tenés entregas pendientes.</p>
+            ) : (
+              <div>
+                {visibleTasks.map((task) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className="home-row"
+                    onClick={() => onNavigateSection('tareas')}
+                  >
+                    <span className="home-row-title home-row-course">{task.title}</span>
+                    <span className="home-row-right">
+                      {formatShortTaskDue(task.dueDate, refIso)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <button
               type="button"
-              className="ghost-action-button"
-              onClick={() => onNavigateSection('examenes')}
+              className="home-add-task-row"
+              onClick={() => onNavigateSection('tareas', { triggerCreate: true })}
             >
-              Ver calendario
+              + Agregar tarea
             </button>
-          </div>
+          </section>
 
-          {!loading && upcomingExams.length === 0 ? (
-            <div className="empty-state-box">
-              <p className="empty-state-title">Sin mesas ni parciales próximos</p>
-              <p className="empty-state-text">
-                Podés agendar fechas de parciales, recuperatorios o finales desde Exámenes.
-              </p>
-            </div>
-          ) : (
-            <div className="exams-stack">
-              {upcomingExams.map((exam) => {
-                const daysLeft = Math.max(0, diffCalendarDays(exam.examDate, refIso));
-                const isUrgent = daysLeft <= 5;
-                return (
-                  <article
-                    key={exam.id}
-                    className="exam-ficha"
-                    data-course-color={exam.courseColor}
-                    data-testid={`home-exam-card-${exam.id}`}
+          <section aria-label="Esta semana">
+            <SwissSectionHeader
+              title="Esta semana"
+              right={
+                <SwissLinkButton onClick={() => onNavigateSection('calendario')}>
+                  Calendario →
+                </SwissLinkButton>
+              }
+            />
+
+            {weeklyClasses.length === 0 ? (
+              <p className="swiss-meta-md">Sin horarios semanales asignados.</p>
+            ) : (
+              <div>
+                {weeklyClasses.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="home-row"
+                    onClick={() => onSelectCourse(item.courseId)}
                   >
-                    <div className={`exam-countdown-box ${isUrgent ? 'is-urgent' : ''}`}>
-                      <span className="exam-countdown-number">{daysLeft}</span>
-                      <span className="exam-countdown-unit">
-                        {daysLeft === 1 ? 'día' : 'días'}
-                      </span>
-                    </div>
+                    <span className="home-row-day">
+                      {DAY_SHORT_NAMES_ES[item.dayOfWeek]}
+                    </span>
+                    <span className="home-row-course">{item.courseName}</span>
+                    <span className="home-row-right">{item.startTime}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
 
-                    <div className="exam-ficha-body">
-                      <div className="exam-ficha-top">
-                        <span className="course-pill" data-course-color={exam.courseColor}>
-                          <span
-                            className="course-dot"
-                            data-course-color={exam.courseColor}
-                            aria-hidden="true"
-                          />
-                          {exam.courseName}
+        {/* Columna derecha: Exámenes + Informe listo */}
+        <div className="swiss-col-4 home-col-stack">
+          <section aria-label="Próximos exámenes">
+            <SwissSectionHeader
+              title="Exámenes"
+              right={
+                <SwissLinkButton onClick={() => onNavigateSection('examenes')}>
+                  Ver todos →
+                </SwissLinkButton>
+              }
+            />
+
+            {upcomingExams.length === 0 ? (
+              <p className="swiss-meta-md">Sin parciales ni finales próximos.</p>
+            ) : (
+              <div>
+                {upcomingExams.map((exam, index) => {
+                  const daysLeft = Math.max(0, diffCalendarDays(exam.examDate, refIso));
+                  const unitLabel =
+                    daysLeft === 0 ? 'hoy' : daysLeft === 1 ? 'día' : 'días';
+                  return (
+                    <button
+                      key={exam.id}
+                      type="button"
+                      className={`home-exam-row ${index === 0 ? 'is-nearest' : ''}`}
+                      onClick={() => onNavigateSection('examenes')}
+                    >
+                      <span className="home-exam-days">{daysLeft}</span>
+                      <span className="home-exam-meta">
+                        <span className="home-exam-unit">{unitLabel}</span>
+                        <span className="home-exam-name">
+                          {exam.courseName} · {EXAM_CATEGORY_LABELS[exam.category]}
                         </span>
-                        <span className="exam-date-meta">
-                          {formatShortDateEs(exam.examDate)}
+                        <span className="home-exam-date">
+                          {formatShortExamDate(exam.examDate)}
                           {exam.examTime ? ` · ${exam.examTime}` : ''}
                         </span>
-                      </div>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-                      <h3 className="exam-ficha-title">
-                        <button
-                          type="button"
-                          className="inline-course-link"
-                          onClick={() => onSelectCourse(exam.courseId)}
-                        >
-                          {exam.title}
-                        </button>
-                      </h3>
+          <section aria-label="Informe listo">
+            <SwissSectionHeader title="Informe listo" />
 
-                      {exam.topics ? (
-                        <p className="exam-ficha-topics">{exam.topics}</p>
-                      ) : null}
-
-                      <div className="exam-ficha-footer">
-                        <span className="exam-category-tag">
-                          {EXAM_CATEGORY_LABELS[exam.category]}
-                        </span>
-                        {exam.location ? (
-                          <span className="exam-location-text">{exam.location}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+            <div className="home-report-block">
+              {latestReport ? (
+                <>
+                  <p className="home-report-copy">
+                    <strong>{latestReport.title}</strong> · {latestReport.summaryLine}
+                  </p>
+                  <div>
+                    <SwissLinkButton
+                      underlined
+                      onClick={() =>
+                        onNavigateSection('informes', { reportId: latestReport.id })
+                      }
+                    >
+                      Abrir informe →
+                    </SwissLinkButton>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="home-report-copy">
+                    Todavía no generaste informes con tus notas y fuentes.
+                  </p>
+                  <div>
+                    <SwissLinkButton
+                      underlined
+                      onClick={() => onNavigateSection('informes')}
+                    >
+                      Ir a informes →
+                    </SwissLinkButton>
+                  </div>
+                </>
+              )}
             </div>
-          )}
-        </section>
+          </section>
+        </div>
       </div>
 
-      {/* Nivel 2: Pulso de la semana completo */}
-      <section className="surface-panel" aria-label="Pulso de la semana">
-        <div className="section-heading-bar">
-          <div className="section-heading-left">
-            <h2 className="section-title">Pulso de la semana</h2>
-            <span className="section-counter" data-testid="home-week-range-label">
-              {weekRangeLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="week-pulse-strip" role="list">
-          {weekPulse.map((day) => (
-            <div
-              key={`${day.dayShort}-${day.dayNumber}`}
-              role="listitem"
-              className={`week-day-cell ${day.isToday ? 'is-today' : ''} ${
-                day.hasExam ? 'has-exam' : ''
-              }`}
-              data-testid={`week-pulse-day-${day.dayShort}`}
+      {/* Pie: Hasta 5 materias activas */}
+      <footer className="home-footer" aria-label="Materias activas">
+        {footerCourses.map((course) => {
+          const count = notesCountByCourse[course.id] ?? 0;
+          return (
+            <button
+              key={course.id}
+              type="button"
+              className="home-footer-item"
+              onClick={() => onSelectCourse(course.id)}
             >
-              <div className="week-day-header">
-                <span className="week-day-short">{day.dayShort}</span>
-                <span className="week-day-num">{day.dayNumber}</span>
-              </div>
-              <span className="week-day-summary">{day.summary}</span>
-              <div className="week-day-dots" aria-hidden="true">
-                {Array.from({ length: day.classesCount }).map((_, idx) => (
-                  <span key={`c-${idx}`} className="pulse-dot is-class" />
-                ))}
-                {Array.from({ length: day.tasksCount }).map((_, idx) => (
-                  <span key={`t-${idx}`} className="pulse-dot is-task" />
-                ))}
-                {day.hasExam ? <span className="pulse-dot is-exam" /> : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+              <span className="home-footer-name">{course.name}</span>
+              <span className="home-footer-count">
+                {count === 1 ? '1 nota' : `${count} notas`}
+              </span>
+            </button>
+          );
+        })}
+      </footer>
     </div>
   );
 }

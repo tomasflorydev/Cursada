@@ -82,11 +82,12 @@ function formatDateLabel(isoOrDate: string): string {
 
 function formatNoteMarkdown(note: NoteWithCourse, courseTerm?: string): string {
   const originLabel = NOTE_ORIGIN_LABELS[note.origin] ?? note.origin;
+  const trimmedTerm = (courseTerm ?? '').trim();
   const lines = [
     `# ${note.title}`,
     '',
-    `- **Materia:** ${note.courseName}`,
-    ...(courseTerm ? [`- **Cuatrimestre:** ${courseTerm}`] : []),
+    `- **Anotador:** ${note.courseName}`,
+    ...(trimmedTerm ? [`- **Período:** ${trimmedTerm}`] : []),
     `- **Última actualización:** ${formatDateLabel(note.updatedAt)}`,
     `- **Origen:** ${originLabel}`,
     `- **Fijada:** ${note.isPinned ? 'Sí' : 'No'}`,
@@ -106,20 +107,18 @@ function formatCourseBundleMarkdown(params: {
   notes: NoteWithCourse[];
 }): string {
   const { course, tasks, exams, notes } = params;
+  const trimmedProfessor = course.professor.trim();
+  const trimmedTerm = course.term.trim();
   const lines: string[] = [
     `# ${course.name}`,
     '',
-    `- **Docente:** ${course.professor || 'Sin especificar'}`,
-    `- **Cuatrimestre:** ${course.term}`,
-    `- **Estado:** ${course.status === 'active' ? 'En curso' : 'Archivada'}`,
-    '',
-    '## Horarios de cursada',
-    '',
+    ...(trimmedProfessor ? [`- **Docente:** ${trimmedProfessor}`] : []),
+    ...(trimmedTerm ? [`- **Período:** ${trimmedTerm}`] : []),
+    `- **Estado:** ${course.status === 'active' ? 'Activo' : 'Archivado'}`,
   ];
 
-  if (course.schedules.length === 0) {
-    lines.push('Sin horarios registrados.');
-  } else {
+  if (course.schedules.length > 0) {
+    lines.push('', '## Horarios de cursada', '');
     for (const sched of course.schedules) {
       const dayName = DAY_NAMES_ES[sched.dayOfWeek] ?? `Día ${sched.dayOfWeek}`;
       const locationSuffix = sched.location ? ` (${sched.location})` : '';

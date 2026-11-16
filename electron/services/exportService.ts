@@ -155,11 +155,12 @@ function claimUniqueSlug(baseSlug: string, usedSlugs: Set<string>): string {
 
 function formatSingleNoteMarkdown(note: NoteWithCourseRow): string {
   const originLabel = NOTE_ORIGIN_LABELS[note.origin] ?? note.origin;
+  const trimmedTerm = note.course_term.trim();
   const lines = [
     `# ${note.title}`,
     '',
-    `- **Materia:** ${note.course_name}`,
-    `- **Cuatrimestre:** ${note.course_term}`,
+    `- **Anotador:** ${note.course_name}`,
+    ...(trimmedTerm ? [`- **Período:** ${trimmedTerm}`] : []),
     `- **Última actualización:** ${formatDateLabel(note.updated_at)}`,
     `- **Origen:** ${originLabel}`,
     `- **Fijada:** ${note.is_pinned ? 'Sí' : 'No'}`,
@@ -180,20 +181,18 @@ function formatCourseSummaryMarkdown(params: {
   noteEntries: Array<{ title: string; relativePath: string; isPinned: boolean }>;
 }): string {
   const { course, schedules, tasks, exams, noteEntries } = params;
+  const trimmedProfessor = course.professor.trim();
+  const trimmedTerm = course.term.trim();
   const lines: string[] = [
     `# ${course.name}`,
     '',
-    `- **Docente:** ${course.professor || 'Sin especificar'}`,
-    `- **Cuatrimestre:** ${course.term}`,
-    `- **Estado:** ${course.status === 'active' ? 'En curso' : 'Archivada'}`,
-    '',
-    '## Horarios de cursada',
-    '',
+    ...(trimmedProfessor ? [`- **Docente:** ${trimmedProfessor}`] : []),
+    ...(trimmedTerm ? [`- **Período:** ${trimmedTerm}`] : []),
+    `- **Estado:** ${course.status === 'active' ? 'Activo' : 'Archivado'}`,
   ];
 
-  if (schedules.length === 0) {
-    lines.push('Sin horarios registrados.');
-  } else {
+  if (schedules.length > 0) {
+    lines.push('', '## Horarios de cursada', '');
     for (const sched of schedules) {
       const dayName = DAY_NAMES_ES[sched.day_of_week] ?? `Día ${sched.day_of_week}`;
       const locationSuffix = sched.location ? ` (${sched.location})` : '';
@@ -520,9 +519,12 @@ export function exportMarkdownFromDb(
       readmeLines.push('No hay materias en curso.');
     } else {
       for (const entry of activeEntries) {
-        const prof = entry.professor ? ` · ${entry.professor}` : '';
+        const meta = [entry.term.trim(), entry.professor.trim()]
+          .filter(Boolean)
+          .join(' · ');
+        const metaSuffix = meta ? ` — ${meta}` : '';
         readmeLines.push(
-          `- [${entry.name}](./${entry.slug}/00-Resumen-Materia.md) — ${entry.term}${prof} (${entry.noteCount} apuntes, ${entry.taskCount} tareas, ${entry.examCount} exámenes)`
+          `- [${entry.name}](./${entry.slug}/00-Resumen-Materia.md)${metaSuffix} (${entry.noteCount} apuntes, ${entry.taskCount} tareas, ${entry.examCount} exámenes)`
         );
       }
     }
@@ -530,9 +532,12 @@ export function exportMarkdownFromDb(
     if (archivedEntries.length > 0) {
       readmeLines.push('', '## Materias archivadas', '');
       for (const entry of archivedEntries) {
-        const prof = entry.professor ? ` · ${entry.professor}` : '';
+        const meta = [entry.term.trim(), entry.professor.trim()]
+          .filter(Boolean)
+          .join(' · ');
+        const metaSuffix = meta ? ` — ${meta}` : '';
         readmeLines.push(
-          `- [${entry.name}](./${entry.slug}/00-Resumen-Materia.md) — ${entry.term}${prof} (${entry.noteCount} apuntes, ${entry.taskCount} tareas, ${entry.examCount} exámenes)`
+          `- [${entry.name}](./${entry.slug}/00-Resumen-Materia.md)${metaSuffix} (${entry.noteCount} apuntes, ${entry.taskCount} tareas, ${entry.examCount} exámenes)`
         );
       }
     }

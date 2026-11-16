@@ -181,9 +181,6 @@ export function createCourse(
   if (!name) {
     throw new Error('Course name cannot be empty');
   }
-  if (!term) {
-    throw new Error('Course term cannot be empty');
-  }
   validateCourseColor(input.color);
   validateCourseStatus(status);
 
@@ -257,9 +254,6 @@ export function updateCourse(
 
   if (!name) {
     throw new Error('Course name cannot be empty');
-  }
-  if (!term) {
-    throw new Error('Course term cannot be empty');
   }
   validateCourseColor(color);
   validateCourseStatus(status);

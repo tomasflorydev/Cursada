@@ -2,32 +2,30 @@ import { useCallback, useEffect, useState } from 'react';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { cursadaClient, DATA_CHANGED_EVENT } from './lib/api/client';
 import { resolveGlobalShortcut } from './lib/shortcuts/commandPaletteSearch';
-import type { SidebarCourseItem } from './components/Sidebar';
-import { Sidebar } from './components/Sidebar';
-import {
-  SAMPLE_COURSES,
-  UPCOMING_EXAMS,
-  UPCOMING_TASKS,
-} from './lib/sampleData';
 import { CalendarPage } from './pages/CalendarPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { ExamsPage } from './pages/ExamsPage';
 import { HomePage } from './pages/HomePage';
+import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TasksPage } from './pages/TasksPage';
 import type {
   CommandPaletteTarget,
   CourseTabId,
+  CourseWithSchedules,
   NavSectionId,
+  NoteFontSize,
   ThemeMode,
 } from './types';
+import { SwissHeader, type SwissCourseDetailHeader } from './ui';
 
 const SECTION_TITLES: Record<NavSectionId, string> = {
   inicio: 'Inicio | Cursada',
+  materias: 'Materias | Cursada',
   calendario: 'Calendario | Cursada',
   tareas: 'Tareas | Cursada',
   examenes: 'Exámenes | Cursada',
-  materias: 'Materias | Cursada',
+  informes: 'Informes | Cursada',
   ajustes: 'Ajustes | Cursada',
 };
 
@@ -40,133 +38,182 @@ interface CourseNavigationTargetState {
 function readInitialThemeMode(): ThemeMode {
   try {
     const stored = localStorage.getItem('color-scheme');
-    if (stored === 'light' || stored === 'dark') {
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
       return stored;
     }
   } catch {
     // Ignore storage access errors
   }
-  return 'system';
+  return 'dark';
+}
+
+function readInitialNoteFontSize(): NoteFontSize {
+  try {
+    const stored = localStorage.getItem('cursada-note-size');
+    if (stored === 'small' || stored === 'normal' || stored === 'large') {
+      return stored;
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+  return 'normal';
 }
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSectionId>('inicio');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [courseDetailHeader, setCourseDetailHeader] = useState<{
+    name: string;
+    summary: string;
+  } | null>(null);
+  const [coursesCache, setCoursesCache] = useState<CourseWithSchedules[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialThemeMode);
+  const [noteFontSize, setNoteFontSize] = useState<NoteFontSize>(
+    readInitialNoteFontSize
+  );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
   const [courseNavTarget, setCourseNavTarget] = useState<CourseNavigationTargetState>({
     version: 0,
   });
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [reportNavVersion, setReportNavVersion] = useState<number>(0);
+
   const [tasksCreateVersion, setTasksCreateVersion] = useState<number>(0);
   const [examsCreateVersion, setExamsCreateVersion] = useState<number>(0);
   const [coursesCreateVersion, setCoursesCreateVersion] = useState<number>(0);
-  const [sidebarCourses, setSidebarCourses] = useState<SidebarCourseItem[]>(() =>
-    SAMPLE_COURSES.map((c) => ({
-      id: c.id,
-      name: c.name,
-      color: c.color,
-      status: 'active',
-      term: c.term,
-    }))
-  );
-  const [pendingTasksCount, setPendingTasksCount] = useState<number>(
-    () => UPCOMING_TASKS.filter((t) => !t.completed).length
-  );
-  const [upcomingExamsCount, setUpcomingExamsCount] = useState<number>(
-    () => UPCOMING_EXAMS.length
-  );
+  const [reportsCreateVersion, setReportsCreateVersion] = useState<number>(0);
+  const [newNoteRequestVersion, setNewNoteRequestVersion] = useState<number>(0);
 
-  const refreshSidebarData = useCallback(async () => {
+  const refreshCoursesCache = useCallback(async () => {
     try {
-      const [loadedCourses, loadedTasks, loadedExams] = await Promise.all([
-        cursadaClient.listCourses({ status: 'all' }),
-        cursadaClient.listTasks({ status: 'pending' }),
-        cursadaClient.listExams({ graded: 'ungraded' }),
-      ]);
-      setSidebarCourses(
-        loadedCourses.map((c) => ({
-          id: c.id,
-          name: c.name,
-          color: c.color,
-          status: c.status,
-          term: c.term,
-        }))
-      );
-      setPendingTasksCount(loadedTasks.length);
-      setUpcomingExamsCount(loadedExams.length);
+      const loadedCourses = await cursadaClient.listCourses({ status: 'active' });
+      setCoursesCache(loadedCourses);
     } catch {
-      // Keep fallback state if loading fails
+      // Ignore cache load failure
     }
   }, []);
 
   useEffect(() => {
-    void refreshSidebarData();
+    void refreshCoursesCache();
 
     const handleDataChanged = () => {
-      void refreshSidebarData();
+      void refreshCoursesCache();
     };
     window.addEventListener(DATA_CHANGED_EVENT, handleDataChanged);
     return () => {
       window.removeEventListener(DATA_CHANGED_EVENT, handleDataChanged);
     };
-  }, [refreshSidebarData]);
+  }, [refreshCoursesCache]);
 
   useEffect(() => {
+    if (activeSection === 'materias' && selectedCourseId && courseDetailHeader?.name) {
+      document.title = `${courseDetailHeader.name} | Cursada`;
+      return;
+    }
     document.title = SECTION_TITLES[activeSection];
-  }, [activeSection]);
+  }, [activeSection, selectedCourseId, courseDetailHeader]);
 
   useEffect(() => {
     const root = document.documentElement;
     const meta = document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
-
-    if (themeMode === 'system') {
-      root.removeAttribute('data-theme');
-      if (meta) {
-        meta.content = 'light dark';
-      }
-      try {
-        localStorage.removeItem('color-scheme');
-      } catch {
-        // Ignore storage errors
-      }
-    } else {
-      root.setAttribute('data-theme', themeMode);
-      if (meta) {
-        meta.content = themeMode;
-      }
-      try {
-        localStorage.setItem('color-scheme', themeMode);
-      } catch {
-        // Ignore storage errors
-      }
+    root.setAttribute('data-theme', themeMode);
+    if (meta) {
+      meta.content = themeMode === 'system' ? 'light dark' : themeMode;
+    }
+    try {
+      localStorage.setItem('color-scheme', themeMode);
+    } catch {
+      // Ignore storage errors
     }
   }, [themeMode]);
 
-  const handleSelectSection = useCallback((section: NavSectionId): void => {
-    setActiveSection(section);
-    setSelectedCourseId(null);
-    setCourseNavTarget((prev) => ({ version: prev.version }));
-    setTasksCreateVersion(0);
-    setExamsCreateVersion(0);
-    setCoursesCreateVersion(0);
-  }, []);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-note-size', noteFontSize);
+    try {
+      localStorage.setItem('cursada-note-size', noteFontSize);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [noteFontSize]);
 
-  /**
-   * Shared navigation contract:
-   * - Passing a `courseId` navigates to `materias` with that course selected (used by Sidebar & Calendar blocks).
-   * - Passing `null` returns to the overview of all courses in `materias`.
-   */
-  const handleSelectCourse = useCallback((courseId: string | null): void => {
-    setSelectedCourseId(courseId);
-    setActiveSection('materias');
-    setCourseNavTarget((prev) => ({ version: prev.version }));
-    setTasksCreateVersion(0);
-    setExamsCreateVersion(0);
-    setCoursesCreateVersion(0);
+  const handleSelectSection = useCallback(
+    (
+      section: NavSectionId,
+      opts?: { triggerCreate?: boolean; reportId?: string }
+    ): void => {
+      setActiveSection(section);
+      setSelectedCourseId(null);
+      setCourseDetailHeader(null);
+      setCourseNavTarget((prev) => ({ version: prev.version }));
+      setTasksCreateVersion(0);
+      setExamsCreateVersion(0);
+      setCoursesCreateVersion(0);
+      setReportsCreateVersion(0);
+      setNewNoteRequestVersion(0);
+
+      if (section === 'informes' && opts?.reportId) {
+        setSelectedReportId(opts.reportId);
+        setReportNavVersion((v) => v + 1);
+      }
+
+      if (opts?.triggerCreate) {
+        if (section === 'tareas') {
+          setTasksCreateVersion((v) => v + 1);
+        } else if (section === 'examenes') {
+          setExamsCreateVersion((v) => v + 1);
+        } else if (section === 'materias') {
+          setCoursesCreateVersion((v) => v + 1);
+        } else if (section === 'informes') {
+          setReportsCreateVersion((v) => v + 1);
+        }
+      }
+    },
+    []
+  );
+
+  const handleSelectCourse = useCallback(
+    (courseId: string | null, opts?: { noteId?: string }): void => {
+      setSelectedCourseId(courseId);
+      setActiveSection('materias');
+      if (courseId === null) {
+        setCourseDetailHeader(null);
+      } else {
+        const match = coursesCache.find((c) => c.id === courseId);
+        if (match) {
+          setCourseDetailHeader((prev) =>
+            prev && prev.name === match.name
+              ? prev
+              : { name: match.name, summary: '' }
+          );
+        }
+      }
+      setCourseNavTarget((prev) => ({
+        noteId: opts?.noteId ?? null,
+        version: opts?.noteId ? prev.version + 1 : prev.version,
+      }));
+      setTasksCreateVersion(0);
+      setExamsCreateVersion(0);
+      setCoursesCreateVersion(0);
+      setReportsCreateVersion(0);
+    },
+    [coursesCache]
+  );
+
+  const handleOpenReport = useCallback((reportId: string): void => {
+    setSelectedCourseId(null);
+    setCourseDetailHeader(null);
+    setSelectedReportId(reportId);
+    setReportNavVersion((v) => v + 1);
+    setActiveSection('informes');
   }, []);
 
   const handleContextualCreate = useCallback((): void => {
     setIsCommandPaletteOpen(false);
+    if (activeSection === 'materias' && selectedCourseId) {
+      setNewNoteRequestVersion((v) => v + 1);
+      return;
+    }
     if (activeSection === 'tareas') {
       setTasksCreateVersion((v) => v + 1);
       return;
@@ -175,43 +222,34 @@ export function App() {
       setExamsCreateVersion((v) => v + 1);
       return;
     }
+    if (activeSection === 'informes') {
+      setReportsCreateVersion((v) => v + 1);
+      return;
+    }
     if (activeSection === 'materias') {
       setCoursesCreateVersion((v) => v + 1);
       return;
     }
-    // From Inicio, Calendario, or Ajustes, Cmd+N jumps to Tareas and opens new task
-    setActiveSection('tareas');
+    const firstCourse = coursesCache[0];
+    if (firstCourse) {
+      setActiveSection('materias');
+      setSelectedCourseId(firstCourse.id);
+      setCourseDetailHeader({ name: firstCourse.name, summary: '' });
+      setNewNoteRequestVersion((v) => v + 1);
+      return;
+    }
+    setActiveSection('materias');
     setSelectedCourseId(null);
-    setExamsCreateVersion(0);
-    setCoursesCreateVersion(0);
-    setTasksCreateVersion((v) => v + 1);
-  }, [activeSection]);
+    setCoursesCreateVersion((v) => v + 1);
+  }, [activeSection, selectedCourseId, coursesCache]);
 
   const handleCommandPaletteTarget = useCallback(
     (target: CommandPaletteTarget): void => {
       if (target.type === 'section') {
-        setActiveSection(target.section);
-        setSelectedCourseId(null);
-        setCourseNavTarget((prev) => ({ version: prev.version }));
-        if (target.triggerCreate) {
-          if (target.section === 'tareas') {
-            setExamsCreateVersion(0);
-            setCoursesCreateVersion(0);
-            setTasksCreateVersion((v) => v + 1);
-          } else if (target.section === 'examenes') {
-            setTasksCreateVersion(0);
-            setCoursesCreateVersion(0);
-            setExamsCreateVersion((v) => v + 1);
-          } else if (target.section === 'materias') {
-            setTasksCreateVersion(0);
-            setExamsCreateVersion(0);
-            setCoursesCreateVersion((v) => v + 1);
-          }
-        } else {
-          setTasksCreateVersion(0);
-          setExamsCreateVersion(0);
-          setCoursesCreateVersion(0);
-        }
+        handleSelectSection(target.section, {
+          triggerCreate: target.triggerCreate,
+          reportId: target.reportId,
+        });
         return;
       }
 
@@ -224,13 +262,12 @@ export function App() {
       }));
       setTasksCreateVersion(0);
       setExamsCreateVersion(0);
+      setReportsCreateVersion(0);
       if (target.triggerCreate) {
-        setCoursesCreateVersion((v) => v + 1);
-      } else {
-        setCoursesCreateVersion(0);
+        setNewNoteRequestVersion((v) => v + 1);
       }
     },
-    []
+    [handleSelectSection]
   );
 
   useEffect(() => {
@@ -264,80 +301,108 @@ export function App() {
     };
   }, [handleContextualCreate, handleSelectSection]);
 
+  const headerCourseDetail: SwissCourseDetailHeader | null =
+    activeSection === 'materias' && selectedCourseId
+      ? {
+          name:
+            courseDetailHeader?.name ??
+            coursesCache.find((c) => c.id === selectedCourseId)?.name ??
+            'Materia',
+          summary: courseDetailHeader?.summary ?? '',
+          onBack: () => handleSelectSection('inicio'),
+        }
+      : null;
+
   return (
-    <div className="app-shell">
-      <a href="#main-title" className="skip-link visually-hidden">
-        Saltar al contenido principal
-      </a>
+    <>
+      <div className="swiss-drag-strip" aria-hidden="true" />
+      <div className="swiss-shell">
+        <a href="#main-title" className="skip-link visually-hidden">
+          Saltar al contenido principal
+        </a>
 
-      <Sidebar
-        activeSection={activeSection}
-        selectedCourseId={selectedCourseId}
-        courses={sidebarCourses}
-        pendingTasksCount={pendingTasksCount}
-        upcomingExamsCount={upcomingExamsCount}
-        themeMode={themeMode}
-        onSelectSection={handleSelectSection}
-        onSelectCourse={handleSelectCourse}
-        onChangeThemeMode={setThemeMode}
-        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-      />
+        <SwissHeader
+          activeSection={activeSection}
+          onSelectSection={(sec) => handleSelectSection(sec)}
+          courseDetail={headerCourseDetail}
+        />
 
-      <div className="app-main-wrapper">
-        <div className="content-window-drag" aria-hidden="true" />
-        <main className="app-main-content">
-          <div className="content-container">
-            {activeSection === 'inicio' ? (
-              <HomePage
-                onNavigateSection={handleSelectSection}
-                onSelectCourse={handleSelectCourse}
-              />
-            ) : null}
+        <main className="swiss-main">
+          {activeSection === 'inicio' ? (
+            <HomePage
+              onNavigateSection={handleSelectSection}
+              onSelectCourse={(courseId, opts) =>
+                handleSelectCourse(courseId, opts)
+              }
+            />
+          ) : null}
 
-            {activeSection === 'calendario' ? (
-              <CalendarPage onSelectCourse={handleSelectCourse} />
-            ) : null}
+          {activeSection === 'materias' ? (
+            <CoursesPage
+              selectedCourseId={selectedCourseId}
+              onSelectCourse={handleSelectCourse}
+              onCoursesChanged={() => void refreshCoursesCache()}
+              onCourseDetailHeaderChange={setCourseDetailHeader}
+              onOpenReport={handleOpenReport}
+              initialCourseTab={courseNavTarget.tab}
+              initialNoteId={courseNavTarget.noteId}
+              courseNavigationVersion={courseNavTarget.version}
+              createRequestVersion={coursesCreateVersion}
+              newNoteRequestVersion={newNoteRequestVersion}
+            />
+          ) : null}
 
-            {activeSection === 'tareas' ? (
-              <TasksPage
-                onSelectCourse={handleSelectCourse}
-                onTasksChanged={() => void refreshSidebarData()}
-                externalCreateVersion={tasksCreateVersion}
-              />
-            ) : null}
+          {activeSection === 'calendario' ? (
+            <CalendarPage
+              onSelectCourse={(courseId) => handleSelectCourse(courseId)}
+              onNavigateSection={(sec) => handleSelectSection(sec)}
+            />
+          ) : null}
 
-            {activeSection === 'examenes' ? (
-              <ExamsPage
-                onSelectCourse={handleSelectCourse}
-                onExamsChanged={() => void refreshSidebarData()}
-                externalCreateVersion={examsCreateVersion}
-              />
-            ) : null}
+          {activeSection === 'tareas' ? (
+            <TasksPage
+              onSelectCourse={(courseId) => handleSelectCourse(courseId)}
+              onTasksChanged={() => void refreshCoursesCache()}
+              externalCreateVersion={tasksCreateVersion}
+            />
+          ) : null}
 
-            {activeSection === 'materias' ? (
-              <CoursesPage
-                selectedCourseId={selectedCourseId}
-                onSelectCourse={handleSelectCourse}
-                onCoursesChanged={() => void refreshSidebarData()}
-                initialCourseTab={courseNavTarget.tab}
-                initialNoteId={courseNavTarget.noteId}
-                courseNavigationVersion={courseNavTarget.version}
-                createRequestVersion={coursesCreateVersion}
-              />
-            ) : null}
+          {activeSection === 'examenes' ? (
+            <ExamsPage
+              onSelectCourse={(courseId) => handleSelectCourse(courseId)}
+              onExamsChanged={() => void refreshCoursesCache()}
+              externalCreateVersion={examsCreateVersion}
+              onOpenReport={handleOpenReport}
+            />
+          ) : null}
 
-            {activeSection === 'ajustes' ? (
-              <SettingsPage themeMode={themeMode} onChangeThemeMode={setThemeMode} />
-            ) : null}
-          </div>
+          {activeSection === 'informes' ? (
+            <ReportsPage
+              initialReportId={selectedReportId}
+              reportNavigationVersion={reportNavVersion}
+              createRequestVersion={reportsCreateVersion}
+              onSelectCourseNote={(courseId, noteId) =>
+                handleSelectCourse(courseId, noteId ? { noteId } : undefined)
+              }
+            />
+          ) : null}
+
+          {activeSection === 'ajustes' ? (
+            <SettingsPage
+              themeMode={themeMode}
+              onChangeThemeMode={setThemeMode}
+              noteFontSize={noteFontSize}
+              onChangeNoteFontSize={setNoteFontSize}
+            />
+          ) : null}
         </main>
-      </div>
 
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        onSelectTarget={handleCommandPaletteTarget}
-      />
-    </div>
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onSelectTarget={handleCommandPaletteTarget}
+        />
+      </div>
+    </>
   );
 }

@@ -688,18 +688,13 @@ export function SourcesWorkspace({ courseId, courseName }: SourcesWorkspaceProps
       )}
 
       {isLoading ? (
-        <p className="sources-loading-text">Cargando fuentes de la materia...</p>
+        <p className="sources-loading-text">Cargando fuentes...</p>
       ) : filteredSources.length === 0 ? (
         <div className="sources-empty-state">
           <p className="sources-empty-title">
             {sources.length === 0
-              ? 'Todavía no cargaste fuentes en esta materia'
+              ? 'Todavía no cargaste fuentes'
               : 'Ninguna fuente coincide con tu búsqueda'}
-          </p>
-          <p className="sources-empty-description">
-            {sources.length === 0
-              ? 'Subí PDFs de la cátedra, apuntes en Markdown o TXT, o pegá texto directo para extraer páginas y habilitar búsqueda local por fragmentos.'
-              : 'Probá con otro término o limpiá el filtro para ver todas las fuentes indexadas.'}
           </p>
         </div>
       ) : (

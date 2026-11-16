@@ -21,7 +21,7 @@ describe('Phase 8 Integration: Cmd+K Palette, macOS Shortcuts & Notifications Se
     vi.restoreAllMocks();
   });
 
-  it('opens Cmd+K palette, searches a note accent-insensitively, and jumps directly to the course Notas tab with that note open', async () => {
+  it('opens Cmd+K palette, searches a note accent-insensitively, and jumps directly to the course 3-pane notebook with that note open', async () => {
     render(<App />);
 
     expect(
@@ -54,7 +54,7 @@ describe('Phase 8 Integration: Cmd+K Palette, macOS Shortcuts & Notifications Se
       ).not.toBeInTheDocument();
     });
 
-    // Verifies navigation to Diseño de Sistemas -> Notas tab -> note selected
+    // Verifies navigation to Diseño de Sistemas -> 3-pane notebook -> note selected
     expect(
       await screen.findByRole('heading', {
         level: 1,
@@ -62,59 +62,72 @@ describe('Phase 8 Integration: Cmd+K Palette, macOS Shortcuts & Notifications Se
       })
     ).toBeInTheDocument();
 
-    const notesPanel = await screen.findByTestId('course-notes-tab-panel');
     await waitFor(() => {
-      expect(
-        within(notesPanel).getByLabelText('Título de la nota')
-      ).toHaveValue(
+      expect(screen.getByLabelText('Título de la nota')).toHaveValue(
         'Comparativa práctica: Strategy vs. State en el dominio de envíos'
       );
     });
   });
 
-  it('supports Cmd+2..5, Cmd+, section shortcuts and contextual Cmd+N creation', async () => {
+  it('supports Cmd+1..6, Cmd+, section shortcuts and contextual Cmd+N creation', async () => {
     render(<App />);
 
-    // Cmd+2 -> Calendario
+    // Cmd+2 -> Materias, then Cmd+N opens Nueva materia modal
     fireEvent.keyDown(window, { key: '2', metaKey: true });
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Calendario' })
+      await screen.findByRole('heading', { level: 1, name: 'Materias' })
     ).toBeInTheDocument();
 
-    // Cmd+3 -> Tareas, then Cmd+N opens new task form
+    fireEvent.keyDown(window, { key: 'n', metaKey: true });
+    const courseDialog = await screen.findByRole('dialog', {
+      name: /Nueva materia/i,
+    });
+    expect(courseDialog).toBeInTheDocument();
+    fireEvent.click(within(courseDialog).getByRole('button', { name: 'Cancelar' }));
+
+    // Cmd+3 -> Calendario
     fireEvent.keyDown(window, { key: '3', metaKey: true });
+    expect(
+      await screen.findByTestId('calendar-period-label')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Grilla semanal de cursada' })
+    ).toBeInTheDocument();
+
+    // Cmd+4 -> Tareas, then Cmd+N focuses quick-add task input
+    fireEvent.keyDown(window, { key: '4', metaKey: true });
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Tareas' })
     ).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'n', metaKey: true });
-    expect(
-      await screen.findByRole('heading', { name: 'Nueva tarea' })
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Título de la nueva tarea')).toHaveFocus();
+    });
 
-    // Cmd+4 -> Exámenes, then Cmd+N opens new exam form
-    fireEvent.keyDown(window, { key: '4', metaKey: true });
+    // Cmd+5 -> Exámenes, then Cmd+N opens new exam form
+    fireEvent.keyDown(window, { key: '5', metaKey: true });
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Exámenes' })
     ).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'n', metaKey: true });
     expect(
-      await screen.findByRole('heading', { name: 'Agendar examen' })
+      await screen.findByRole('region', { name: 'Nuevo examen' })
     ).toBeInTheDocument();
 
-    // Cmd+5 -> Materias, then Cmd+N opens new course modal
-    fireEvent.keyDown(window, { key: '5', metaKey: true });
+    // Cmd+6 -> Informes, then Cmd+N opens inline report generator form
+    fireEvent.keyDown(window, { key: '6', metaKey: true });
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Materias' })
+      await screen.findByRole('heading', { level: 1, name: 'Informes' })
     ).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'n', metaKey: true });
     expect(
-      await screen.findByRole('dialog', { name: /Nueva materia/i })
+      await screen.findByLabelText('Tipo de informe')
     ).toBeInTheDocument();
 
-    // Cmd+, -> Ajustes and inspect NotificationSettingsSection
+    // Cmd+, -> Ajustes and inspect General notifications settings
     fireEvent.keyDown(window, { key: ',', metaKey: true });
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ajustes' })
@@ -123,33 +136,42 @@ describe('Phase 8 Integration: Cmd+K Palette, macOS Shortcuts & Notifications Se
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: /Notificaciones y recordatorios/i,
+        name: 'General',
       })
     ).toBeInTheDocument();
 
-    const testNotifBtn = screen.getByTestId('send-test-notification-btn');
+    const testNotifBtn = screen.getByRole('button', {
+      name: 'Probar notificación',
+    });
     fireEvent.click(testNotifBtn);
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Notificación de prueba enviada/i)
+        screen.getByText(/Recordatorio de prueba · Cursada/i)
       ).toBeInTheDocument();
     });
 
-    const checkRemindersBtn = screen.getByTestId('check-reminders-btn');
-    fireEvent.click(checkRemindersBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('reminders-check-result')).toBeInTheDocument();
+    const notifSwitch = screen.getByRole('switch', {
+      name: 'Activar recordatorios de macOS',
     });
+    expect(notifSwitch).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(notifSwitch);
+    await waitFor(() => {
+      expect(notifSwitch).toHaveAttribute('aria-checked', 'false');
+      expect(screen.getByText('Pausados')).toBeInTheDocument();
+    });
+
+    // Cmd+1 -> Inicio
+    fireEvent.keyDown(window, { key: '1', metaKey: true });
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Inicio' })
+    ).toBeInTheDocument();
   });
 
-  it('opens Cmd+K palette from the Sidebar trigger and executes contextual Cmd+N inside a course Notas tab', async () => {
+  it('opens Cmd+K palette, jumps to a Materia, and executes contextual Cmd+N inside its 3-pane notebook', async () => {
     render(<App />);
 
-    // Open palette via sidebar trigger button
-    const sidebarTrigger = screen.getByTestId('sidebar-command-palette-trigger');
-    fireEvent.click(sidebarTrigger);
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
 
     const dialog = await screen.findByTestId('command-palette-dialog');
     const searchInput = within(dialog).getByTestId('command-palette-input');
@@ -171,23 +193,16 @@ describe('Phase 8 Integration: Cmd+K Palette, macOS Shortcuts & Notifications Se
       ).toBeInTheDocument();
     });
 
-    // Switch to Notas tab and press Cmd+N to create a new note
-    const tablist = screen.getByRole('tablist');
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Notas' }));
-
-    const notesPanel = await screen.findByTestId('course-notes-tab-panel');
     await waitFor(() => {
-      expect(
-        within(notesPanel).getByLabelText('Título de la nota')
-      ).toBeInTheDocument();
+      expect(screen.getByLabelText('Título de la nota')).toBeInTheDocument();
     });
 
     fireEvent.keyDown(window, { key: 'n', metaKey: true });
 
     await waitFor(() => {
-      expect(
-        within(notesPanel).getByLabelText('Título de la nota')
-      ).toHaveValue('Nuevo apunte');
+      expect(screen.getByLabelText('Título de la nota')).toHaveValue(
+        'Nueva nota'
+      );
     });
   });
 });

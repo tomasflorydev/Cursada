@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { CourseDeleteImpact } from '../../types/domain';
+import { SwissButton, SwissErrorAlert } from '../../ui';
 
 export interface DeleteCourseDialogProps {
   impact: CourseDeleteImpact | null;
@@ -86,6 +87,13 @@ export function DeleteCourseDialog({
   const sourcesLabel =
     sourcesCount === 1 ? '1 fuente asociada' : `${sourcesCount} fuentes asociadas`;
 
+  const impactItems = [
+    tasksLabel,
+    examsCount > 0 ? examsLabel : null,
+    notesCount > 0 ? notesLabel : null,
+    sourcesCount > 0 ? sourcesLabel : null,
+  ].filter(Boolean);
+
   return (
     <dialog
       ref={dialogRef}
@@ -103,49 +111,29 @@ export function DeleteCourseDialog({
 
         <div id={descId} className="delete-course-dialog-body">
           <p className="delete-course-warning-main">
-            ¿Estás seguro de que querés eliminar la materia{' '}
-            <strong>{impact.courseName}</strong>?
+            ¿Estás seguro de que querés eliminar <strong>{impact.courseName}</strong>?
           </p>
-          <p className="delete-course-warning-impact">
-            Se eliminarán también <strong>{tasksLabel}</strong>
-            {examsCount > 0 ? (
-              <>
-                , <strong>{examsLabel}</strong>
-              </>
-            ) : null}
-            {notesCount > 0 ? (
-              <>
-                , <strong>{notesLabel}</strong>
-              </>
-            ) : null}
-            {sourcesCount > 0 ? (
-              <>
-                , <strong>{sourcesLabel}</strong>
-              </>
-            ) : null}{' '}
-            y todos sus bloques de horario semanal. Se realizará un backup automático
-            antes del borrado.
-          </p>
+          <SwissErrorAlert
+            message={`Se eliminarán también ${impactItems.join(', ')} y sus bloques horarios. Se realiza un backup automático antes del borrado.`}
+          />
         </div>
 
         <footer className="cursada-modal-footer">
-          <button
-            type="button"
-            className="secondary-button"
+          <SwissButton
+            variant="secondary"
             autoFocus
             disabled={isDeleting}
             onClick={handleDialogClose}
           >
             Cancelar
-          </button>
-          <button
-            type="button"
-            className="danger-button"
+          </SwissButton>
+          <SwissButton
+            variant="primary"
             disabled={isDeleting}
             onClick={() => void handleConfirm()}
           >
-            Confirmar eliminación
-          </button>
+            {isDeleting ? 'Eliminando…' : 'Confirmar eliminación'}
+          </SwissButton>
         </footer>
       </div>
     </dialog>

@@ -192,7 +192,7 @@ export function NotesWorkspace({
       (courseFilter !== 'all' ? courseFilter : (courses[0]?.id ?? ''));
 
     if (!targetCourseId) {
-      setActionError('Creá una materia primero para poder crear apuntes.');
+      setActionError('Creá un anotador primero para poder crear apuntes.');
       return;
     }
 
@@ -306,7 +306,7 @@ export function NotesWorkspace({
       setActionError(
         err instanceof Error
           ? err.message
-          : 'No se pudo reasignar la materia de la nota.'
+          : 'No se pudo reasignar el anotador de la nota.'
       );
     }
   }
@@ -356,11 +356,11 @@ export function NotesWorkspace({
             {!courseId ? (
               <select
                 className="task-select notes-course-select"
-                aria-label="Filtrar por materia"
+                aria-label="Filtrar por anotador"
                 value={courseFilter}
                 onChange={(event) => setCourseFilter(event.target.value)}
               >
-                <option value="all">Todas las materias</option>
+                <option value="all">Todos los anotadores</option>
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.name}
@@ -404,13 +404,13 @@ export function NotesWorkspace({
                 ? 'Sin apuntes que coincidan'
                 : 'Todavía no hay apuntes'}
             </p>
-            <p className="notes-sidebar-empty-text">
-              {hasActiveFilters
-                ? 'Probá con otra búsqueda o limpiá los filtros activos.'
-                : canCreate
-                  ? 'Creá tu primera nota en Markdown para empezar a resumir temas.'
-                  : 'Creá una materia primero para poder tomar apuntes.'}
-            </p>
+            {hasActiveFilters || !canCreate ? (
+              <p className="notes-sidebar-empty-text">
+                {hasActiveFilters
+                  ? 'Probá con otra búsqueda o limpiá los filtros activos.'
+                  : 'Creá un anotador primero para poder tomar apuntes.'}
+              </p>
+            ) : null}
             {hasActiveFilters ? (
               <button
                 type="button"
@@ -509,7 +509,7 @@ export function NotesWorkspace({
                     <div className="notes-editor-course-controls">
                       <select
                         className="task-select notes-editor-course-select"
-                        aria-label="Materia de la nota"
+                        aria-label="Anotador de la nota"
                         value={selectedNote.courseId}
                         onChange={(event) =>
                           void handleChangeNoteCourse(
@@ -530,7 +530,7 @@ export function NotesWorkspace({
                           className="ghost-action-button notes-open-course-btn"
                           onClick={() => onSelectCourse(selectedNote.courseId)}
                         >
-                          Ir a materia
+                          Ir a anotador
                         </button>
                       ) : null}
                     </div>
@@ -591,11 +591,11 @@ export function NotesWorkspace({
                 ? 'Ninguna nota seleccionada'
                 : 'Empezá un nuevo apunte'}
             </h2>
-            <p className="task-empty-subtitle">
-              {hasActiveFilters
-                ? 'Limpiá el filtro de búsqueda o elegí otra nota del panel izquierdo.'
-                : 'Escribí tus apuntes de clase en Markdown con vista previa en vivo, tablas y checklists.'}
-            </p>
+            {hasActiveFilters ? (
+              <p className="task-empty-subtitle">
+                Limpiá el filtro de búsqueda o elegí otra nota del panel izquierdo.
+              </p>
+            ) : null}
             {canCreate ? (
               <button
                 type="button"

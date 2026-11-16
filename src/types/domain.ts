@@ -49,7 +49,7 @@ export interface CreateCourseInput {
   name: string;
   color: CourseColor;
   professor?: string;
-  term: string;
+  term?: string;
   status?: CourseStatus;
   schedules?: ClassScheduleInput[];
 }
@@ -172,6 +172,16 @@ export interface BackupInfo {
   filePath: string;
   createdAt: string;
   sizeBytes: number;
+}
+
+export interface RestoreBackupResult {
+  restoredFrom: BackupInfo;
+  preRestoreBackup: BackupInfo;
+}
+
+export interface OpenDataDirResult {
+  dataDir: string;
+  opened: boolean;
 }
 
 export type NoteOrigin = 'manual' | 'ai_summary' | 'ai_study_guide' | 'ai_practice_exam';
@@ -462,8 +472,16 @@ export type CommandPaletteItemKind =
 export type CommandPaletteTarget =
   | {
       type: 'section';
-      section: 'inicio' | 'calendario' | 'tareas' | 'examenes' | 'materias' | 'ajustes';
+      section:
+        | 'inicio'
+        | 'materias'
+        | 'calendario'
+        | 'tareas'
+        | 'examenes'
+        | 'informes'
+        | 'ajustes';
       triggerCreate?: boolean;
+      reportId?: string;
     }
   | {
       type: 'course';
@@ -544,7 +562,15 @@ export interface CheckRemindersResult {
 export interface AppNavigationHandlers {
   onSelectCourse: (courseId: string | null) => void;
   onNavigateSection?: (
-    section: 'inicio' | 'calendario' | 'tareas' | 'examenes' | 'notas' | 'materias' | 'ajustes'
+    section:
+      | 'inicio'
+      | 'materias'
+      | 'calendario'
+      | 'tareas'
+      | 'examenes'
+      | 'informes'
+      | 'notas'
+      | 'ajustes'
   ) => void;
 }
 
@@ -553,7 +579,9 @@ export interface CursadaIpcApi {
   // System & Backups
   createBackup: () => Promise<BackupInfo>;
   listBackups: () => Promise<BackupInfo[]>;
+  restoreBackup: (filename: string) => Promise<RestoreBackupResult>;
   getDataDir: () => Promise<string>;
+  openDataDir: () => Promise<OpenDataDirResult>;
   // Courses & Schedules (Agent A)
   listCourses: (opts?: { status?: CourseStatus | 'all' }) => Promise<CourseWithSchedules[]>;
   getCourse: (id: string) => Promise<CourseWithSchedules | null>;

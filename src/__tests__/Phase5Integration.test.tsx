@@ -33,15 +33,17 @@ describe('Phase 5 Integration: CourseDetailView Fuentes, DeleteCourseImpact, and
     }
   });
 
-  it('mounts SourcesWorkspace inside CourseDetailView Fuentes tab, indexes pasted text, and reports sourcesCount on DeleteCourseDialog', async () => {
+  it('indexes pasted text inside CourseDetailView AI sources pane and reports sourcesCount on DeleteCourseDialog', async () => {
     render(<App />);
 
-    // Navigate to "Ingeniería de Software I" via sidebar
-    const coursesNav = screen.getByRole('navigation', {
-      name: 'Materias en curso',
+    // Navigate to "Materias" and open "Ingeniería de Software I"
+    const primaryNav = screen.getByRole('navigation', {
+      name: 'Navegación principal',
     });
-    const courseBtn = await within(coursesNav).findByRole('button', {
-      name: /Ingeniería de Software I/i,
+    fireEvent.click(within(primaryNav).getByRole('button', { name: 'Materias' }));
+
+    const courseBtn = await screen.findByRole('button', {
+      name: 'Ingeniería de Software I',
     });
     fireEvent.click(courseBtn);
 
@@ -52,47 +54,49 @@ describe('Phase 5 Integration: CourseDetailView Fuentes, DeleteCourseImpact, and
       })
     ).toBeInTheDocument();
 
-    // Switch to "Fuentes" tab
-    const tablist = screen.getByRole('tablist');
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Fuentes' }));
+    const aiPane = screen.getByRole('complementary', {
+      name: 'Asistente e informes con IA',
+    });
 
-    const sourcesPanel = screen.getByTestId('course-sources-tab-panel');
-    expect(sourcesPanel).toBeInTheDocument();
-
-    // Verify seeded sources appear
+    // Verify seeded sources appear in the 3rd pane
     expect(
-      await within(sourcesPanel).findByText(
+      await within(aiPane).findByText(
         'Apuntes Unidad 2 — Ingeniería de Requerimientos'
       )
     ).toBeInTheDocument();
 
-    // Add a new source via "Pegar texto directo"
-    fireEvent.click(
-      within(sourcesPanel).getByRole('button', { name: /Pegar texto directo/i })
-    );
+    // Add a new source via "+ Texto"
+    fireEvent.click(within(aiPane).getByRole('button', { name: /\+ Texto/i }));
 
-    fireEvent.change(screen.getByLabelText(/^Título$/i), {
+    fireEvent.change(within(aiPane).getByLabelText('Título de la fuente'), {
       target: { value: 'Resumen Integración Continua' },
     });
-    fireEvent.change(screen.getByLabelText(/^Contenido$/i), {
+    fireEvent.change(within(aiPane).getByLabelText('Contenido de la fuente'), {
       target: {
         value:
           'Cada pull request ejecuta pruebas automatizadas, typecheck y build reproducible.',
       },
     });
-    fireEvent.click(
-      screen.getByRole('button', { name: /Guardar e indexar/i })
-    );
+    fireEvent.click(within(aiPane).getByRole('button', { name: 'Indexar' }));
 
-    const addedTitle = await within(sourcesPanel).findByText(
+    const addedTitle = await within(aiPane).findByText(
       'Resumen Integración Continua'
     );
-    const addedCard = addedTitle.closest('li') as HTMLElement;
-    expect(within(addedCard).getByText('Indexado')).toBeInTheDocument();
+    const addedRow = addedTitle.closest('.notebook-source-row') as HTMLElement;
+    expect(within(addedRow).getByText('Texto')).toBeInTheDocument();
+    expect(
+      within(addedRow).getByRole('checkbox', {
+        name: 'Incluir Resumen Integración Continua',
+      })
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(within(aiPane).getByText('Fuentes · 4 de 4')).toBeInTheDocument();
 
     // Verify DeleteCourseDialog reports 3 associated sources (2 seeded + 1 created)
+    const notesPane = screen.getByRole('complementary', {
+      name: 'Notas de la materia',
+    });
     fireEvent.click(
-      screen.getByRole('button', { name: 'Eliminar materia' })
+      within(notesPane).getByRole('button', { name: 'Eliminar materia' })
     );
 
     expect(
@@ -100,7 +104,9 @@ describe('Phase 5 Integration: CourseDetailView Fuentes, DeleteCourseImpact, and
     ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('3 fuentes asociadas')).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '3 fuentes asociadas'
+      );
     });
   });
 

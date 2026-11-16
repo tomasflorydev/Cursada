@@ -252,12 +252,6 @@ export function NotificationSettingsSection() {
         </div>
       </div>
 
-      <p className="settings-description">
-        Recibí alertas nativas en macOS antes de tus clases, el día de una
-        entrega pendiente y en los días previos a un parcial o final. Todo se
-        evalúa localmente desde tu base de datos SQLite.
-      </p>
-
       <form
         className="course-form"
         aria-labelledby="settings-notifications-heading"
@@ -277,7 +271,6 @@ export function NotificationSettingsSection() {
               justifyContent: 'space-between',
               gap: '12px',
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
               backgroundColor: 'var(--bg-surface-subtle)',
               border: '1px solid var(--border-subtle)',
             }}
@@ -314,7 +307,6 @@ export function NotificationSettingsSection() {
               gap: '16px',
               flexWrap: 'wrap',
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
               backgroundColor: 'var(--bg-canvas)',
               border: '1px solid var(--border-subtle)',
               opacity: settings.enabled ? 1 : 0.7,
@@ -386,7 +378,6 @@ export function NotificationSettingsSection() {
               justifyContent: 'space-between',
               gap: '12px',
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
               backgroundColor: 'var(--bg-canvas)',
               border: '1px solid var(--border-subtle)',
               opacity: settings.enabled ? 1 : 0.7,
@@ -425,7 +416,6 @@ export function NotificationSettingsSection() {
               gap: '16px',
               flexWrap: 'wrap',
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
               backgroundColor: 'var(--bg-canvas)',
               border: '1px solid var(--border-subtle)',
               opacity: settings.enabled ? 1 : 0.7,
@@ -594,8 +584,7 @@ export function NotificationSettingsSection() {
                         flexDirection: 'column',
                         gap: '3px',
                         padding: '10px 12px',
-                        borderRadius: 'var(--radius-sm)',
-                        backgroundColor: 'var(--bg-canvas)',
+                                  backgroundColor: 'var(--bg-canvas)',
                         border: '1px solid var(--border-subtle)',
                       }}
                     >

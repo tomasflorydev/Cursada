@@ -13,10 +13,11 @@ export type GlobalShortcutAction =
       type: 'navigate_section';
       section:
         | 'inicio'
+        | 'materias'
         | 'calendario'
         | 'tareas'
         | 'examenes'
-        | 'materias'
+        | 'informes'
         | 'ajustes';
     }
   | { type: 'contextual_new' };
@@ -39,13 +40,20 @@ const ACADEMIC_ENTITY_BONUS: Record<CommandPaletteItemKind, number> = {
 
 const SECTION_SHORTCUTS: Record<
   string,
-  'inicio' | 'calendario' | 'tareas' | 'examenes' | 'materias' | 'ajustes'
+  | 'inicio'
+  | 'materias'
+  | 'calendario'
+  | 'tareas'
+  | 'examenes'
+  | 'informes'
+  | 'ajustes'
 > = {
   '1': 'inicio',
-  '2': 'calendario',
-  '3': 'tareas',
-  '4': 'examenes',
-  '5': 'materias',
+  '2': 'materias',
+  '3': 'calendario',
+  '4': 'tareas',
+  '5': 'examenes',
+  '6': 'informes',
   ',': 'ajustes',
 };
 
@@ -84,28 +92,38 @@ function buildQuickActions(): CommandPaletteItem[] {
       id: 'action:new-course',
       kind: 'action',
       title: 'Nueva materia',
-      subtitle: 'Agregar una materia y sus horarios semanales',
+      subtitle: 'Agregar una materia al cuatrimestre',
       badge: 'Acción',
-      keywords: 'crear agregar materia cursada horario',
+      keywords: 'crear agregar materia anotador cursada horario',
       target: { type: 'section', section: 'materias', triggerCreate: true },
     },
     {
       id: 'action:nav-inicio',
       kind: 'action',
       title: 'Ir a Inicio',
-      subtitle: 'Resumen del día, próximos vencimientos y pulso semanal',
+      subtitle: 'Resumen del día, próximos vencimientos y semana',
       badge: 'Acción',
       shortcutHint: '⌘1',
       keywords: 'navegar seccion home inicio',
       target: { type: 'section', section: 'inicio' },
     },
     {
+      id: 'action:nav-materias',
+      kind: 'action',
+      title: 'Ir a Materias',
+      subtitle: 'Ver materias activas y archivadas',
+      badge: 'Acción',
+      shortcutHint: '⌘2',
+      keywords: 'navegar seccion materias anotadores cursada',
+      target: { type: 'section', section: 'materias' },
+    },
+    {
       id: 'action:nav-calendario',
       kind: 'action',
       title: 'Ir a Calendario',
-      subtitle: 'Ver grilla mensual y semanal de cursada',
+      subtitle: 'Ver grilla semanal y mensual de cursada',
       badge: 'Acción',
-      shortcutHint: '⌘2',
+      shortcutHint: '⌘3',
       keywords: 'navegar seccion calendario horarios',
       target: { type: 'section', section: 'calendario' },
     },
@@ -115,7 +133,7 @@ function buildQuickActions(): CommandPaletteItem[] {
       title: 'Ir a Tareas',
       subtitle: 'Ver entregas y pendientes de todas las materias',
       badge: 'Acción',
-      shortcutHint: '⌘3',
+      shortcutHint: '⌘4',
       keywords: 'navegar seccion tareas entregas',
       target: { type: 'section', section: 'tareas' },
     },
@@ -123,27 +141,27 @@ function buildQuickActions(): CommandPaletteItem[] {
       id: 'action:nav-examenes',
       kind: 'action',
       title: 'Ir a Exámenes',
-      subtitle: 'Ver próximos parciales, finales y promedio',
+      subtitle: 'Ver próximos parciales, finales y temas',
       badge: 'Acción',
-      shortcutHint: '⌘4',
+      shortcutHint: '⌘5',
       keywords: 'navegar seccion examenes parciales finales',
       target: { type: 'section', section: 'examenes' },
     },
     {
-      id: 'action:nav-materias',
+      id: 'action:nav-informes',
       kind: 'action',
-      title: 'Ir a Materias',
-      subtitle: 'Ver materias activas y cuatrimestres anteriores',
+      title: 'Ir a Informes',
+      subtitle: 'Informes de estudio con citas y fuentes',
       badge: 'Acción',
-      shortcutHint: '⌘5',
-      keywords: 'navegar seccion materias cursada',
-      target: { type: 'section', section: 'materias' },
+      shortcutHint: '⌘6',
+      keywords: 'navegar seccion informes ia estudio resumenes',
+      target: { type: 'section', section: 'informes' },
     },
     {
       id: 'action:nav-ajustes',
       kind: 'action',
       title: 'Ir a Ajustes',
-      subtitle: 'Backups locales, apariencia e inteligencia artificial',
+      subtitle: 'Apariencia, modelo local, datos y atajos',
       badge: 'Acción',
       shortcutHint: '⌘,',
       keywords: 'navegar seccion ajustes configuracion preferencias',
@@ -163,7 +181,13 @@ export function buildCommandPaletteItems(data: {
     id: `course:${course.id}`,
     kind: 'course',
     title: course.name,
-    subtitle: `${course.professor ? `Prof. ${course.professor} · ` : ''}${course.term}`,
+    subtitle:
+      [
+        course.professor.trim() ? `Prof. ${course.professor.trim()}` : '',
+        course.term.trim(),
+      ]
+        .filter(Boolean)
+        .join(' · ') || 'Materia',
     badge: course.status === 'archived' ? 'Archivada' : 'Materia',
     courseId: course.id,
     courseName: course.name,

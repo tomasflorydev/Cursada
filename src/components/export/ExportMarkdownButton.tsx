@@ -13,7 +13,7 @@ export interface ExportMarkdownButtonProps {
 
 const DEFAULT_LABELS: Record<ExportScope, string> = {
   note: 'Exportar nota (.md)',
-  course: 'Exportar materia (.md)',
+  course: 'Exportar anotador (.md)',
   all: 'Exportar toda la cursada (.md)',
 };
 

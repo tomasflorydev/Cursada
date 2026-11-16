@@ -29,27 +29,22 @@ export interface CourseReportGeneratorProps {
 const REPORT_TYPE_OPTIONS: ReadonlyArray<{
   value: StudyReportType;
   label: string;
-  description: string;
 }> = [
   {
     value: 'summary',
     label: 'Resumen',
-    description: 'Síntesis ágil de conceptos clave para repasar rápido.',
   },
   {
     value: 'report',
     label: 'Informe',
-    description: 'Desarrollo temático formal y comparación entre fuentes.',
   },
   {
     value: 'study_guide',
     label: 'Guía de estudio',
-    description: 'Objetivos, definiciones, cuadro integrador, preguntas y checklist.',
   },
   {
     value: 'practice_exam',
     label: 'Examen de práctica',
-    description: 'Consignas para practicar con clave de corrección al final.',
   },
 ];
 
@@ -120,7 +115,6 @@ export function CourseReportGenerator({
   const baseId = useId();
   const headingId = `${baseId}-heading`;
   const instructionsId = `${baseId}-instructions`;
-  const instructionsHelpId = `${baseId}-instructions-help`;
   const titleId = `${baseId}-title`;
   const autoSaveId = `${baseId}-auto-save`;
 
@@ -201,7 +195,7 @@ export function CourseReportGenerator({
         setErrorMessage(
           err instanceof Error
             ? err.message
-            : 'No se pudieron cargar las fuentes de la materia.'
+            : 'No se pudieron cargar las fuentes.'
         );
       } finally {
         if (
@@ -423,10 +417,6 @@ export function CourseReportGenerator({
           <h2 id={headingId} className="assistant-section-title section-title">
             Generador de material de estudio
           </h2>
-          <p className="assistant-section-subtitle">
-            Procesamiento Map-Reduce bajo demanda sobre las fuentes indexadas de{' '}
-            <strong>{courseName}</strong>.
-          </p>
         </div>
       </header>
 
@@ -449,11 +439,6 @@ export function CourseReportGenerator({
             >
               <p className="assistant-empty-title sources-empty-title">
                 No hay fuentes indexadas listas en {courseName}
-              </p>
-              <p className="assistant-empty-description sources-empty-description">
-                Agregá archivos PDF, Markdown o texto pegado desde la pestaña{' '}
-                <strong>Fuentes</strong> y esperá a que finalice la indexación
-                para generar resúmenes, informes, guías o exámenes.
               </p>
             </div>
           ) : (
@@ -534,7 +519,6 @@ export function CourseReportGenerator({
           <div className="assistant-radio-group">
             {REPORT_TYPE_OPTIONS.map((option) => {
               const radioId = `${baseId}-type-${option.value}`;
-              const descId = `${baseId}-type-desc-${option.value}`;
               return (
                 <div key={option.value} className="assistant-radio-option">
                   <input
@@ -544,15 +528,11 @@ export function CourseReportGenerator({
                     value={option.value}
                     className="assistant-radio"
                     checked={reportType === option.value}
-                    aria-describedby={descId}
                     onChange={() => setReportType(option.value)}
                   />
                   <label htmlFor={radioId} className="assistant-radio-label">
                     {option.label}
                   </label>
-                  <span id={descId} className="assistant-radio-description">
-                    {option.description}
-                  </span>
                 </div>
               );
             })}
@@ -590,17 +570,12 @@ export function CourseReportGenerator({
           <label htmlFor={instructionsId} className="assistant-field-label">
             Instrucciones / Prompt para la IA
           </label>
-          <span id={instructionsHelpId} className="assistant-field-hint">
-            Opcional: especificá enfoque, temas prioritarios, ejemplos prácticos
-            o estilo de redacción.
-          </span>
           <textarea
             id={instructionsId}
             name="customInstructions"
             rows={3}
             className="assistant-textarea"
             placeholder="Ej: Redactá un informe comparativo enfocado en..."
-            aria-describedby={instructionsHelpId}
             value={customInstructions}
             onChange={(event) => setCustomInstructions(event.target.value)}
           />

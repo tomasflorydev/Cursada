@@ -29,7 +29,10 @@ contextBridge.exposeInMainWorld('cursadaApi', {
   // System & Backups
   createBackup: () => ipcRenderer.invoke('system:createBackup'),
   listBackups: () => ipcRenderer.invoke('system:listBackups'),
+  restoreBackup: (filename: string) =>
+    ipcRenderer.invoke('system:restoreBackup', filename),
   getDataDir: () => ipcRenderer.invoke('system:getDataDir'),
+  openDataDir: () => ipcRenderer.invoke('system:openDataDir'),
   // Courses & Schedules
   listCourses: (opts?: { status?: CourseStatus | 'all' }) =>
     ipcRenderer.invoke('courses:list', opts),

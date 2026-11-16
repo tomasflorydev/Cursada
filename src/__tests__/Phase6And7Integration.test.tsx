@@ -52,17 +52,17 @@ describe('Phase 6 & 7 Integration: CourseDetailView Asistente IA (Map-Reduce Gen
     vi.restoreAllMocks();
   });
 
-  it('navigates into CourseDetailView Asistente IA, generates custom Map-Reduce report into Notas, and runs RAG Chat with citation inspection + note save', async () => {
+  it('navigates into CourseDetailView 3-pane notebook, runs RAG Chat with citations, generates AI report into Informes, and saves as note', async () => {
     render(<App />);
 
-    // 1. Open "Ingeniería de Software I" from the sidebar
-    const coursesNav = screen.getByRole('navigation', {
-      name: 'Materias en curso',
+    // 1. Navigate to "Materias" and open "Ingeniería de Software I"
+    const primaryNav = screen.getByRole('navigation', {
+      name: 'Navegación principal',
     });
-    const courseBtn = await within(coursesNav).findByRole('button', {
-      name: /Ingeniería de Software I/i,
-    });
-    fireEvent.click(courseBtn);
+    fireEvent.click(within(primaryNav).getByRole('button', { name: 'Materias' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Ingeniería de Software I' })
+    );
 
     expect(
       await screen.findByRole('heading', {
@@ -71,150 +71,99 @@ describe('Phase 6 & 7 Integration: CourseDetailView Asistente IA (Map-Reduce Gen
       })
     ).toBeInTheDocument();
 
-    // 2. Switch to "Asistente IA" tab
-    const tablist = screen.getByRole('tablist');
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Asistente IA' }));
-
-    const assistantTabPanel = screen.getByTestId('course-assistant-tab-panel');
-    expect(assistantTabPanel).toBeInTheDocument();
-    expect(
-      within(assistantTabPanel).getByTestId('assistant-ondemand-badge')
-    ).toHaveTextContent(
-      /IA local bajo demanda \(Ollama se activa solo al generar y libera memoria al terminar\)/i
-    );
-
-    // 3. Phase 7: Wait for ready sources to load, then generate custom "Informe" via Map-Reduce
-    await within(assistantTabPanel).findByRole('checkbox', {
-      name: /Resumen Patrones y Calidad\.md/i,
+    const aiPane = screen.getByRole('complementary', {
+      name: 'Asistente e informes con IA',
     });
-    const generateBtn = within(assistantTabPanel).getByRole('button', {
-      name: 'Generar material',
-    });
-    await waitFor(() => {
-      expect(generateBtn).toBeEnabled();
+    const notesPane = screen.getByRole('complementary', {
+      name: 'Notas de la materia',
     });
 
-    fireEvent.click(within(assistantTabPanel).getByLabelText('Informe'));
-    fireEvent.change(
-      within(assistantTabPanel).getByLabelText(
-        /Instrucciones \/ Prompt para la IA/i
-      ),
-      {
-        target: {
-          value: 'Elaborá un informe técnico con ejemplos de trazabilidad',
-        },
-      }
-    );
-    fireEvent.change(
-      within(assistantTabPanel).getByLabelText(/Título del material/i),
-      { target: { value: 'Informe Trazabilidad IS1' } }
-    );
-    fireEvent.click(generateBtn);
-
-    const resultCard = await within(assistantTabPanel).findByTestId(
-      'report-result-card'
-    );
-    expect(resultCard).toHaveTextContent('Informe Trazabilidad IS1');
-    expect(
-      within(resultCard).getByTestId('report-steps-list')
-    ).toHaveTextContent(/Reduce/i);
-    expect(
-      within(resultCard).getByTestId('report-markdown-preview')
-    ).toHaveTextContent(/Elaborá un informe técnico con ejemplos de trazabilidad/i);
-
-    // Jump to Notas via "Abrir en Notas" and confirm the auto-saved note appears
-    fireEvent.click(
-      within(resultCard).getByRole('button', { name: 'Abrir en Notas' })
-    );
-
-    await waitFor(() => {
-      expect(
-        within(tablist).getByRole('tab', { name: 'Notas' })
-      ).toHaveAttribute('aria-selected', 'true');
+    // 2. Wait for ready sources to load in the 3rd pane
+    const mdSourceCheckbox = await within(aiPane).findByRole('checkbox', {
+      name: 'Incluir Resumen Patrones y Calidad.md',
     });
+    expect(mdSourceCheckbox).toHaveAttribute('aria-checked', 'true');
 
-    const toggleListBtn = await screen.findByRole('button', {
-      name: /Mostrar lista|Ocultar lista/i,
-    });
-    if (/Mostrar lista/i.test(toggleListBtn.textContent ?? '')) {
-      fireEvent.click(toggleListBtn);
-    }
-
-    expect(
-      await screen.findByText('Informe Trazabilidad IS1')
-    ).toBeInTheDocument();
-
-    // 4. Switch back to "Asistente IA" and test Phase 6 RAG Chat
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Asistente IA' }));
-
-    const assistantWorkspace = await screen.findByTestId(
-      'course-assistant-workspace'
-    );
-    fireEvent.click(
-      within(assistantWorkspace).getByRole('button', {
-        name: 'Chat con Fuentes (RAG)',
-      })
-    );
-
-    const instructionsInput = await within(assistantWorkspace).findByLabelText(
-      /Instrucciones personalizadas/i
-    );
-    const promptInput = within(assistantWorkspace).getByLabelText(
-      /Tu consulta sobre Ingeniería de Software I/i
-    );
-
-    fireEvent.change(instructionsInput, {
-      target: { value: 'Respondé con bullets concretos para repasar' },
-    });
-    fireEvent.change(promptInput, {
+    // 3. Ask RAG Chat a question and inspect citation [1]
+    const askInput = within(aiPane).getByLabelText('Preguntale a tus fuentes');
+    fireEvent.change(askInput, {
       target: { value: '¿Qué define la ingeniería de requerimientos?' },
     });
     fireEvent.click(
-      within(assistantWorkspace).getByRole('button', { name: 'Enviar' })
+      within(aiPane).getByRole('button', { name: 'Enviar consulta' })
+    );
+
+    const questionEl = await within(aiPane).findByText(
+      '¿Qué define la ingeniería de requerimientos?'
+    );
+    const chatReplyContainer = questionEl.parentElement as HTMLElement;
+    const chatCitations = within(chatReplyContainer).getAllByRole('button', {
+      name: 'Fuente [1]',
+    });
+    fireEvent.click(chatCitations[0]);
+
+    expect(
+      await within(notesPane).findByText(/Fuente \[1\]:/i)
+    ).toBeInTheDocument();
+
+    // 4. Generate an AI study report from selected sources + notes
+    const generateGuideBtn = within(aiPane).getByRole('button', {
+      name: 'Guía de estudio',
+    });
+    fireEvent.click(generateGuideBtn);
+
+    expect(
+      await within(aiPane).findByRole('heading', {
+        level: 3,
+        name: 'Guía de estudio — Ingeniería de Software I',
+      })
+    ).toBeInTheDocument();
+
+    // Open the generated report in Informes
+    fireEvent.click(
+      within(aiPane).getByRole('button', { name: 'Abrir informe →' })
     );
 
     expect(
-      await within(assistantWorkspace).findByText(
-        '¿Qué define la ingeniería de requerimientos?'
+      await screen.findByRole('heading', { level: 1, name: 'Informes' })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: 'Guía de estudio — Ingeniería de Software I',
+      })
+    ).toBeInTheDocument();
+
+    const citationsAside = screen.getByRole('complementary', {
+      name: 'Fuentes citadas',
+    });
+    expect(
+      within(citationsAside).getByText(
+        /Resumen de Métricas Ágiles, Velocidad y Deuda Técnica/i
       )
     ).toBeInTheDocument();
 
-    const citationButtons = await within(assistantWorkspace).findAllByRole(
-      'button',
-      { name: /^\[1\]/i }
-    );
-    fireEvent.click(citationButtons[0]);
-
-    const dialog = screen.getByRole('dialog') as HTMLDialogElement;
-    expect(dialog.open).toBe(true);
-    expect(dialog).not.toHaveAttribute('role');
-    expect(dialog).not.toHaveAttribute('aria-modal');
-    expect(dialog.querySelector('.citation-dialog-excerpt')?.textContent?.trim().length).toBeGreaterThan(15);
-
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-
-    // Save chat reply as a note and navigate back to Notas
+    // 5. Save report as a note and jump back to the course editor with that note open
     fireEvent.click(
-      within(assistantWorkspace).getByRole('button', {
-        name: 'Guardar como Nota',
-      })
+      screen.getByRole('button', { name: 'Guardar como nota' })
     );
-
     expect(
-      await within(assistantWorkspace).findByText('Nota guardada')
+      await screen.findByText('Informe guardado como nota.')
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      within(assistantWorkspace).getByRole('button', { name: 'Abrir en Notas' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir nota →' }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Ingeniería de Software I',
+      })
+    ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(
-        within(tablist).getByRole('tab', { name: 'Notas' })
-      ).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByLabelText('Título de la nota')).toHaveValue(
+        'Guía de estudio — Ingeniería de Software I'
+      );
     });
   });
 });

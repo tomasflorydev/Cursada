@@ -20,7 +20,7 @@
     font-variant-numeric: tabular-nums;
     font-weight: 600;
     padding: 4px 10px;
-    border-radius: 999px;
+    border-radius: 0;
     background-color: var(--status-done-bg);
     color: var(--status-done-text);
     white-space: nowrap;

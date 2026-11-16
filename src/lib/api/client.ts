@@ -27,6 +27,8 @@ import type {
   NotificationDispatchResult,
   NotificationSettings,
   OllamaHealthCheckResult,
+  OpenDataDirResult,
+  RestoreBackupResult,
   SaveChatMessageAsNoteInput,
   SearchSourceChunksInput,
   SendChatMessageInput,
@@ -76,9 +78,21 @@ export const cursadaClient: CursadaIpcApi = {
     return fn ? fn() : mockClient.listBackups();
   },
 
+  async restoreBackup(filename: string): Promise<RestoreBackupResult> {
+    const fn = getBridge()?.restoreBackup;
+    const result = fn ? await fn(filename) : await mockClient.restoreBackup(filename);
+    notifyCursadaDataChanged();
+    return result;
+  },
+
   async getDataDir(): Promise<string> {
     const fn = getBridge()?.getDataDir;
     return fn ? fn() : mockClient.getDataDir();
+  },
+
+  async openDataDir(): Promise<OpenDataDirResult> {
+    const fn = getBridge()?.openDataDir;
+    return fn ? fn() : mockClient.openDataDir();
   },
 
   // Courses & Schedules

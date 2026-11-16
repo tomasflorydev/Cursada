@@ -48,7 +48,7 @@ export interface CreateCourseInput {
   name: string;
   color: CourseColor;
   professor?: string;
-  term: string;
+  term?: string;
   status?: CourseStatus;
   schedules?: ClassScheduleInput[];
 }
@@ -171,6 +171,16 @@ export interface BackupInfo {
   filePath: string;
   createdAt: string;
   sizeBytes: number;
+}
+
+export interface RestoreBackupResult {
+  restoredFrom: BackupInfo;
+  preRestoreBackup: BackupInfo;
+}
+
+export interface OpenDataDirResult {
+  dataDir: string;
+  opened: boolean;
 }
 
 export type NoteOrigin = 'manual' | 'ai_summary' | 'ai_study_guide' | 'ai_practice_exam';

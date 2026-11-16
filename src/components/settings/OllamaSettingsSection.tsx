@@ -71,7 +71,6 @@ export function OllamaSettingsSection() {
   const baseId = useId();
   const headingId = `${baseId}-ollama-heading`;
   const baseUrlId = `${baseId}-base-url`;
-  const baseUrlHelpId = `${baseId}-base-url-help`;
   const chatModelId = `${baseId}-chat-model`;
   const chatListId = `${baseId}-chat-models-list`;
   const embedModelId = `${baseId}-embed-model`;
@@ -345,7 +344,7 @@ export function OllamaSettingsSection() {
               style={{
                 width: '7px',
                 height: '7px',
-                borderRadius: '999px',
+                borderRadius: '0px',
                 backgroundColor: 'currentColor',
                 flexShrink: 0,
               }}
@@ -371,12 +370,6 @@ export function OllamaSettingsSection() {
           {isCheckingManual ? 'Verificando...' : 'Verificar conexión'}
         </button>
       </div>
-
-      <p className="settings-description">
-        Cursada se conecta de forma 100% local a tu servidor Ollama para
-        generar embeddings de tus fuentes de estudio y responder preguntas por
-        materia sin enviar datos a la nube.
-      </p>
 
       {isDisconnected ? (
         <div
@@ -410,7 +403,6 @@ export function OllamaSettingsSection() {
             style={{
               margin: 0,
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
               backgroundColor: 'var(--bg-canvas)',
               border: '1px solid var(--border-subtle)',
               fontFamily: 'var(--font-mono)',
@@ -479,8 +471,7 @@ export function OllamaSettingsSection() {
                     gap: '12px',
                     flexWrap: 'wrap',
                     padding: '10px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--bg-canvas)',
+                          backgroundColor: 'var(--bg-canvas)',
                     border: '1px solid var(--border-subtle)',
                   }}
                 >
@@ -586,19 +577,13 @@ export function OllamaSettingsSection() {
               enterKeyHint="next"
               aria-invalid={invalidField === 'baseUrl' ? 'true' : 'false'}
               aria-describedby={
-                invalidField === 'baseUrl'
-                  ? `${baseUrlHelpId} ${formErrorId}`
-                  : baseUrlHelpId
+                invalidField === 'baseUrl' ? formErrorId : undefined
               }
               onChange={(e) => {
                 clearFormFeedback();
                 setBaseUrlInput(e.target.value);
               }}
             />
-            <span id={baseUrlHelpId} className="settings-meta-label">
-              Dirección HTTP local de tu instancia de Ollama (ej.
-              http://localhost:11434).
-            </span>
           </div>
 
           <div className="course-form-field">

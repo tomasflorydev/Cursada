@@ -105,6 +105,23 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
         shortcutHint: '⌘N',
         target: { type: 'section', section: 'tareas', triggerCreate: true },
       });
+      expect(items.find((i) => i.id === 'action:new-course')).toMatchObject({
+        kind: 'action',
+        title: 'Nueva materia',
+        target: { type: 'section', section: 'materias', triggerCreate: true },
+      });
+      expect(items.find((i) => i.id === 'action:nav-materias')).toMatchObject({
+        kind: 'action',
+        title: 'Ir a Materias',
+        shortcutHint: '⌘2',
+        target: { type: 'section', section: 'materias' },
+      });
+      expect(items.find((i) => i.id === 'action:nav-informes')).toMatchObject({
+        kind: 'action',
+        title: 'Ir a Informes',
+        shortcutHint: '⌘6',
+        target: { type: 'section', section: 'informes' },
+      });
       expect(items.find((i) => i.id === 'action:nav-ajustes')).toMatchObject({
         kind: 'action',
         title: 'Ir a Ajustes',
@@ -288,7 +305,7 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
           shiftKey: false,
           defaultPrevented: false,
         })
-      ).toEqual({ type: 'navigate_section', section: 'calendario' });
+      ).toEqual({ type: 'navigate_section', section: 'materias' });
 
       expect(
         resolveGlobalShortcut({
@@ -299,7 +316,7 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
           shiftKey: false,
           defaultPrevented: false,
         })
-      ).toEqual({ type: 'navigate_section', section: 'tareas' });
+      ).toEqual({ type: 'navigate_section', section: 'calendario' });
 
       expect(
         resolveGlobalShortcut({
@@ -310,7 +327,7 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
           shiftKey: false,
           defaultPrevented: false,
         })
-      ).toEqual({ type: 'navigate_section', section: 'examenes' });
+      ).toEqual({ type: 'navigate_section', section: 'tareas' });
 
       expect(
         resolveGlobalShortcut({
@@ -321,7 +338,18 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
           shiftKey: false,
           defaultPrevented: false,
         })
-      ).toEqual({ type: 'navigate_section', section: 'materias' });
+      ).toEqual({ type: 'navigate_section', section: 'examenes' });
+
+      expect(
+        resolveGlobalShortcut({
+          key: '6',
+          metaKey: true,
+          ctrlKey: false,
+          altKey: false,
+          shiftKey: false,
+          defaultPrevented: false,
+        })
+      ).toEqual({ type: 'navigate_section', section: 'informes' });
 
       expect(
         resolveGlobalShortcut({
@@ -577,7 +605,7 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
       });
     });
 
-    it('opens target tab and note in CoursesPage and handles createRequestVersion both on overview and detail view', async () => {
+    it('opens target note in CoursesPage and handles newNoteRequestVersion and createRequestVersion on overview and detail view', async () => {
       const onSelectCourse = vi.fn();
       const { rerender } = render(
         <CoursesPage
@@ -587,19 +615,20 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
           initialNoteId="note-2"
           courseNavigationVersion={1}
           createRequestVersion={0}
+          newNoteRequestVersion={0}
         />
       );
 
       const titleInput = (await screen.findByLabelText(
         'Título de la nota'
-      )) as HTMLInputElement;
+      )) as HTMLTextAreaElement;
       await waitFor(() => {
         expect(titleInput.value).toBe(
           'Comparativa práctica: Strategy vs. State en el dominio de envíos'
         );
       });
 
-      // Trigger create inside notes tab -> creates new note
+      // Trigger create inside detail view -> creates new note
       rerender(
         <CoursesPage
           selectedCourseId="diseno-sistemas"
@@ -607,11 +636,12 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
           initialCourseTab="notas"
           initialNoteId="note-2"
           courseNavigationVersion={1}
-          createRequestVersion={1}
+          createRequestVersion={0}
+          newNoteRequestVersion={1}
         />
       );
       await waitFor(() => {
-        expect(titleInput.value).toBe('Nuevo apunte');
+        expect(titleInput.value).toBe('Nueva nota');
       });
 
       // Switch to overview (selectedCourseId = null) without triggering modal
@@ -619,7 +649,8 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
         <CoursesPage
           selectedCourseId={null}
           onSelectCourse={onSelectCourse}
-          createRequestVersion={1}
+          createRequestVersion={0}
+          newNoteRequestVersion={1}
         />
       );
       expect(
@@ -631,7 +662,8 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
         <CoursesPage
           selectedCourseId={null}
           onSelectCourse={onSelectCourse}
-          createRequestVersion={2}
+          createRequestVersion={1}
+          newNoteRequestVersion={1}
         />
       );
       expect(
@@ -639,54 +671,64 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
       ).toBeInTheDocument();
     });
 
-    it('routes createRequestVersion in CourseDetailView according to activeTab', async () => {
+    it('handles initialNoteId navigation and newNoteRequestVersion in CourseDetailView', async () => {
       const courses = await cursadaClient.listCourses({ status: 'all' });
       const course = courses[0];
+      const onSelectCourse = vi.fn();
 
       const { rerender } = render(
         <CourseDetailView
-          course={course}
-          onBackToAll={vi.fn()}
-          onEdit={vi.fn()}
-          onToggleArchive={vi.fn()}
-          onRequestDelete={vi.fn()}
-          initialTab="resumen"
-          createRequestVersion={0}
+          courseId={course.id}
+          initialNoteId="note-1"
+          navigationVersion={1}
+          newNoteRequestVersion={0}
+          onSelectCourse={onSelectCourse}
         />
       );
 
-      // From resumen, createRequestVersion switches to tareas and opens task form
-      rerender(
-        <CourseDetailView
-          course={course}
-          onBackToAll={vi.fn()}
-          onEdit={vi.fn()}
-          onToggleArchive={vi.fn()}
-          onRequestDelete={vi.fn()}
-          initialTab="resumen"
-          createRequestVersion={1}
-        />
-      );
-      expect(
-        await screen.findByRole('form', { name: 'Nueva tarea' })
-      ).toBeInTheDocument();
+      const titleInput = (await screen.findByLabelText(
+        'Título de la nota'
+      )) as HTMLTextAreaElement;
+      await waitFor(() => {
+        expect(titleInput.value).toBe(
+          'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica'
+        );
+      });
 
-      // Switch to examenes tab and trigger createRequestVersion -> opens exam form
-      fireEvent.click(screen.getByRole('tab', { name: 'Exámenes' }));
+      // Incrementing newNoteRequestVersion creates a new note in the editor
       rerender(
         <CourseDetailView
-          course={course}
-          onBackToAll={vi.fn()}
-          onEdit={vi.fn()}
-          onToggleArchive={vi.fn()}
-          onRequestDelete={vi.fn()}
-          initialTab="resumen"
-          createRequestVersion={2}
+          courseId={course.id}
+          initialNoteId="note-1"
+          navigationVersion={1}
+          newNoteRequestVersion={1}
+          onSelectCourse={onSelectCourse}
         />
       );
-      expect(
-        await screen.findByRole('form', { name: 'Agendar examen' })
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(titleInput.value).toBe('Nueva nota');
+      });
+
+      // Incrementing navigationVersion with initialNoteId jumps back to that note
+      rerender(
+        <CourseDetailView
+          courseId={course.id}
+          initialNoteId="note-1"
+          navigationVersion={2}
+          newNoteRequestVersion={1}
+          onSelectCourse={onSelectCourse}
+        />
+      );
+      await waitFor(() => {
+        expect(titleInput.value).toBe(
+          'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica'
+        );
+      });
+
+      fireEvent.click(
+        screen.getByRole('button', { name: '← Todas las materias' })
+      );
+      expect(onSelectCourse).toHaveBeenCalledWith(null);
     });
   });
 });

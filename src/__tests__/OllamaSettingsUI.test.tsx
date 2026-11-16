@@ -9,7 +9,7 @@ import {
 } from '../lib/api/mockOllama';
 import { SettingsPage } from '../pages/SettingsPage';
 
-describe('Phase 5 Task 5.1 Frontend: OllamaSettingsSection in SettingsPage', () => {
+describe('Phase 5 Task 5.1 Frontend: Ollama / Inteligencia artificial section in SettingsPage', () => {
   beforeEach(() => {
     resetAllMocks();
     localStorage.clear();
@@ -19,73 +19,76 @@ describe('Phase 5 Task 5.1 Frontend: OllamaSettingsSection in SettingsPage', () 
     vi.restoreAllMocks();
   });
 
-  it('renders Inteligencia Artificial (Ollama) section, connected status, detected models, and saves settings', async () => {
+  it('renders Inteligencia artificial section, connected status, detected models, and saves settings', async () => {
     const updateSpy = vi.spyOn(cursadaClient, 'updateAiSettings');
 
-    render(<SettingsPage themeMode="system" onChangeThemeMode={() => {}} />);
+    render(<SettingsPage themeMode="dark" onChangeThemeMode={() => {}} />);
 
-    expect(
-      screen.getByRole('heading', {
-        level: 2,
-        name: 'Inteligencia Artificial (Ollama)',
-      })
-    ).toBeInTheDocument();
+    const aiHeading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Inteligencia artificial',
+    });
+    const aiSection = aiHeading.closest('section') as HTMLElement;
 
-    const badge = screen.getByTestId('ollama-status-badge');
     await waitFor(() => {
-      expect(badge).toHaveTextContent('Conectado');
+      expect(within(aiSection).getByText('Conectado')).toBeInTheDocument();
     });
 
     expect(
-      screen.queryByTestId('ollama-disconnected-help')
-    ).not.toBeInTheDocument();
+      within(aiSection).getByText(/http:\/\/localhost:11434 · v0\.5\.7 · 4 modelos locales/i)
+    ).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
-    const modelsBox = await screen.findByTestId('ollama-installed-models');
-    expect(within(modelsBox).getByText('llama3.2:latest')).toBeInTheDocument();
-    expect(within(modelsBox).getByText('qwen2.5:7b')).toBeInTheDocument();
+    const chatSelect = within(aiSection).getByLabelText(
+      'Modelo de chat e informes'
+    ) as HTMLSelectElement;
+    const embedSelect = within(aiSection).getByLabelText(
+      'Modelo de embeddings'
+    ) as HTMLSelectElement;
+
+    // Detected models are listed as select options
     expect(
-      within(modelsBox).getByText('nomic-embed-text:latest')
+      within(chatSelect).getByRole('option', { name: 'llama3.2:latest' })
     ).toBeInTheDocument();
     expect(
-      within(modelsBox).getByText('mxbai-embed-large:latest')
+      within(chatSelect).getByRole('option', { name: 'qwen2.5:7b' })
+    ).toBeInTheDocument();
+    expect(
+      within(embedSelect).getByRole('option', { name: 'nomic-embed-text:latest' })
+    ).toBeInTheDocument();
+    expect(
+      within(embedSelect).getByRole('option', { name: 'mxbai-embed-large:latest' })
     ).toBeInTheDocument();
 
-    // Select models using quick chips
-    fireEvent.click(
-      within(modelsBox).getByRole('button', {
-        name: 'Usar para Chat: qwen2.5:7b',
-      })
-    );
-    fireEvent.click(
-      within(modelsBox).getByRole('button', {
-        name: 'Usar para Embeddings: mxbai-embed-large:latest',
-      })
-    );
+    // Select chat and embedding models
+    fireEvent.change(chatSelect, { target: { value: 'qwen2.5:7b' } });
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ chatModel: 'qwen2.5:7b' })
+      );
+    });
 
-    const chatInput = screen.getByLabelText(
-      'Modelo de Chat'
-    ) as HTMLInputElement;
-    const embedInput = screen.getByLabelText(
-      'Modelo de Embeddings'
-    ) as HTMLInputElement;
-    expect(chatInput.value).toBe('qwen2.5:7b');
-    expect(embedInput.value).toBe('mxbai-embed-large:latest');
+    fireEvent.change(embedSelect, {
+      target: { value: 'mxbai-embed-large:latest' },
+    });
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ embeddingModel: 'mxbai-embed-large:latest' })
+      );
+    });
 
     // Also allow typing custom URL with trailing slash (normalized on save)
-    const urlInput = screen.getByLabelText(
+    const urlInput = within(aiSection).getByLabelText(
       'URL del servidor Ollama'
     ) as HTMLInputElement;
     fireEvent.change(urlInput, {
       target: { value: 'http://localhost:11434/' },
     });
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Guardar configuración de IA' })
-    );
+    fireEvent.click(within(aiSection).getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenCalledWith({
+      expect(updateSpy).toHaveBeenLastCalledWith({
         baseUrl: 'http://localhost:11434',
         chatModel: 'qwen2.5:7b',
         embeddingModel: 'mxbai-embed-large:latest',
@@ -93,7 +96,7 @@ describe('Phase 5 Task 5.1 Frontend: OllamaSettingsSection in SettingsPage', () 
     });
 
     expect(
-      await screen.findByText('Configuración de IA guardada correctamente')
+      await within(aiSection).findByText('Configuración de IA guardada.')
     ).toBeInTheDocument();
 
     expect(await mockGetAiSettings()).toEqual({
@@ -106,133 +109,127 @@ describe('Phase 5 Task 5.1 Frontend: OllamaSettingsSection in SettingsPage', () 
   it('validates invalid URL and empty model names on submit without hanging', async () => {
     const updateSpy = vi.spyOn(cursadaClient, 'updateAiSettings');
 
-    render(<SettingsPage themeMode="system" onChangeThemeMode={() => {}} />);
+    render(<SettingsPage themeMode="dark" onChangeThemeMode={() => {}} />);
+
+    const aiHeading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Inteligencia artificial',
+    });
+    const aiSection = aiHeading.closest('section') as HTMLElement;
 
     await waitFor(() => {
-      expect(screen.getByTestId('ollama-status-badge')).toHaveTextContent(
-        'Conectado'
-      );
+      expect(within(aiSection).getByText('Conectado')).toBeInTheDocument();
     });
 
-    const urlInput = screen.getByLabelText('URL del servidor Ollama');
+    const urlInput = within(aiSection).getByLabelText('URL del servidor Ollama');
     fireEvent.change(urlInput, { target: { value: 'ftp://invalid-host' } });
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Guardar configuración de IA' })
-    );
+    fireEvent.click(within(aiSection).getByRole('button', { name: 'Guardar' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/http/i);
-    expect(urlInput).toHaveAttribute('aria-invalid', 'true');
+    expect(await within(aiSection).findByRole('alert')).toHaveTextContent(/http/i);
     expect(updateSpy).not.toHaveBeenCalled();
 
-    // Fix URL and clear chat model
+    // Fix URL, select embedding model first, and test empty custom chat model
     fireEvent.change(urlInput, {
       target: { value: 'http://localhost:11434' },
     });
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
-    const chatInput = screen.getByLabelText('Modelo de Chat');
-    fireEvent.change(chatInput, { target: { value: '   ' } });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Guardar configuración de IA' })
+    const embedSelect = within(aiSection).getByLabelText('Modelo de embeddings');
+    fireEvent.change(embedSelect, {
+      target: { value: 'mxbai-embed-large:latest' },
+    });
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+    });
+    updateSpy.mockClear();
+
+    const chatSelect = within(aiSection).getByLabelText(
+      'Modelo de chat e informes'
     );
+    fireEvent.change(chatSelect, { target: { value: '__custom__' } });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    const customChatInput = await within(aiSection).findByLabelText(
+      'Nombre de modelo personalizado'
+    );
+    fireEvent.change(customChatInput, { target: { value: '   ' } });
+    fireEvent.click(within(aiSection).getByRole('button', { name: 'Usar' }));
+
+    expect(await within(aiSection).findByRole('alert')).toHaveTextContent(
       /modelo de chat/i
     );
-    expect(chatInput).toHaveAttribute('aria-invalid', 'true');
     expect(updateSpy).not.toHaveBeenCalled();
 
-    // Typing manual custom model names and surfacing backend error cleanly
-    fireEvent.change(chatInput, { target: { value: 'mistral:7b' } });
-    const embedInput = screen.getByLabelText('Modelo de Embeddings');
-    fireEvent.change(embedInput, { target: { value: 'bge-m3:latest' } });
+    // Typing manual custom model name and surfacing backend error cleanly
+    fireEvent.change(customChatInput, { target: { value: 'mistral:7b' } });
 
     updateSpy.mockRejectedValueOnce(
       new Error('Error simulado al persistir en SQLite')
     );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Guardar configuración de IA' })
-    );
+    fireEvent.click(within(aiSection).getByRole('button', { name: 'Usar' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    expect(await within(aiSection).findByRole('alert')).toHaveTextContent(
       'Error simulado al persistir en SQLite'
     );
 
-    // Retry succeeds with manually typed values
+    // Retry succeeds with manually typed value
     updateSpy.mockRestore();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Guardar configuración de IA' })
-    );
+    fireEvent.click(within(aiSection).getByRole('button', { name: 'Usar' }));
 
     expect(
-      await screen.findByText('Configuración de IA guardada correctamente')
+      await within(aiSection).findByText('Configuración de IA guardada.')
     ).toBeInTheDocument();
     expect(await mockGetAiSettings()).toEqual({
       baseUrl: 'http://localhost:11434',
       chatModel: 'mistral:7b',
-      embeddingModel: 'bge-m3:latest',
+      embeddingModel: 'mxbai-embed-large:latest',
     });
   });
 
-  it('shows Disconectado state with Spanish instructions when Ollama is down and reconnects on Verificar conexión', async () => {
+  it('shows Sin conexión state with Spanish instructions when Ollama is down and reconnects on Probar', async () => {
     setMockOllamaConnectionState({ status: 'disconnected' });
 
     render(<SettingsPage themeMode="dark" onChangeThemeMode={() => {}} />);
 
-    const badge = screen.getByTestId('ollama-status-badge');
+    const aiHeading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Inteligencia artificial',
+    });
+    const aiSection = aiHeading.closest('section') as HTMLElement;
+
     await waitFor(() => {
-      expect(badge).toHaveTextContent('Desconectado');
+      expect(within(aiSection).getByText('Sin conexión')).toBeInTheDocument();
     });
 
     // No intrusive role="alert" on mount
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(aiSection).toHaveTextContent(/ollama serve/i);
+    expect(aiSection).toHaveTextContent(/Ollama/i);
 
-    const helpBox = screen.getByTestId('ollama-disconnected-help');
-    expect(helpBox).toHaveTextContent(/ollama serve/i);
-    expect(helpBox).toHaveTextContent(/Ollama\.app/i);
-
-    const commandsRegion = within(helpBox).getByRole('region', {
-      name: 'Comandos para iniciar Ollama',
-    });
-    expect(commandsRegion).toHaveTextContent('ollama pull llama3.2');
-    expect(commandsRegion).toHaveTextContent('ollama pull nomic-embed-text');
-
-    // Now start Ollama and click Verificar conexión
+    // Now start Ollama and click Probar
     setMockOllamaConnectionState({ status: 'connected', version: '0.5.9' });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Verificar conexión' })
-    );
+    fireEvent.click(within(aiSection).getByRole('button', { name: 'Probar' }));
 
     await waitFor(() => {
-      expect(badge).toHaveTextContent('Conectado');
+      expect(within(aiSection).getByText('Conectado')).toBeInTheDocument();
     });
-    expect(
-      screen.queryByTestId('ollama-disconnected-help')
-    ).not.toBeInTheDocument();
-    expect(
-      await screen.findByTestId('ollama-installed-models')
-    ).toBeInTheDocument();
-    expect(screen.getByText('v0.5.9')).toBeInTheDocument();
+    expect(within(aiSection).getByText(/v0\.5\.9/i)).toBeInTheDocument();
   });
 
-  it('is reachable from App sidebar under Ajustes', async () => {
+  it('is reachable from App header under Ajustes', async () => {
     render(<App />);
 
-    const primaryNav = screen.getByRole('navigation', { name: 'Principal' });
-    fireEvent.click(within(primaryNav).getByRole('button', { name: /Ajustes/i }));
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: 'Ajustes' }));
 
-    expect(
-      screen.getByRole('heading', {
-        level: 2,
-        name: 'Inteligencia Artificial (Ollama)',
-      })
-    ).toBeInTheDocument();
+    const aiHeading = screen.getByRole('heading', {
+      level: 2,
+      name: 'Inteligencia artificial',
+    });
+    expect(aiHeading).toBeInTheDocument();
+    const aiSection = aiHeading.closest('section') as HTMLElement;
 
     await waitFor(() => {
-      expect(screen.getByTestId('ollama-status-badge')).toHaveTextContent(
-        'Conectado'
-      );
+      expect(within(aiSection).getByText('Conectado')).toBeInTheDocument();
     });
   });
 });

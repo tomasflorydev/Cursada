@@ -112,8 +112,8 @@ describe('Phase 4 Task 4.2 Backend: exportService Markdown export', () => {
 
     const content = fs.readFileSync(expectedPath, 'utf8');
     expect(content).toContain('# Resumen: Historias de Usuario & INVEST');
-    expect(content).toContain('**Materia:** Ingeniería de Software I');
-    expect(content).toContain('**Cuatrimestre:** 2026 - 2° Cuatrimestre');
+    expect(content).toContain('**Anotador:** Ingeniería de Software I');
+    expect(content).toContain('**Período:** 2026 - 2° Cuatrimestre');
     expect(content).toContain('**Origen:** Resumen IA');
     expect(content).toContain('## Criterios INVEST');
     expect(content).toContain('- Valiosa');

@@ -252,7 +252,7 @@ export function TaskList({
 
     const targetCourseId = courseId ?? formCourseId;
     if (!targetCourseId) {
-      setFormError('Seleccioná una materia para la tarea.');
+      setFormError('Seleccioná un anotador para la tarea.');
       return;
     }
 
@@ -343,7 +343,7 @@ export function TaskList({
           {!courseId ? (
             <div className="task-course-filter-field">
               <label htmlFor="task-course-filter" className="visually-hidden">
-                Filtrar por materia
+                Filtrar por anotador
               </label>
               <select
                 id="task-course-filter"
@@ -351,7 +351,7 @@ export function TaskList({
                 value={courseFilter}
                 onChange={(e) => setCourseFilter(e.target.value)}
               >
-                <option value="all">Todas las materias</option>
+                <option value="all">Todos los anotadores</option>
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.name}
@@ -409,7 +409,7 @@ export function TaskList({
             {!courseId ? (
               <div className="task-form-field">
                 <label htmlFor="task-form-course" className="task-form-label">
-                  Materia
+                  Anotador
                 </label>
                 <select
                   id="task-form-course"
@@ -491,9 +491,6 @@ export function TaskList({
       {tasks.length === 0 ? (
         <div className="task-empty-state">
           <p className="task-empty-title">No hay tareas para mostrar</p>
-          <p className="task-empty-subtitle">
-            Probá cambiando los filtros o creá una nueva tarea para hacer seguimiento de tus entregas.
-          </p>
         </div>
       ) : (
         <div className="task-checklist">

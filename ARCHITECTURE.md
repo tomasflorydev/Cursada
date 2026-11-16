@@ -316,17 +316,19 @@ Cursada/
 │       ├── reportHandlers.ts        # Canal IPC de generación Map-Reduce de material (reports:generate)
 │       └── notificationHandlers.ts  # Canales IPC de preferencias, prueba y verificación de recordatorios
 └── src/                             # Frontend (React + TypeScript)
-    ├── main.tsx                     # Punto de montaje de React
-    ├── App.tsx                      # Layout principal, atajos globales (Cmd+K, Cmd+N, Cmd+1..5, Cmd+,) y navegación
-    ├── styles/                      # Estilos CSS nativos y tokens de diseño (Claro/Oscuro + hojas por dominio, incl. command-palette.css)
+    ├── main.tsx                     # Punto de montaje de React y fuentes offline @fontsource/archivo
+    ├── App.tsx                      # Shell Suizo, tema dark/light/system, tamaño de notas, atajos globales (Cmd+K, Cmd+N, Cmd+1..6, Cmd+,)
+    ├── ui/                          # Primitivos Suizos inmutables (SwissHeader, Primitives: botones, casillas, interruptores, segmentados, progreso)
+    ├── styles/                      # Sistema de diseño Tipográfico Suizo (8 tokens en Claro/Oscuro/Sistema, grilla de 12 col, cero radio/sombra)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
     │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockNotifications.ts)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
     │   ├── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
+    │   ├── reportsStore.ts          # Almacén reactivo de informes y citas [N] conectado a cursadaClient + exportación PDF
     │   └── shortcuts/               # Búsqueda normalizada y resolución de atajos macOS (commandPaletteSearch.ts)
-    ├── components/                  # Componentes de UI por dominio (courses/, tasks/, exams/, notes/, export/, settings/, sources/, assistant/, command-palette/)
-    ├── pages/                       # Vistas principales (Inicio, Calendario, Tareas, Exámenes, Materias, Ajustes)
+    ├── components/                  # Componentes por dominio (courses/ con vista de 3 paneles, tasks/, exams/, notes/, settings/, command-palette/)
+    ├── pages/                       # Vistas principales (Inicio, Materias, Calendario, Tareas, Exámenes, Informes, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```
 
@@ -336,4 +338,4 @@ Cursada/
 
 - **`CURSADA_DATA_DIR`**: `electron/db/database.ts` prioriza la variable de entorno `CURSADA_DATA_DIR` sobre `~/Library/Application Support/com.cursada.app/`, permitiendo que entornos de desarrollo y agentes en paralelo operen sobre directorios aislados. En `VITEST` / `NODE_ENV=test`, cualquier apertura sin directorio explícito usa automáticamente un directorio temporal (`fs.mkdtempSync(path.join(os.tmpdir(), 'cursada-test-'))`).
 - **Borrado seguro de materias**: Antes de eliminar una materia (`courses:delete`), se consulta el impacto (`courses:getDeleteImpact` devuelve cuántas tareas, exámenes y notas asociadas se eliminarán en cascada para informar en el diálogo de confirmación) y se ejecuta un backup automático (`createBackup(..., 'pre-course-delete')`).
-- **Contrato de navegación y refresco reactivo**: `App.tsx` inyecta `onSelectCourse(courseId | null)` a las vistas de dominio y escucha el evento `cursada:data-changed` emitido por `cursadaClient` tras cada mutación, manteniendo sincronizados la lista de materias (activas y archivadas) y el contador de tareas pendientes en `Sidebar.tsx`.
+- **Contrato de navegación y refresco reactivo**: `App.tsx` coordina el shell compartido `SwissHeader` (en modo menú de 6 secciones + Ajustes o en modo detalle `← Inicio` con resumen en vivo de la materia) e inyecta handlers tipados a las vistas y a `reportsStore.ts`, escuchando `cursada:data-changed` tras cada mutación para mantener sincronizadas todas las vistas y contadores.

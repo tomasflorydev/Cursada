@@ -1,16 +1,24 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark light" />
     <script>
       try {
         const storedScheme = localStorage.getItem('color-scheme');
+        const theme =
+          storedScheme === 'light' || storedScheme === 'dark' || storedScheme === 'system'
+            ? storedScheme
+            : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
         const meta = document.querySelector('meta[name="color-scheme"]');
-        if (meta && (storedScheme === 'light' || storedScheme === 'dark')) {
-          meta.content = storedScheme;
-          document.documentElement.setAttribute('data-theme', storedScheme);
+        if (meta) {
+          meta.content = theme === 'system' ? 'light dark' : theme;
+        }
+        const storedNoteSize = localStorage.getItem('cursada-note-size');
+        if (storedNoteSize === 'small' || storedNoteSize === 'normal' || storedNoteSize === 'large') {
+          document.documentElement.setAttribute('data-note-size', storedNoteSize);
         }
       } catch {}
     </script>

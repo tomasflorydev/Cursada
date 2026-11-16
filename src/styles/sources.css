@@ -71,7 +71,7 @@
     flex-direction: column;
     gap: var(--space-2);
     padding: 12px 14px;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background-color: var(--bg-surface-subtle);
     border: 1px solid var(--border-subtle);
   }
@@ -87,34 +87,29 @@
     inline-size: 100%;
     block-size: 6px;
     border: 0 solid;
-    border-radius: 999px;
+    border-radius: 0;
     background-color: var(--bg-surface-active);
     overflow: clip;
   }
 
   .sources-progress::-webkit-progress-bar {
     background-color: var(--bg-surface-active);
-    border-radius: 999px;
+    border-radius: 0;
   }
 
   .sources-progress::-webkit-progress-value {
     background-color: var(--accent-primary);
-    border-radius: 999px;
+    border-radius: 0;
   }
 
   .sources-progress::-moz-progress-bar {
     background-color: var(--accent-primary);
-    border-radius: 999px;
+    border-radius: 0;
   }
 
   @media (prefers-reduced-motion: no-preference) {
     .sources-progress:indeterminate {
-      background-image: linear-gradient(
-        90deg,
-        var(--bg-surface-active) 0%,
-        var(--accent-primary) 50%,
-        var(--bg-surface-active) 100%
-      );
+      background-image: none;
       background-size: 200% 100%;
       animation: sources-progress-slide 1.4s ease-in-out infinite;
     }
@@ -145,7 +140,7 @@
     min-width: 0;
     min-block-size: 38px;
     padding: 8px 12px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface-subtle);
     color: var(--text-primary);
@@ -168,7 +163,7 @@
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-4);
-    border-radius: var(--radius-md);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface-subtle);
   }
@@ -207,7 +202,7 @@
     flex-direction: column;
     gap: 6px;
     padding: 12px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface);
   }
@@ -252,7 +247,7 @@
     justify-content: space-between;
     gap: var(--space-4);
     padding: 16px 18px;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface);
   }
@@ -285,7 +280,7 @@
     display: inline-flex;
     align-items: center;
     padding: 2px 8px;
-    border-radius: 5px;
+    border-radius: 0;
     font-size: 0.73rem;
     font-weight: 600;
     line-height: 1.4;
@@ -365,7 +360,7 @@
     flex-direction: column;
     gap: 6px;
     padding: 24px 20px;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     border: 1px dashed var(--border-strong);
     background-color: var(--bg-surface-subtle);
   }
@@ -392,7 +387,7 @@
     width: 100%;
     min-block-size: 190px;
     padding: 10px 12px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface-subtle);
     color: var(--text-primary);
@@ -426,7 +421,7 @@
     align-self: flex-start;
     gap: 4px;
     padding: 4px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface-subtle);
   }
@@ -434,7 +429,7 @@
   .sources-tab-button {
     padding: 6px 12px;
     border: 0;
-    border-radius: calc(var(--radius-sm) - 2px);
+    border-radius: 0;
     background: transparent;
     color: var(--text-secondary);
     font-size: 0.82rem;
@@ -446,7 +441,7 @@
     background-color: var(--bg-surface);
     color: var(--text-primary);
     font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    box-shadow: none;
   }
 
   .sources-raw-panel {
@@ -465,7 +460,7 @@
     max-block-size: 50vh;
     overflow: auto;
     padding: 14px 16px;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-canvas);
     color: var(--text-primary);
@@ -495,7 +490,7 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 14px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface-subtle);
   }

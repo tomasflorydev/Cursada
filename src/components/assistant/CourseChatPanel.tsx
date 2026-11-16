@@ -17,7 +17,7 @@ export interface CourseChatPanelProps {
 }
 
 const QUICK_START_PROMPTS = [
-  'Resumime los temas principales de las fuentes de esta materia',
+  'Resumime los temas principales de las fuentes',
   '¿Qué conceptos clave conviene repasar para el parcial?',
   'Explicame paso a paso el tema más importante con citas',
 ];
@@ -323,9 +323,6 @@ export function CourseChatPanel({
       <header className="assistant-header">
         <div className="assistant-header-copy">
           <h2 className="assistant-title">Asistente de estudio</h2>
-          <p className="assistant-subtitle">
-            Respuestas basadas en las fuentes indexadas de {courseName} con citas verificables.
-          </p>
         </div>
 
         <div className="assistant-thread-controls">
@@ -394,10 +391,6 @@ export function CourseChatPanel({
             <h3 className="assistant-empty-title">
               Consultá tus apuntes, PDFs y notas de {courseName}
             </h3>
-            <p className="assistant-empty-description">
-              Cada respuesta incluye citas clicables al fragmento original. Podés empezar con una
-              sugerencia o escribir tu propia pregunta abajo.
-            </p>
             <div className="assistant-quick-prompts" aria-label="Consultas sugeridas">
               {QUICK_START_PROMPTS.map((promptText) => (
                 <button

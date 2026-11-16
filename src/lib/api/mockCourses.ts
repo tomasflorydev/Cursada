@@ -234,16 +234,13 @@ export async function mockCreateCourse(
   const status = input.status ?? 'active';
 
   if (!name) {
-    throw new Error('El nombre de la materia es obligatorio');
-  }
-  if (!term) {
-    throw new Error('El cuatrimestre es obligatorio');
+    throw new Error('El nombre del anotador es obligatorio');
   }
   if (!VALID_COURSE_COLORS.includes(input.color)) {
-    throw new Error(`Color de materia inválido: ${String(input.color)}`);
+    throw new Error(`Color de anotador inválido: ${String(input.color)}`);
   }
   if (!VALID_COURSE_STATUSES.includes(status)) {
-    throw new Error(`Estado de materia inválido: ${String(status)}`);
+    throw new Error(`Estado de anotador inválido: ${String(status)}`);
   }
 
   for (const sched of input.schedules ?? []) {
@@ -296,16 +293,13 @@ export async function mockUpdateCourse(
   const status = input.status ?? current.status;
 
   if (!name) {
-    throw new Error('El nombre de la materia es obligatorio');
-  }
-  if (!term) {
-    throw new Error('El cuatrimestre es obligatorio');
+    throw new Error('El nombre del anotador es obligatorio');
   }
   if (!VALID_COURSE_COLORS.includes(color)) {
-    throw new Error(`Color de materia inválido: ${String(color)}`);
+    throw new Error(`Color de anotador inválido: ${String(color)}`);
   }
   if (!VALID_COURSE_STATUSES.includes(status)) {
-    throw new Error(`Estado de materia inválido: ${String(status)}`);
+    throw new Error(`Estado de anotador inválido: ${String(status)}`);
   }
 
   if (input.schedules !== undefined) {

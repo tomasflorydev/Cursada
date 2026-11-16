@@ -21,7 +21,6 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
     expect(
       screen.getByRole('heading', { level: 1, name: 'Notas' })
     ).toBeInTheDocument();
-    expect(screen.getByText('Apuntes y documentación')).toBeInTheDocument();
 
     const sidebar = screen.getByLabelText('Listado de notas');
     expect(
@@ -36,7 +35,7 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
     ).toBeInTheDocument();
 
     // Filter by course dropdown
-    const courseFilter = within(sidebar).getByLabelText('Filtrar por materia');
+    const courseFilter = within(sidebar).getByLabelText('Filtrar por anotador');
     fireEvent.change(courseFilter, { target: { value: 'bd-2' } });
 
     await waitFor(() => {
@@ -52,8 +51,8 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
       ).not.toBeInTheDocument();
     });
 
-    // Click "Ir a materia" on the selected BD2 note
-    fireEvent.click(screen.getByRole('button', { name: 'Ir a materia' }));
+    // Click "Ir a anotador" on the selected BD2 note
+    fireEvent.click(screen.getByRole('button', { name: 'Ir a anotador' }));
     expect(onSelectCourse).toHaveBeenCalledWith('bd-2');
   });
 
@@ -124,7 +123,7 @@ describe('Phase 4 Task 4.1 Frontend: NotesPage, NotesWorkspace, and NoteEditor',
       )
     ).not.toBeInTheDocument();
     expect(
-      within(sidebar).queryByLabelText('Filtrar por materia')
+      within(sidebar).queryByLabelText('Filtrar por anotador')
     ).not.toBeInTheDocument();
 
     // Create a new note scoped to ing-soft-1

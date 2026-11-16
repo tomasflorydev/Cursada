@@ -130,13 +130,14 @@ describe('Task 1.2: coursesRepo SQLite CRUD, schedule management, and input vali
       })
     ).toThrow(/name/i);
 
-    expect(() =>
-      createCourse(db, {
-        name: 'Física I',
-        color: 'blue',
-        term: '   ',
-      })
-    ).toThrow(/term/i);
+    const generalNotebook = createCourse(db, {
+      name: 'Proyecto Personal',
+      color: 'slate',
+      term: '   ',
+    });
+    expect(generalNotebook.term).toBe('');
+    expect(generalNotebook.professor).toBe('');
+    expect(generalNotebook.schedules).toEqual([]);
 
     expect(() =>
       createCourse(db, {

@@ -236,8 +236,8 @@ export function CommandPalette({
             type="search"
             className="command-palette-input"
             data-testid="command-palette-input"
-            aria-label="Buscar materia, nota, tarea, examen o comando"
-            placeholder="Buscar materia, nota, tarea, examen o comando..."
+            aria-label="Buscar anotador, nota, tarea, examen o comando..."
+            placeholder="Buscar anotador, nota, tarea, examen o comando..."
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -288,7 +288,7 @@ export function CommandPalette({
           {!loadError && filteredItems.length === 0 ? (
             <div className="command-palette-empty">
               {isLoading
-                ? 'Cargando índice académico...'
+                ? 'Cargando índice...'
                 : query.trim()
                   ? `No se encontraron resultados para “${query.trim()}”.`
                   : 'No hay elementos en esta categoría.'}

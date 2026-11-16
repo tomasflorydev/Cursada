@@ -1,12 +1,14 @@
 export type NavSectionId =
   | 'inicio'
+  | 'materias'
   | 'calendario'
   | 'tareas'
   | 'examenes'
-  | 'materias'
+  | 'informes'
   | 'ajustes';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type NoteFontSize = 'small' | 'normal' | 'large';
 
 import type { CourseColor } from './domain';
 

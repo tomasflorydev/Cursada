@@ -16,7 +16,7 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
 
     await screen.findByRole('button', { name: 'Ingeniería de Software I' });
 
-    fireEvent.click(screen.getByRole('button', { name: /Nueva materia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nueva materia/i }));
 
     fireEvent.change(screen.getByLabelText(/Nombre de la materia/i), {
       target: { value: 'Arquitectura de Computadoras' },
@@ -24,15 +24,16 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
     fireEvent.change(screen.getByLabelText(/Profesor \/ Cátedra/i), {
       target: { value: 'Roberto Funes' },
     });
-    fireEvent.change(screen.getByLabelText(/^Color$/i), {
+    fireEvent.change(screen.getByLabelText(/Referencia interna/i), {
       target: { value: 'cyan' },
     });
 
-    // Test invalid schedule range first (startTime >= endTime)
-    fireEvent.change(screen.getByLabelText(/^Hora de inicio$/i), {
+    // Add first schedule row and test invalid schedule range (startTime >= endTime)
+    fireEvent.click(screen.getByRole('button', { name: /Agregar horario/i }));
+    fireEvent.change(screen.getByLabelText(/^Inicio$/i), {
       target: { value: '20:00' },
     });
-    fireEvent.change(screen.getByLabelText(/^Hora de fin$/i), {
+    fireEvent.change(screen.getByLabelText(/^Fin$/i), {
       target: { value: '18:00' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Crear materia/i }));
@@ -45,13 +46,13 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
     fireEvent.change(screen.getByLabelText(/^Día$/i), {
       target: { value: '1' },
     });
-    fireEvent.change(screen.getByLabelText(/^Hora de inicio$/i), {
+    fireEvent.change(screen.getByLabelText(/^Inicio$/i), {
       target: { value: '18:30' },
     });
-    fireEvent.change(screen.getByLabelText(/^Hora de fin$/i), {
+    fireEvent.change(screen.getByLabelText(/^Fin$/i), {
       target: { value: '22:30' },
     });
-    fireEvent.change(screen.getByLabelText(/^Aula \/ Sede \/ Modalidad$/i), {
+    fireEvent.change(screen.getByLabelText(/^Aula \/ Sede$/i), {
       target: { value: 'Aula 112 · Lima' },
     });
 
@@ -60,24 +61,41 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
     fireEvent.change(screen.getByLabelText(/Día \(2\)/i), {
       target: { value: '4' },
     });
-    fireEvent.change(screen.getByLabelText(/Aula \/ Sede \/ Modalidad \(2\)/i), {
+    fireEvent.change(screen.getByLabelText(/Aula \/ Sede \(2\)/i), {
       target: { value: 'Virtual' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Crear materia/i }));
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: 'Arquitectura de Computadoras' })
-      ).toBeInTheDocument();
+    const createdButton = await screen.findByRole('button', {
+      name: 'Arquitectura de Computadoras',
     });
-    expect(screen.getByText(/Prof\. Roberto Funes/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Lun 18:30–22:30 \(Aula 112 · Lima\) · Jue 18:30–22:30 \(Virtual\)/i)
-    ).toBeInTheDocument();
+    expect(createdButton).toBeInTheDocument();
+    const createdRow = createdButton.closest('.courses-table-row') as HTMLElement;
+    expect(within(createdRow).getByText(/Roberto Funes/i)).toBeInTheDocument();
+    expect(within(createdRow).getByText(/18:30/i)).toBeInTheDocument();
+
+    const persisted = (await cursadaClient.listCourses({ status: 'active' })).find(
+      (c) => c.name === 'Arquitectura de Computadoras'
+    );
+    expect(persisted).toBeDefined();
+    expect(persisted?.color).toBe('cyan');
+    expect(persisted?.schedules).toHaveLength(2);
+    expect(persisted?.schedules[0]).toMatchObject({
+      dayOfWeek: 1,
+      startTime: '18:30',
+      endTime: '22:30',
+      location: 'Aula 112 · Lima',
+    });
+    expect(persisted?.schedules[1]).toMatchObject({
+      dayOfWeek: 4,
+      startTime: '18:30',
+      endTime: '22:30',
+      location: 'Virtual',
+    });
   });
 
-  it('renders dedicated course view with structured tabs and task count impact on delete confirmation', async () => {
+  it('renders dedicated 3-panel course notebook view and shows task count impact on delete confirmation', async () => {
     // Seed an extra task for 'ing-soft-1' to verify tasksCount in confirmation dialog
     await cursadaClient.createTask({
       courseId: 'ing-soft-1',
@@ -95,21 +113,26 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
       await screen.findByRole('heading', { level: 1, name: 'Ingeniería de Software I' })
     ).toBeInTheDocument();
 
-    // Check structured tabs
-    const tablist = screen.getByRole('tablist');
-    expect(within(tablist).getByRole('tab', { name: 'Resumen' })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: 'Tareas' })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: 'Exámenes' })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: 'Notas' })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: 'Fuentes' })).toBeInTheDocument();
-    expect(within(tablist).getByRole('tab', { name: 'Asistente IA' })).toBeInTheDocument();
+    // Check 3 Swiss notebook panels: Notas, inline Editor, Informe con IA + Fuentes
+    const notesPane = screen.getByLabelText('Notas de la materia');
+    expect(
+      within(notesPane).getByRole('heading', { name: /Notas · 1/i })
+    ).toBeInTheDocument();
+    expect(within(notesPane).getByRole('button', { name: '+ Nueva' })).toBeInTheDocument();
 
-    // Switch to Tareas tab and verify testid container for Etapa 2
-    fireEvent.click(within(tablist).getByRole('tab', { name: 'Tareas' }));
-    expect(screen.getByTestId('course-tasks-tab-panel')).toBeInTheDocument();
+    expect(screen.getByLabelText('Título de la nota')).toBeInTheDocument();
+    expect(screen.getByLabelText('Contenido de la nota')).toBeInTheDocument();
+
+    const aiPane = screen.getByLabelText('Asistente e informes con IA');
+    expect(
+      within(aiPane).getByRole('heading', { name: 'Informe con IA' })
+    ).toBeInTheDocument();
+    expect(
+      within(aiPane).getByRole('heading', { name: /Fuentes ·/i })
+    ).toBeInTheDocument();
 
     // Click Eliminar materia and verify delete impact dialog
-    fireEvent.click(screen.getByRole('button', { name: /Eliminar materia/i }));
+    fireEvent.click(within(notesPane).getByRole('button', { name: /Eliminar materia/i }));
 
     await waitFor(() => {
       expect(
@@ -126,7 +149,7 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
     });
   });
 
-  it('renders monthly calendar by default, navigates between months and weeks, and selects a course on class click', async () => {
+  it('renders weekly calendar by default, navigates between weeks and months, and selects a course on class click', async () => {
     const onSelectCourse = vi.fn();
     // Reference date: Wednesday, November 11, 2026
     const initialDate = new Date(2026, 10, 11);
@@ -137,20 +160,64 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
 
     const ddsMatches = await screen.findAllByText('Diseño de Sistemas');
     expect(ddsMatches.length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
-      'Noviembre 2026 · Vista mensual'
+    expect(screen.getByTestId('calendar-period-label')).toHaveTextContent('9–15 nov');
+    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
+      'Semana actual · 2026'
     );
 
-    // Check monthly grid has November days (e.g. 2026-11-01 to 2026-11-30)
-    const monthGrid = screen.getByLabelText('Calendario mensual de cursada');
-    expect(monthGrid.querySelector('.calendar-day-col[data-date="2026-11-01"]')).not.toBeNull();
-    expect(monthGrid.querySelector('.calendar-day-col[data-date="2026-11-30"]')).not.toBeNull();
+    // Check weekly grid has Monday-to-Sunday columns (2026-11-09 to 2026-11-15)
+    const weekGrid = screen.getByLabelText('Grilla semanal de cursada');
+    expect(weekGrid.querySelector('.calendar-day-col[data-date="2026-11-09"]')).not.toBeNull();
+    expect(weekGrid.querySelector('.calendar-day-col[data-date="2026-11-15"]')).not.toBeNull();
 
-    // Navigate to next month -> Diciembre 2026
-    fireEvent.click(screen.getByRole('button', { name: /Mes siguiente/i }));
+    // Click on "Base de Datos II" block inside Wednesday Nov 11 column in weekly grid
+    const wedNov11Col = weekGrid.querySelector(
+      '.calendar-day-col[data-date="2026-11-11"]'
+    ) as HTMLElement;
+    fireEvent.click(
+      within(wedNov11Col).getByRole('button', { name: /Base de Datos II/i })
+    );
+    expect(onSelectCourse).toHaveBeenCalledWith('bd-2');
+
+    // Navigate to next week -> 16–22 nov
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-period-label')).toHaveTextContent('16–22 nov');
+    });
+    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
+      'Semana siguiente · 2026'
+    );
+
+    // Return to Hoy -> 9–15 nov
+    fireEvent.click(screen.getByRole('button', { name: /^Hoy$/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-period-label')).toHaveTextContent('9–15 nov');
+    });
+
+    // Switch to Monthly view via segmented toggle
+    fireEvent.click(screen.getByRole('button', { name: 'Mes' }));
     await waitFor(() => {
       expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
-        'Diciembre 2026 · Vista mensual'
+        'Noviembre 2026'
+      );
+    });
+    expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
+      'Mes actual · 2026'
+    );
+
+    const monthSection = screen.getByLabelText('Calendario mensual de cursada');
+    expect(
+      monthSection.querySelector('.calendar-month-cell[data-date="2026-11-01"]')
+    ).not.toBeNull();
+    expect(
+      monthSection.querySelector('.calendar-month-cell[data-date="2026-11-30"]')
+    ).not.toBeNull();
+
+    // Navigate to next month -> Diciembre 2026
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
+        'Diciembre 2026'
       );
     });
 
@@ -158,38 +225,25 @@ describe('Tasks 1.2 & 1.3: CoursesPage, CourseDetailView, and CalendarPage', () 
     fireEvent.click(screen.getByRole('button', { name: /^Hoy$/i }));
     await waitFor(() => {
       expect(screen.getByTestId('calendar-period-label')).toHaveTextContent(
-        'Noviembre 2026 · Vista mensual'
+        'Noviembre 2026'
       );
     });
 
-    // Click on "Base de Datos II" block inside Wednesday Nov 11 cell in monthly grid
-    const wedNov11Cell = monthGrid.querySelector(
-      '.calendar-day-col[data-date="2026-11-11"]'
+    // Click Wednesday Nov 11 cell in monthly grid and select Base de Datos II from day agenda
+    const wedNov11Cell = monthSection.querySelector(
+      '.calendar-month-cell[data-date="2026-11-11"]'
     ) as HTMLElement;
-    const bd2MonthBlock = within(wedNov11Cell).getByRole('button', {
-      name: /Base de Datos II/i,
-    });
-    fireEvent.click(bd2MonthBlock);
-    expect(onSelectCourse).toHaveBeenCalledWith('bd-2');
+    fireEvent.click(wedNov11Cell);
+    expect(
+      await within(monthSection).findByRole('heading', {
+        name: /Miércoles 11 de noviembre/i,
+      })
+    ).toBeInTheDocument();
 
-    // Switch to Weekly view and verify Monday-to-Sunday navigation
-    fireEvent.click(screen.getByRole('button', { name: 'Semanal' }));
-    await waitFor(() => {
-      expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
-        '9 al 15 de noviembre de 2026'
-      );
-    });
-
-    const weekGrid = screen.getByLabelText('Grilla semanal de cursada');
-    expect(weekGrid.querySelector('.calendar-day-col[data-date="2026-11-09"]')).not.toBeNull();
-    expect(weekGrid.querySelector('.calendar-day-col[data-date="2026-11-15"]')).not.toBeNull();
-
-    // Navigate to next week -> 16 al 22 de noviembre de 2026
-    fireEvent.click(screen.getByRole('button', { name: /Semana siguiente/i }));
-    await waitFor(() => {
-      expect(screen.getByTestId('calendar-week-range')).toHaveTextContent(
-        '16 al 22 de noviembre de 2026'
-      );
-    });
+    fireEvent.click(
+      within(monthSection).getByRole('button', { name: /Base de Datos II/i })
+    );
+    expect(onSelectCourse).toHaveBeenCalledTimes(2);
+    expect(onSelectCourse).toHaveBeenLastCalledWith('bd-2');
   });
 });

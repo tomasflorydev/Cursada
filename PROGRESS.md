@@ -1,13 +1,14 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Fase actual**: **Fases 1 a 8 completadas, integradas y verificadas en `main`**.
+- **Versión actual**: **`v2.0.0` (Ciclo 2 — Fase 10 completada: Overhaul Tipográfico Suizo)**.
+- **Próximo hito planificado**: **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview, Matemática KaTeX y Atajos Configurables)** definido en `ROADMAP.md`.
 - **Última actualización**: 2026-11-15
 - **Métricas de verificación automatizada en `main`**:
-  - **29 archivos de test** y **109 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
+  - **31 archivos de test** y **119 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción y paquete nativo macOS verificados** (`npm run build` y `npm run package` generando `release/Cursada.app` sobre Electron `44.11.0` con Node `24.22.2` y smoke test directo positivo).
-- **Alineación documental**: 100% sincronizado con `ROADMAP.md`, `ARCHITECTURE.md` y `DESIGN.md`.
+  - **Build de producción y smoke test de arranque en Electron verificados** (`npm run build`, `CURSADA_SMOKE_TEST=1`).
+- **Alineación documental**: Sincronizado con `ROADMAP.md` (Fase 10 marcada como completada) y `DESIGN.md` (`v2.0`).
 
 ## Avances Completados
 
@@ -109,5 +110,35 @@
   - Actualización de `electron` a `44.11.0` (Node.js `24.22.2` embebido) en `package.json` y `package-lock.json` (`5cc9887`) para contar con `node:sqlite` (`DatabaseSync`) dentro del proceso principal empaquetado.
   - Detección explícita de ejecución empaquetada en `electron/main.ts` (`app.isPackaged`, ruta `Contents/Resources/app` o ausencia de `src/`) para cargar `dist/index.html` sin depender de Vite (`localhost:5173`), más listeners de diagnóstico (`preload-error`, `did-fail-load`) y verificación por smoke test directo sobre `release/Cursada.app` (`dec38fc`).
 
-## Qué sigue
-- [ ] Validación manual del Product Owner sobre las **Fases 6, 7 y 8** (incluyendo prueba de `release/Cursada.app` en `/Applications`).
+### Fase 9 (`v1.1.0`): Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base
+- [x] **Tarea 9.1 — Limpieza general de textos innecesarios y elementos sobre-explicativos**:
+  - Eliminación de `.page-subtitle`, supratítulos redundantes y textos sobre-explicativos en `CalendarPage.tsx`, `TasksPage.tsx`, `TaskList.tsx`, `ExamsPage.tsx`, `ExamList.tsx`, `CoursesPage.tsx`, `NotesPage.tsx`, `NotesWorkspace.tsx`, `SourcesWorkspace.tsx`, `CourseAssistantWorkspace.tsx`, `CourseChatPanel.tsx`, `CourseReportGenerator.tsx`, `SettingsPage.tsx`, `OllamaSettingsSection.tsx`, `NotificationSettingsSection.tsx`, `HomePage.tsx` y `Sidebar.tsx`.
+  - Eliminación del texto duplicado de horario (`.course-schedule-formatted`) en tarjetas de `CourseDetailView.tsx`.
+- [x] **Tarea 9.2 — Renombrado de `"Materias"` a `"Anotadores"` y soporte para uso no universitario**:
+  - Reemplazo integral de etiquetas de UI en navegación (`Sidebar.tsx`, `App.tsx`), vistas (`CoursesPage.tsx`, `CourseDetailView.tsx`, `CourseFormModal.tsx`, `DeleteCourseDialog.tsx`), filtros/formularios (`TaskList.tsx`, `ExamList.tsx`, `NotesWorkspace.tsx`), exportación (`ExportMarkdownButton.tsx`, `exportService.ts`, `mockExport.ts`) y búsqueda (`CommandPalette.tsx`, `commandPaletteSearch.ts`).
+  - Flexibilización de `term`, `professor` y `schedules` como opcionales en `coursesRepo.ts`, `mockCourses.ts` y `CourseFormModal.tsx`, ocultando metadatos y paneles vacíos en `CoursesPage.tsx` y `CourseDetailView.tsx` cuando no aplican.
+- [x] **Tarea 9.3 — Fecha actual real en Inicio y Restauración de Backups desde Ajustes**:
+  - Actualización de `HomePage.tsx` para usar `new Date()` por defecto (manteniendo `referenceDate` opcional para tests) y eliminación del pill estático de semana.
+  - Restauración de backups en 1 clic (`restoreBackup` en `electron/services/backupService.ts`, canal `system:restoreBackup` en `electron/ipc/systemHandlers.ts`, `preload.ts`, `client.ts` y `mockClient.ts`) con validación de nombre/integridad, backup preventivo `pre-restore` previo y recarga transaccional parametrizada de todas las tablas incluyendo FTS5.
+  - Apertura de carpeta de datos en Finder (`openDataDir` / `system:openDataDir`) y confirmación inline en `SettingsPage.tsx`.
+  - Tests nuevos en `src/__tests__/Phase9AnotadoresAndBackups.test.tsx` y suite completa actualizada (30 archivos, 114 tests en verde).
+
+### Fase 10 (`v2.0.0`): Overhaul Total de la Interfaz Gráfica (Estilo Tipográfico Suizo)
+- [x] **Tarea 10.1 — Tokens CSS, Tipografía offline `Archivo` y `DESIGN.md` (`v2.0`)**:
+  - Instalación de `@fontsource/archivo` (`400`, `500`, `600`, `800`) en `src/main.tsx` y carga anti-FOUC en `index.html` con tema **Oscuro** predeterminado (`#1E2023`, `#FF5F52`), tema **Claro** (`#F4F4F2`, `#C8201A`) y **Sistema** (`prefers-color-scheme`).
+  - Reescritura integral de `src/styles/index.css` y saneamiento de las 7 hojas secundarias eliminando todo `border-radius` distinto de `0`, `box-shadow`, gradientes y colores duros.
+- [x] **Tarea 10.2 — Primitivos compartidos (`src/ui/`), `reportsStore.ts`, Shell y Atajos**:
+  - Creación de `src/ui/SwissHeader.tsx`, `src/ui/Primitives.tsx` y `src/ui/index.ts` (reglas `3px`/`1px`, bordes `2px`, botones, casillas `18px`, interruptores `46×24px`, segmentados, barras de progreso y carga `3px` sin spinners).
+  - Creación de `src/lib/reportsStore.ts` conectado a `cursadaClient` (síntesis con citas `[N]`, respaldo directo sobre notas locales cuando no hay PDFs, guardado como nota, exportación PDF por impresión y reset en `mockClient.ts`).
+  - Actualización de `src/App.tsx`, `src/types/`, `electron/main.ts` (`minWidth: 1100`), `CommandPalette.tsx` y `commandPaletteSearch.ts` (`⌘1`–`⌘6`, `⌘,`, `⌘N`, `⌘K`).
+- [x] **Tarea 10.3 — Reescritura de las 8 vistas Suizas y tests integrales**:
+  - Migración completa de `HomePage.tsx` (Inicio), `CoursesPage.tsx` (Materias), `CourseDetailView.tsx` (cuaderno de 3 paneles con Notas / Editor / Informe con IA), `CourseFormModal.tsx`, `DeleteCourseDialog.tsx`, `ReportsPage.tsx` (Informes + citas cruzadas), `CalendarPage.tsx` (Semana / Mes con próxima clase en `--acc`), `TasksPage.tsx` (alta rápida + `Ver` / `Por materia`), `ExamsPage.tsx` (countdown + progreso de temas + guía) y `SettingsPage.tsx` (General, IA local, Apariencia, Datos y Atajos).
+  - Actualización de los 13 tests de UI afectados y creación de `src/__tests__/Phase10SwissDesignOverhaul.test.tsx` (31 archivos / 119 tests en verde).
+
+## Qué sigue (Ciclo 2 — Hoja de Ruta Versionada en `ROADMAP.md`)
+- [x] **Fase 9 (`v1.1.0`) — Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base**.
+- [x] **Fase 10 (`v2.0.0`) — Overhaul Total de la Interfaz Gráfica (Estilo Tipográfico Suizo)**.
+- [ ] **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview en tiempo real, Matemática KaTeX y Atajos Configurables)**.
+- [ ] **Fase 12 (`v2.2.0`) — Red de Conocimiento (`[[WikiLinks]]`, Backlinks, Vista de Grafo e Importador de Vault de Obsidian)**.
+- [ ] **Fase 13 (`v2.3.0`) — Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro Timer, Notas como Fuentes + Selector/Filtro `1°/2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia)**.
+- [ ] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
