@@ -1,0 +1,525 @@
+/* Styles for Phase 12: Knowledge Network (WikiLinks, Backlinks, 2D Graph, Obsidian Importer) */
+
+@layer components {
+  /* ==========================================================================
+     1. Backlinks & Forward WikiLinks Panel (.backlinks-panel)
+     ========================================================================== */
+  .backlinks-panel {
+    margin-top: 24px;
+    border-top: 3px solid var(--ink);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .backlinks-panel-toggle {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .backlinks-panel-toggle:hover .backlinks-panel-title {
+    color: var(--acc);
+  }
+
+  .backlinks-panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink);
+  }
+
+  .backlinks-panel-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .backlinks-panel-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    padding-top: 4px;
+  }
+
+  .backlinks-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .backlinks-section-heading {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mut);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .backlinks-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .backlinks-list-item {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .backlinks-item-btn {
+    width: 100%;
+    min-block-size: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 9px 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .backlinks-item-btn:hover {
+    color: var(--acc);
+  }
+
+  .backlinks-item-top {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .backlinks-item-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .backlinks-item-status {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mut);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .backlinks-item-status.is-missing {
+    color: var(--acc);
+  }
+
+  .backlinks-item-meta {
+    font-size: 12px;
+    color: var(--mut);
+    line-height: 1.4;
+  }
+
+  .backlinks-item-snippet {
+    font-size: 12px;
+    color: var(--soft);
+    line-height: 1.45;
+    border-left: 2px solid var(--rule);
+    padding-left: 8px;
+    margin-top: 2px;
+  }
+
+  .backlinks-empty-copy {
+    font-size: 13px;
+    color: var(--mut);
+    padding: 6px 0;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 780px) {
+    .backlinks-panel-body {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ==========================================================================
+     2. Interactive 2D Knowledge Graph (.graph-view-shell)
+     ========================================================================== */
+  .graph-view-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-top: 3px solid var(--ink);
+    padding-top: 14px;
+    background-color: var(--bg);
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  .graph-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .graph-controls-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .graph-controls-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .graph-filter-input {
+    width: 220px;
+    max-width: 100%;
+    min-block-size: 34px;
+  }
+
+  .graph-archived-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .graph-zoom-group {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .graph-zoom-btn {
+    min-inline-size: 34px;
+    min-block-size: 34px;
+    padding: 6px 10px;
+  }
+
+  .graph-workspace-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 290px;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .graph-canvas-wrap {
+    position: relative;
+    border: 2px solid var(--ink);
+    background-color: var(--bg);
+    min-block-size: 420px;
+    height: 460px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .graph-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .graph-canvas.is-dragging {
+    cursor: grabbing;
+  }
+
+  .graph-canvas-hud {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px;
+    border: 1px solid var(--rule);
+    background-color: var(--bg);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+
+  .graph-canvas-empty {
+    padding: 28px;
+  }
+
+  .graph-nodes-index {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 3px solid var(--ink);
+    padding-top: 10px;
+    min-width: 0;
+    max-block-size: 460px;
+  }
+
+  .graph-nodes-index-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .graph-nodes-list {
+    list-style: none;
+    padding: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .graph-node-list-item {
+    border-top: 1px solid var(--rule);
+  }
+
+  .graph-node-list-btn {
+    width: 100%;
+    min-block-size: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .graph-node-list-btn:hover,
+  .graph-node-list-btn.is-highlighted {
+    color: var(--acc);
+  }
+
+  .graph-node-list-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .graph-node-color-square {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 0;
+    background-color: var(--ink);
+  }
+
+  .graph-node-color-square[data-course-color='blue'] {
+    background-color: #4a90e2;
+  }
+
+  .graph-node-color-square[data-course-color='emerald'] {
+    background-color: #2fa87a;
+  }
+
+  .graph-node-color-square[data-course-color='violet'] {
+    background-color: #9b6be8;
+  }
+
+  .graph-node-color-square[data-course-color='amber'] {
+    background-color: #e2a83b;
+  }
+
+  .graph-node-color-square[data-course-color='rose'] {
+    background-color: #ff5f52;
+  }
+
+  .graph-node-color-square[data-course-color='cyan'] {
+    background-color: #2eb6c9;
+  }
+
+  .graph-node-color-square[data-course-color='orange'] {
+    background-color: #e87638;
+  }
+
+  .graph-node-color-square[data-course-color='slate'] {
+    background-color: #aeb0b3;
+  }
+
+  .graph-node-list-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .graph-node-list-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .graph-node-list-course {
+    font-size: 11px;
+    color: var(--mut);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .graph-node-degree {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 960px) {
+    .graph-workspace-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .graph-nodes-index {
+      max-block-size: 260px;
+    }
+  }
+
+  /* ==========================================================================
+     3. Obsidian Vault Importer Modal (.obsidian-import-modal)
+     ========================================================================== */
+  dialog.obsidian-import-modal:modal {
+    overscroll-behavior: contain;
+  }
+
+  dialog.obsidian-import-modal::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background-color: rgba(15, 20, 28, 0.52);
+  }
+
+  .obsidian-import-modal {
+    margin: auto;
+    padding: 0;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    box-shadow: none;
+    background-color: var(--bg);
+    color: var(--ink);
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+  }
+
+  .obsidian-import-modal[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .obsidian-import-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px 26px;
+    overflow-y: auto;
+  }
+
+  .obsidian-import-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--ink);
+  }
+
+  .obsidian-import-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .obsidian-import-desc {
+    font-size: 14px;
+    color: var(--soft);
+    line-height: 1.5;
+  }
+
+  .obsidian-import-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .obsidian-import-hint {
+    font-size: 12px;
+    color: var(--mut);
+    line-height: 1.45;
+  }
+
+  .obsidian-import-summary {
+    border-left: 4px solid var(--acc);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background-color: var(--bg);
+  }
+
+  .obsidian-import-summary-counts {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .obsidian-import-summary-courses {
+    font-size: 13px;
+    color: var(--soft);
+  }
+
+  .obsidian-import-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+}
