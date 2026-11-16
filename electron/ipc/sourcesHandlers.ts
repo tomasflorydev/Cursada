@@ -7,6 +7,11 @@ import {
   updateSourceExamStage,
 } from '../db/sourcesRepo.js';
 import {
+  assertTrustedIpcEvent,
+  assertValidIpcId,
+  resolveRendererRequestedPath,
+} from '../security.js';
+import {
   createOllamaSourceEmbedder,
   createSourceFromTextService,
   importSourceFileService,
@@ -21,20 +26,27 @@ import type {
   UpdateSourceStageInput,
 } from '../types.js';
 
+const MAX_RENDERER_BASE64_CHARS = 70_000_000;
+
 export function registerSourcesHandlers(): void {
-  ipcMain.handle('sources:list', (_event, courseId: string) => {
+  ipcMain.handle('sources:list', (event, courseId: string) => {
+    assertTrustedIpcEvent(event);
+    const validCourseId = assertValidIpcId(courseId, 'ID de materia');
     const ctx = getAppDatabase();
-    return listSourcesByCourse(ctx.db, courseId);
+    return listSourcesByCourse(ctx.db, validCourseId);
   });
 
-  ipcMain.handle('sources:getWithChunks', (_event, sourceId: string) => {
+  ipcMain.handle('sources:getWithChunks', (event, sourceId: string) => {
+    assertTrustedIpcEvent(event);
+    const validSourceId = assertValidIpcId(sourceId, 'ID de fuente');
     const ctx = getAppDatabase();
-    return getSourceWithChunks(ctx.db, sourceId);
+    return getSourceWithChunks(ctx.db, validSourceId);
   });
 
   ipcMain.handle(
     'sources:createFromText',
-    async (_event, input: CreateSourceFromTextInput) => {
+    async (event, input: CreateSourceFromTextInput) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       const created = await createSourceFromTextService(ctx.db, input, {
         embedder: createOllamaSourceEmbedder(ctx.db),
@@ -52,12 +64,21 @@ export function registerSourcesHandlers(): void {
   ipcMain.handle(
     'sources:importFile',
     async (
-      _event,
+      event,
       input: ImportSourceFileInput
     ): Promise<ImportSourceFileResult> => {
-      let resolvedFilePath = input.filePath;
+      assertTrustedIpcEvent(event);
+      assertValidIpcId(input?.courseId, 'ID de materia');
+      if (
+        typeof input?.contentBase64 === 'string' &&
+        input.contentBase64.length > MAX_RENDERER_BASE64_CHARS
+      ) {
+        throw new Error('El archivo excede el tamaño máximo permitido (50 MB).');
+      }
 
-      if (!resolvedFilePath && !input.contentBase64) {
+      let resolvedFilePath = resolveRendererRequestedPath(input?.filePath);
+
+      if (!resolvedFilePath && !input?.contentBase64) {
         const focusedWindow = BrowserWindow.getFocusedWindow();
         const dialogOptions: Electron.OpenDialogOptions = {
           title: 'Seleccionar fuente de estudio',
@@ -105,28 +126,34 @@ export function registerSourcesHandlers(): void {
 
   ipcMain.handle(
     'sources:updateStage',
-    (_event, input: UpdateSourceStageInput) => {
+    (event, input: UpdateSourceStageInput) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return updateSourceExamStage(ctx.db, input);
     }
   );
 
-  ipcMain.handle('sources:reindex', (_event, sourceId: string) => {
+  ipcMain.handle('sources:reindex', (event, sourceId: string) => {
+    assertTrustedIpcEvent(event);
+    const validSourceId = assertValidIpcId(sourceId, 'ID de fuente');
     const ctx = getAppDatabase();
-    return reindexSourceService(ctx.db, sourceId, {
+    return reindexSourceService(ctx.db, validSourceId, {
       dataDir: ctx.dataDir,
       embedder: createOllamaSourceEmbedder(ctx.db),
     });
   });
 
-  ipcMain.handle('sources:delete', (_event, sourceId: string) => {
+  ipcMain.handle('sources:delete', (event, sourceId: string) => {
+    assertTrustedIpcEvent(event);
+    const validSourceId = assertValidIpcId(sourceId, 'ID de fuente');
     const ctx = getAppDatabase();
-    deleteSource(ctx.db, sourceId, ctx.dataDir);
+    deleteSource(ctx.db, validSourceId, ctx.dataDir);
   });
 
   ipcMain.handle(
     'sources:searchChunks',
-    (_event, input: SearchSourceChunksInput) => {
+    (event, input: SearchSourceChunksInput) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return searchSourceChunksService(ctx.db, input, {
         embedder: createOllamaSourceEmbedder(ctx.db),

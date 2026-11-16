@@ -4,6 +4,7 @@ import {
   getNotificationSettings,
   updateNotificationSettings,
 } from '../db/notificationSettingsRepo.js';
+import { assertTrustedIpcEvent } from '../security.js';
 import {
   checkAndDispatchDueReminders,
   sendTestNotification,
@@ -59,26 +60,30 @@ export function createElectronNotificationDispatcher(): NotificationDispatcher {
 }
 
 export function registerNotificationHandlers(): void {
-  ipcMain.handle('notifications:getSettings', () => {
+  ipcMain.handle('notifications:getSettings', (event) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return getNotificationSettings(ctx.db);
   });
 
   ipcMain.handle(
     'notifications:updateSettings',
-    (_event, input: UpdateNotificationSettingsInput) => {
+    (event, input: UpdateNotificationSettingsInput) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return updateNotificationSettings(ctx.db, input);
     }
   );
 
-  ipcMain.handle('notifications:sendTest', () => {
+  ipcMain.handle('notifications:sendTest', (event) => {
+    assertTrustedIpcEvent(event);
     return sendTestNotification(createElectronNotificationDispatcher());
   });
 
   ipcMain.handle(
     'notifications:checkReminders',
-    (_event, opts?: { referenceIso?: string; dispatch?: boolean }) => {
+    (event, opts?: { referenceIso?: string; dispatch?: boolean }) => {
+      assertTrustedIpcEvent(event);
       let referenceDate: Date | undefined;
       if (opts?.referenceIso !== undefined) {
         const parsed = new Date(opts.referenceIso);

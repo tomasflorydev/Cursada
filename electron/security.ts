@@ -151,6 +151,74 @@ export function isPrivateOrLoopbackHostname(hostname: string): boolean {
   return false;
 }
 
+let runtimeOriginOptions: AppOriginOptions | null = null;
+
+export function setRuntimeAppOriginOptions(options: AppOriginOptions | null): void {
+  runtimeOriginOptions = options;
+}
+
+export function getRuntimeAppOriginOptions(): AppOriginOptions | null {
+  return runtimeOriginOptions;
+}
+
+export interface IpcEventLike {
+  senderFrame?: { url?: string } | null;
+}
+
+/**
+ * Verifies that an incoming IPC invocation comes from the app's own allowed origin
+ * (`localhost:5173` in dev or `dist/index.html` in production).
+ * Mocked `{}` events in automated Vitest runs are allowed only when `VITEST`/`NODE_ENV=test`.
+ */
+export function assertTrustedIpcEvent(
+  event?: IpcEventLike | null,
+  options?: {
+    env?: NodeJS.ProcessEnv;
+    originOptions?: AppOriginOptions | null;
+  }
+): void {
+  const env = options?.env ?? process.env;
+  const originOpts = options?.originOptions ?? runtimeOriginOptions;
+  const senderUrl = event?.senderFrame?.url;
+
+  if (senderUrl !== undefined) {
+    if (!originOpts || !isAllowedAppNavigation(senderUrl, originOpts)) {
+      throw new Error(`Origen IPC no autorizado: "${senderUrl || '(vacío)'}".`);
+    }
+    return;
+  }
+
+  if (!isTestEnvironment(env)) {
+    throw new Error('Origen IPC no autorizado: falta el marco remitente.');
+  }
+}
+
+/**
+ * Prevents the renderer process from passing arbitrary filesystem paths to
+ * read/write IPC handlers in production; paths must come from native dialogs in `main`.
+ */
+export function resolveRendererRequestedPath(
+  rawPath: unknown,
+  env: NodeJS.ProcessEnv = process.env
+): string | undefined {
+  if (rawPath === undefined || rawPath === null) {
+    return undefined;
+  }
+  if (typeof rawPath !== 'string') {
+    throw new Error('La ruta provista debe ser una cadena de texto válida.');
+  }
+  const trimmed = rawPath.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (!isTestEnvironment(env)) {
+    throw new Error(
+      'Por seguridad, la ruta debe elegirse mediante el diálogo nativo del sistema.'
+    );
+  }
+  return trimmed;
+}
+
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }

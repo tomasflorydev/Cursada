@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { isLocalOrLanOllamaHostname } from '../security.js';
 import type { AiSettings, UpdateAiSettingsInput } from '../types.js';
 
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
@@ -12,10 +13,13 @@ export const AI_SETTINGS_KEYS = {
 } as const;
 
 /**
- * Trims whitespace, strips repeated trailing slashes, and validates that the
- * URL uses an http: or https: protocol with a non-empty hostname.
+ * Trims whitespace, strips repeated trailing slashes, validates http:/https:,
+ * and restricts Ollama endpoints to localhost/loopback/LAN .local hosts by default.
  */
-export function normalizeOllamaBaseUrl(rawUrl: string): string {
+export function normalizeOllamaBaseUrl(
+  rawUrl: string,
+  options?: { allowRemote?: boolean }
+): string {
   if (typeof rawUrl !== 'string') {
     throw new Error('La URL del servidor Ollama debe ser un texto válido.');
   }
@@ -42,6 +46,12 @@ export function normalizeOllamaBaseUrl(rawUrl: string): string {
 
   if (!parsed.hostname) {
     throw new Error('La URL del servidor Ollama debe incluir un host válido.');
+  }
+
+  if (!options?.allowRemote && !isLocalOrLanOllamaHostname(parsed.hostname)) {
+    throw new Error(
+      'Por privacidad, Ollama solo permite hosts locales (localhost, 127.0.0.1, ::1 o .local).'
+    );
   }
 
   return trimmed;

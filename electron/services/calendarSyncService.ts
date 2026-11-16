@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { isPrivateOrLoopbackHostname } from '../security.js';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   deleteCalendarFeed,
@@ -697,6 +698,37 @@ export async function exportCalendarIcsService(
   };
 }
 
+const MAX_ICS_BYTES = 5 * 1024 * 1024;
+
+function assertAllowedExternalCalendarUrl(rawUrl: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(
+      `La URL "${rawUrl}" no es válida. Usá una dirección https:// o webcal://.`
+    );
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(
+      `Protocolo no soportado ("${parsed.protocol}"). Usá https://, http:// o webcal://.`
+    );
+  }
+
+  if (!parsed.hostname) {
+    throw new Error('La URL del calendario debe incluir un dominio válido.');
+  }
+
+  if (isPrivateOrLoopbackHostname(parsed.hostname)) {
+    throw new Error(
+      'Por seguridad, no se permiten direcciones locales o de red privada (SSRF) para feeds .ics.'
+    );
+  }
+
+  return parsed;
+}
+
 export function normalizeCalendarFeedUrl(rawUrl: string): string {
   if (typeof rawUrl !== 'string') {
     throw new Error('La URL del calendario debe ser un texto válido.');
@@ -711,32 +743,70 @@ export function normalizeCalendarFeedUrl(rawUrl: string): string {
     trimmed = `https://${trimmed.slice('webcal://'.length)}`;
   }
 
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
+  return assertAllowedExternalCalendarUrl(trimmed).toString();
+}
+
+async function readResponseTextWithByteLimit(
+  response: Response,
+  maxBytes: number
+): Promise<string> {
+  const declaredLength = response.headers?.get?.('content-length');
+  if (declaredLength) {
+    const parsedLength = Number(declaredLength);
+    if (Number.isFinite(parsedLength) && parsedLength > maxBytes) {
+      await response.body?.cancel?.();
+      throw new Error(
+        'El archivo .ics supera el límite máximo permitido de 5 MB.'
+      );
+    }
+  }
+
+  if (response.body && typeof response.body.getReader === 'function') {
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      if (value) {
+        totalBytes += value.byteLength;
+        if (totalBytes > maxBytes) {
+          await reader.cancel();
+          throw new Error(
+            'El archivo .ics supera el límite máximo permitido de 5 MB.'
+          );
+        }
+        chunks.push(value);
+      }
+    }
+
+    const combined = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder('utf-8').decode(combined);
+  }
+
+  const rawText = await response.text();
+  if (Buffer.byteLength(rawText, 'utf8') > maxBytes) {
     throw new Error(
-      `La URL "${trimmed}" no es válida. Usá una dirección https:// o webcal://.`
+      'El archivo .ics supera el límite máximo permitido de 5 MB.'
     );
   }
-
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error(
-      `Protocolo no soportado ("${parsed.protocol}"). Usá https://, http:// o webcal://.`
-    );
-  }
-
-  if (!parsed.hostname) {
-    throw new Error('La URL del calendario debe incluir un dominio válido.');
-  }
-
-  return parsed.toString();
+  return rawText;
 }
 
 async function fetchIcsContent(
   url: string,
   fetchFn: typeof fetch
 ): Promise<string> {
+  assertAllowedExternalCalendarUrl(url);
+
   const signal =
     typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
       ? AbortSignal.timeout(15_000)
@@ -750,13 +820,17 @@ async function fetchIcsContent(
     ...(signal ? { signal } : {}),
   });
 
+  if (response.url) {
+    assertAllowedExternalCalendarUrl(response.url);
+  }
+
   if (!response.ok) {
     throw new Error(
       `Error HTTP ${response.status} al descargar el feed iCal (${response.statusText || 'sin detalle'}).`
     );
   }
 
-  const rawText = await response.text();
+  const rawText = await readResponseTextWithByteLimit(response, MAX_ICS_BYTES);
   if (!rawText.toUpperCase().includes('BEGIN:VCALENDAR')) {
     throw new Error(
       'La respuesta no contiene un calendario iCalendar (.ics) válido.'

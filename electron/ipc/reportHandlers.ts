@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import type { DatabaseSync } from 'node:sqlite';
 import { getAppDatabase } from '../db/database.js';
+import { assertTrustedIpcEvent } from '../security.js';
 import { generateStudyReportService } from '../services/reportService.js';
 import type { GenerateStudyReportInput } from '../types.js';
 
@@ -18,7 +19,8 @@ export function registerReportHandlers(
 ): void {
   ipcMain.handle(
     'reports:generate',
-    (_event, input: GenerateStudyReportInput) => {
+    (event, input: GenerateStudyReportInput) => {
+      assertTrustedIpcEvent(event);
       const db = ctx?.db ?? getAppDatabase().db;
       return generateStudyReportService(db, input, {
         fetchFn: ctx?.fetchFn,

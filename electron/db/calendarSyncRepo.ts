@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import type { DatabaseSync } from 'node:sqlite';
+import { isTestEnvironment } from '../security.js';
 import type {
   CalendarFeed,
   GoogleCalendarSyncConfig,
@@ -466,8 +468,89 @@ export function updateGoogleCalendarConfig(
   return nextConfig;
 }
 
+export interface TokenCryptoAdapter {
+  isAvailable(): boolean;
+  encryptString(plainText: string): Buffer;
+  decryptString(encrypted: Buffer): string;
+}
+
+interface EncryptedTokenEnvelope {
+  v: 1;
+  alg: 'electron-safeStorage';
+  payloadBase64: string;
+}
+
+const nodeRequire = createRequire(import.meta.url);
+
+function resolveDefaultTokenCrypto(): TokenCryptoAdapter | null {
+  try {
+    const electronMod = nodeRequire('electron') as {
+      safeStorage?: {
+        isEncryptionAvailable?: () => boolean;
+        encryptString?: (text: string) => Buffer;
+        decryptString?: (data: Buffer) => string;
+      };
+    };
+    const safeStorage = electronMod?.safeStorage;
+    if (
+      !safeStorage ||
+      typeof safeStorage.isEncryptionAvailable !== 'function' ||
+      typeof safeStorage.encryptString !== 'function' ||
+      typeof safeStorage.decryptString !== 'function'
+    ) {
+      return null;
+    }
+    return {
+      isAvailable: () => Boolean(safeStorage.isEncryptionAvailable?.()),
+      encryptString: (plainText: string) =>
+        safeStorage.encryptString!(plainText),
+      decryptString: (encrypted: Buffer) =>
+        safeStorage.decryptString!(encrypted),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeParsedTokens(
+  parsed: Partial<GoogleCalendarTokens> | null | undefined
+): GoogleCalendarTokens | null {
+  if (!parsed || typeof parsed.accessToken !== 'string' || !parsed.accessToken.trim()) {
+    return null;
+  }
+  return {
+    accessToken: parsed.accessToken,
+    refreshToken:
+      typeof parsed.refreshToken === 'string' && parsed.refreshToken.trim()
+        ? parsed.refreshToken
+        : null,
+    expiresAt: typeof parsed.expiresAt === 'string' ? parsed.expiresAt : null,
+    tokenType:
+      typeof parsed.tokenType === 'string' && parsed.tokenType.trim()
+        ? parsed.tokenType
+        : 'Bearer',
+    scope: typeof parsed.scope === 'string' ? parsed.scope : '',
+  };
+}
+
+function isEncryptedTokenEnvelope(
+  value: unknown
+): value is EncryptedTokenEnvelope {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.v === 1 &&
+    candidate.alg === 'electron-safeStorage' &&
+    typeof candidate.payloadBase64 === 'string' &&
+    candidate.payloadBase64.length > 0
+  );
+}
+
 export function getGoogleCalendarTokens(
-  db: DatabaseSync
+  db: DatabaseSync,
+  cryptoAdapter?: TokenCryptoAdapter
 ): GoogleCalendarTokens | null {
   const row = db
     .prepare('SELECT value FROM app_settings WHERE key = ?')
@@ -478,23 +561,22 @@ export function getGoogleCalendarTokens(
   }
 
   try {
-    const parsed = JSON.parse(row.value) as Partial<GoogleCalendarTokens>;
-    if (typeof parsed.accessToken !== 'string' || !parsed.accessToken.trim()) {
-      return null;
+    const parsed = JSON.parse(row.value) as unknown;
+    if (isEncryptedTokenEnvelope(parsed)) {
+      const adapter = cryptoAdapter ?? resolveDefaultTokenCrypto();
+      if (!adapter || !adapter.isAvailable()) {
+        return null;
+      }
+      const decryptedJson = adapter.decryptString(
+        Buffer.from(parsed.payloadBase64, 'base64')
+      );
+      const decryptedParsed = JSON.parse(
+        decryptedJson
+      ) as Partial<GoogleCalendarTokens>;
+      return normalizeParsedTokens(decryptedParsed);
     }
-    return {
-      accessToken: parsed.accessToken,
-      refreshToken:
-        typeof parsed.refreshToken === 'string' && parsed.refreshToken.trim()
-          ? parsed.refreshToken
-          : null,
-      expiresAt: typeof parsed.expiresAt === 'string' ? parsed.expiresAt : null,
-      tokenType:
-        typeof parsed.tokenType === 'string' && parsed.tokenType.trim()
-          ? parsed.tokenType
-          : 'Bearer',
-      scope: typeof parsed.scope === 'string' ? parsed.scope : '',
-    };
+
+    return normalizeParsedTokens(parsed as Partial<GoogleCalendarTokens>);
   } catch {
     return null;
   }
@@ -502,13 +584,35 @@ export function getGoogleCalendarTokens(
 
 export function saveGoogleCalendarTokens(
   db: DatabaseSync,
-  tokens: GoogleCalendarTokens | null
+  tokens: GoogleCalendarTokens | null,
+  cryptoAdapter?: TokenCryptoAdapter
 ): void {
   if (tokens === null) {
     db.prepare('DELETE FROM app_settings WHERE key = ?').run(
       GOOGLE_CALENDAR_TOKENS_KEY
     );
     return;
+  }
+
+  const serialized = JSON.stringify(tokens);
+  const adapter = cryptoAdapter ?? resolveDefaultTokenCrypto();
+  let storedValue: string;
+
+  if (adapter && adapter.isAvailable()) {
+    const encrypted = adapter.encryptString(serialized);
+    const envelope: EncryptedTokenEnvelope = {
+      v: 1,
+      alg: 'electron-safeStorage',
+      payloadBase64: encrypted.toString('base64'),
+    };
+    storedValue = JSON.stringify(envelope);
+  } else if (!cryptoAdapter && isTestEnvironment()) {
+    // Allow isolated Vitest DB tests without macOS Keychain daemon
+    storedValue = serialized;
+  } else {
+    throw new Error(
+      'El almacenamiento seguro del sistema (Keychain) no está disponible para guardar los tokens OAuth2.'
+    );
   }
 
   const now = new Date().toISOString();
@@ -518,7 +622,7 @@ export function saveGoogleCalendarTokens(
      ON CONFLICT(key) DO UPDATE SET
        value = excluded.value,
        updated_at = excluded.updated_at`
-  ).run(GOOGLE_CALENDAR_TOKENS_KEY, JSON.stringify(tokens), now);
+  ).run(GOOGLE_CALENDAR_TOKENS_KEY, storedValue, now);
 }
 
 export function listGoogleCalendarMappings(

@@ -1,13 +1,18 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getAppDatabase } from '../db/database.js';
+import {
+  assertTrustedIpcEvent,
+  resolveRendererRequestedPath,
+} from '../security.js';
 import { exportMarkdownFromDb } from '../services/exportService.js';
 import type { ExportMarkdownRequest, ExportMarkdownResult } from '../types.js';
 
 export function registerExportHandlers(): void {
   ipcMain.handle(
     'export:markdown',
-    async (_event, request: ExportMarkdownRequest): Promise<ExportMarkdownResult> => {
-      let targetDir = request.targetDir?.trim();
+    async (event, request: ExportMarkdownRequest): Promise<ExportMarkdownResult> => {
+      assertTrustedIpcEvent(event);
+      let targetDir = resolveRendererRequestedPath(request?.targetDir);
 
       if (!targetDir) {
         const focusedWindow = BrowserWindow.getFocusedWindow();

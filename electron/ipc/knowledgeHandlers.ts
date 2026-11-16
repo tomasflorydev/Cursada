@@ -5,6 +5,11 @@ import {
   getNoteLinksSummary,
   openOrCreateWikiLinkNote,
 } from '../db/knowledgeRepo.js';
+import {
+  assertTrustedIpcEvent,
+  assertValidIpcId,
+  resolveRendererRequestedPath,
+} from '../security.js';
 import { importObsidianVaultFromDir } from '../services/obsidianImportService.js';
 import type {
   ImportObsidianVaultInput,
@@ -12,14 +17,17 @@ import type {
 } from '../types.js';
 
 export function registerKnowledgeHandlers(): void {
-  ipcMain.handle('knowledge:getNoteLinks', (_event, noteId: string) => {
+  ipcMain.handle('knowledge:getNoteLinks', (event, noteId: string) => {
+    assertTrustedIpcEvent(event);
+    const validNoteId = assertValidIpcId(noteId, 'ID de nota');
     const ctx = getAppDatabase();
-    return getNoteLinksSummary(ctx.db, noteId);
+    return getNoteLinksSummary(ctx.db, validNoteId);
   });
 
   ipcMain.handle(
     'knowledge:openOrCreateWikiLink',
-    (_event, input: { courseId: string; targetTitle: string }) => {
+    (event, input: { courseId: string; targetTitle: string }) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return openOrCreateWikiLinkNote(ctx.db, input);
     }
@@ -27,7 +35,8 @@ export function registerKnowledgeHandlers(): void {
 
   ipcMain.handle(
     'knowledge:getGraph',
-    (_event, opts?: { courseId?: string; includeArchived?: boolean }) => {
+    (event, opts?: { courseId?: string; includeArchived?: boolean }) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return getKnowledgeGraph(ctx.db, opts);
     }
@@ -36,12 +45,13 @@ export function registerKnowledgeHandlers(): void {
   ipcMain.handle(
     'knowledge:importObsidianVault',
     async (
-      _event,
+      event,
       input?: ImportObsidianVaultInput
     ): Promise<ImportObsidianVaultResult> => {
+      assertTrustedIpcEvent(event);
       const hasFilesPayload =
         Array.isArray(input?.filesPayload) && input.filesPayload.length > 0;
-      let vaultDir = input?.vaultDir?.trim();
+      let vaultDir = resolveRendererRequestedPath(input?.vaultDir);
 
       if (!vaultDir && !hasFilesPayload) {
         const focusedWindow = BrowserWindow.getFocusedWindow();

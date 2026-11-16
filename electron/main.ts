@@ -11,6 +11,7 @@ import {
   isSafeExternalUrl,
   PROD_CSP_DIRECTIVES,
   resolveUnifiedUserDataDir,
+  setRuntimeAppOriginOptions,
   type AppOriginOptions,
 } from './security.js';
 import { checkAndDispatchDueReminders } from './services/notificationService.js';
@@ -193,6 +194,7 @@ void app
   .whenReady()
   .then(() => {
     const originOptions = getAppOriginOptions();
+    setRuntimeAppOriginOptions(originOptions);
     initAppDatabase();
     registerAllIpcHandlers();
     configureSessionSecurity(originOptions);

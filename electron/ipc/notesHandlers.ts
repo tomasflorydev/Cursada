@@ -9,20 +9,25 @@ import {
   toggleNotePin,
   updateNote,
 } from '../db/notesRepo.js';
+import { assertTrustedIpcEvent, assertValidIpcId } from '../security.js';
 import type { CreateNoteInput, NoteFilters, UpdateNoteInput } from '../types.js';
 
 export function registerNotesHandlers(): void {
-  ipcMain.handle('notes:list', (_event, filters?: NoteFilters) => {
+  ipcMain.handle('notes:list', (event, filters?: NoteFilters) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return listNotes(ctx.db, filters);
   });
 
-  ipcMain.handle('notes:getById', (_event, id: string) => {
+  ipcMain.handle('notes:getById', (event, id: string) => {
+    assertTrustedIpcEvent(event);
+    const validId = assertValidIpcId(id, 'ID de nota');
     const ctx = getAppDatabase();
-    return getNoteById(ctx.db, id);
+    return getNoteById(ctx.db, validId);
   });
 
-  ipcMain.handle('notes:create', (_event, input: CreateNoteInput) => {
+  ipcMain.handle('notes:create', (event, input: CreateNoteInput) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     const created = createNote(ctx.db, input);
     syncNoteLinks(ctx.db, created.id);
@@ -31,21 +36,27 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle(
     'notes:update',
-    (_event, id: string, input: UpdateNoteInput) => {
+    (event, id: string, input: UpdateNoteInput) => {
+      assertTrustedIpcEvent(event);
+      const validId = assertValidIpcId(id, 'ID de nota');
       const ctx = getAppDatabase();
-      const updated = updateNote(ctx.db, id, input);
+      const updated = updateNote(ctx.db, validId, input);
       syncNoteLinks(ctx.db, updated.id);
       return updated;
     }
   );
 
-  ipcMain.handle('notes:togglePin', (_event, id: string) => {
+  ipcMain.handle('notes:togglePin', (event, id: string) => {
+    assertTrustedIpcEvent(event);
+    const validId = assertValidIpcId(id, 'ID de nota');
     const ctx = getAppDatabase();
-    return toggleNotePin(ctx.db, id);
+    return toggleNotePin(ctx.db, validId);
   });
 
-  ipcMain.handle('notes:delete', (_event, id: string) => {
+  ipcMain.handle('notes:delete', (event, id: string) => {
+    assertTrustedIpcEvent(event);
+    const validId = assertValidIpcId(id, 'ID de nota');
     const ctx = getAppDatabase();
-    deleteNote(ctx.db, id);
+    deleteNote(ctx.db, validId);
   });
 }

@@ -5,6 +5,11 @@ import {
 } from '../db/calendarSyncRepo.js';
 import { getAppDatabase } from '../db/database.js';
 import {
+  assertTrustedIpcEvent,
+  assertValidIpcId,
+  resolveRendererRequestedPath,
+} from '../security.js';
+import {
   addCalendarFeedService,
   connectGoogleCalendarService,
   disconnectGoogleCalendarService,
@@ -25,8 +30,9 @@ import type {
 export function registerCalendarSyncHandlers(): void {
   ipcMain.handle(
     'calendarSync:exportIcs',
-    async (_event, input?: ExportIcsInput): Promise<ExportIcsResult> => {
-      let targetPath = input?.targetPath?.trim();
+    async (event, input?: ExportIcsInput): Promise<ExportIcsResult> => {
+      assertTrustedIpcEvent(event);
+      let targetPath = resolveRendererRequestedPath(input?.targetPath);
 
       if (!targetPath) {
         const focusedWindow = BrowserWindow.getFocusedWindow();
@@ -61,45 +67,53 @@ export function registerCalendarSyncHandlers(): void {
     }
   );
 
-  ipcMain.handle('calendarSync:listFeeds', () => {
+  ipcMain.handle('calendarSync:listFeeds', (event) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return listCalendarFeedsService(ctx.db);
   });
 
   ipcMain.handle(
     'calendarSync:addFeed',
-    (_event, input: CreateCalendarFeedInput) => {
+    (event, input: CreateCalendarFeedInput) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return addCalendarFeedService(ctx.db, input);
     }
   );
 
-  ipcMain.handle('calendarSync:removeFeed', (_event, feedId: string) => {
+  ipcMain.handle('calendarSync:removeFeed', (event, feedId: string) => {
+    assertTrustedIpcEvent(event);
+    const validId = assertValidIpcId(feedId, 'ID del feed');
     const ctx = getAppDatabase();
-    removeCalendarFeedService(ctx.db, feedId);
+    removeCalendarFeedService(ctx.db, validId);
   });
 
-  ipcMain.handle('calendarSync:syncFeeds', () => {
+  ipcMain.handle('calendarSync:syncFeeds', (event) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return syncAllCalendarFeedsService(ctx.db);
   });
 
   ipcMain.handle(
     'calendarSync:listExternalEvents',
-    (_event, opts?: { dateFrom?: string; dateTo?: string }) => {
+    (event, opts?: { dateFrom?: string; dateTo?: string }) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return listExternalCalendarEventsService(ctx.db, opts);
     }
   );
 
-  ipcMain.handle('calendarSync:getGoogleConfig', () => {
+  ipcMain.handle('calendarSync:getGoogleConfig', (event) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return getGoogleCalendarConfig(ctx.db);
   });
 
   ipcMain.handle(
     'calendarSync:updateGoogleConfig',
-    (_event, input: UpdateGoogleCalendarConfigInput) => {
+    (event, input: UpdateGoogleCalendarConfigInput) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return updateGoogleCalendarConfig(ctx.db, input);
     }
@@ -107,7 +121,8 @@ export function registerCalendarSyncHandlers(): void {
 
   ipcMain.handle(
     'calendarSync:connectGoogle',
-    (_event, opts?: { email?: string; clientId?: string }) => {
+    (event, opts?: { email?: string; clientId?: string }) => {
+      assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
       return connectGoogleCalendarService(ctx.db, opts, {
         openExternalUrl: (url) => shell.openExternal(url),
@@ -115,12 +130,14 @@ export function registerCalendarSyncHandlers(): void {
     }
   );
 
-  ipcMain.handle('calendarSync:disconnectGoogle', () => {
+  ipcMain.handle('calendarSync:disconnectGoogle', (event) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return disconnectGoogleCalendarService(ctx.db);
   });
 
-  ipcMain.handle('calendarSync:syncGoogleNow', () => {
+  ipcMain.handle('calendarSync:syncGoogleNow', (event) => {
+    assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
     return syncGoogleCalendarNowService(ctx.db);
   });

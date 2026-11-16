@@ -3,7 +3,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { normalizeOllamaBaseUrl } from '../../electron/db/aiSettingsRepo';
 import {
+  GOOGLE_CALENDAR_TOKENS_KEY,
+  getGoogleCalendarTokens,
+  saveGoogleCalendarTokens,
+  type TokenCryptoAdapter,
+} from '../../electron/db/calendarSyncRepo';
+import { createTestDatabase } from '../../electron/db/database';
+import {
+  assertTrustedIpcEvent,
   assertValidIpcId,
   getDevCspDirectives,
   isAllowedAppNavigation,
@@ -11,8 +20,13 @@ import {
   isPrivateOrLoopbackHostname,
   isSafeExternalUrl,
   PROD_CSP_DIRECTIVES,
+  resolveRendererRequestedPath,
   resolveUnifiedUserDataDir,
 } from '../../electron/security';
+import {
+  addCalendarFeedService,
+  normalizeCalendarFeedUrl,
+} from '../../electron/services/calendarSyncService';
 // @ts-expect-error Pure Node ESM script without TypeScript declarations
 import { buildSandboxedPreload } from '../../scripts/build-preload.mjs';
 
@@ -156,5 +170,174 @@ describe('Phase 1 Security & Startup Hardening', () => {
     expect(getDevCspDirectives('http://localhost:5173')).toContain(
       'ws://localhost:5173'
     );
+  });
+
+  it('rejects arbitrary renderer paths and untrusted IPC origins in production', () => {
+    const prodEnv = {} as NodeJS.ProcessEnv;
+    expect(resolveRendererRequestedPath(undefined, prodEnv)).toBeUndefined();
+    expect(resolveRendererRequestedPath('   ', prodEnv)).toBeUndefined();
+    expect(() =>
+      resolveRendererRequestedPath('/etc/passwd', prodEnv)
+    ).toThrow(/diálogo nativo/i);
+    expect(() => resolveRendererRequestedPath(123, prodEnv)).toThrow(/cadena/i);
+
+    const originOptions = {
+      isPackagedBundle: true,
+      loadDist: true,
+      devServerUrl: 'http://localhost:5173',
+      distHtmlPath: path.resolve('/app/dist/index.html'),
+    };
+    const validFileUrl = pathToFileURL(originOptions.distHtmlPath).href;
+
+    expect(() =>
+      assertTrustedIpcEvent(
+        { senderFrame: { url: validFileUrl } },
+        { env: prodEnv, originOptions }
+      )
+    ).not.toThrow();
+
+    expect(() =>
+      assertTrustedIpcEvent(
+        { senderFrame: { url: 'https://evil.example/payload' } },
+        { env: prodEnv, originOptions }
+      )
+    ).toThrow(/no autorizado/i);
+
+    expect(() =>
+      assertTrustedIpcEvent({}, { env: prodEnv, originOptions })
+    ).toThrow(/no autorizado/i);
+  });
+
+  it('encrypts Google OAuth2 tokens at rest via Keychain/safeStorage envelope and handles corrupted payloads safely', () => {
+    const ctx = createTestDatabase({ inMemory: true });
+    tempDirs.push(ctx.dataDir);
+
+    const xorAdapter: TokenCryptoAdapter = {
+      isAvailable: () => true,
+      encryptString: (plainText: string) =>
+        Buffer.from(
+          Buffer.from(plainText, 'utf8').map((byte) => byte ^ 0x5a)
+        ),
+      decryptString: (encrypted: Buffer) =>
+        Buffer.from(encrypted.map((byte) => byte ^ 0x5a)).toString('utf8'),
+    };
+
+    const sampleTokens = {
+      accessToken: 'ya29.super-secret-access-token',
+      refreshToken: '1//super-secret-refresh-token',
+      expiresAt: '2026-12-01T12:00:00.000Z',
+      tokenType: 'Bearer',
+      scope: 'https://www.googleapis.com/auth/calendar.events',
+    };
+
+    try {
+      saveGoogleCalendarTokens(ctx.db, sampleTokens, xorAdapter);
+
+      const rawRow = ctx.db
+        .prepare('SELECT value FROM app_settings WHERE key = ?')
+        .get(GOOGLE_CALENDAR_TOKENS_KEY) as { value: string };
+      expect(rawRow.value).toContain('"v":1');
+      expect(rawRow.value).toContain('"alg":"electron-safeStorage"');
+      expect(rawRow.value).not.toContain(sampleTokens.accessToken);
+      expect(rawRow.value).not.toContain(sampleTokens.refreshToken);
+
+      expect(getGoogleCalendarTokens(ctx.db, xorAdapter)).toEqual(sampleTokens);
+
+      // Corrupted ciphertext or locked Keychain degrades safely to null
+      ctx.db
+        .prepare('UPDATE app_settings SET value = ? WHERE key = ?')
+        .run(
+          JSON.stringify({
+            v: 1,
+            alg: 'electron-safeStorage',
+            payloadBase64: Buffer.from('not-valid-json').toString('base64'),
+          }),
+          GOOGLE_CALENDAR_TOKENS_KEY
+        );
+      expect(getGoogleCalendarTokens(ctx.db, xorAdapter)).toBeNull();
+
+      // Refuses saving when crypto adapter is explicitly unavailable
+      expect(() =>
+        saveGoogleCalendarTokens(ctx.db, sampleTokens, {
+          isAvailable: () => false,
+          encryptString: () => Buffer.alloc(0),
+          decryptString: () => '',
+        })
+      ).toThrow(/Keychain|almacenamiento seguro/i);
+    } finally {
+      ctx.db.close();
+    }
+  });
+
+  it('blocks remote Ollama hosts by default while allowing localhost and .local LAN hosts', () => {
+    expect(normalizeOllamaBaseUrl('http://localhost:11434/')).toBe(
+      'http://localhost:11434'
+    );
+    expect(normalizeOllamaBaseUrl('https://mac-mini.local:8443/')).toBe(
+      'https://mac-mini.local:8443'
+    );
+    expect(() =>
+      normalizeOllamaBaseUrl('https://remote-llm.evil.example/api')
+    ).toThrow(/privacidad|locales/i);
+    expect(
+      normalizeOllamaBaseUrl('https://remote-llm.evil.example/api', {
+        allowRemote: true,
+      })
+    ).toBe('https://remote-llm.evil.example/api');
+  });
+
+  it('prevents SSRF and rejects oversized >5 MB external .ics calendar feeds', async () => {
+    expect(() =>
+      normalizeCalendarFeedUrl('http://127.0.0.1:11434/secret.ics')
+    ).toThrow(/SSRF/i);
+    expect(() =>
+      normalizeCalendarFeedUrl('http://169.254.169.254/latest/meta-data/')
+    ).toThrow(/SSRF/i);
+    expect(() =>
+      normalizeCalendarFeedUrl('http://10.0.0.12/internal.ics')
+    ).toThrow(/SSRF/i);
+    expect(
+      normalizeCalendarFeedUrl('webcal://calendar.google.com/calendar/ical/test.ics')
+    ).toBe('https://calendar.google.com/calendar/ical/test.ics');
+
+    const ctx = createTestDatabase({ inMemory: true });
+    tempDirs.push(ctx.dataDir);
+    try {
+      await expect(
+        addCalendarFeedService(
+          ctx.db,
+          { name: 'Redirect SSRF', url: 'https://calendar.google.com/public.ics' },
+          {
+            fetchFn: async () =>
+              ({
+                ok: true,
+                status: 200,
+                url: 'http://127.0.0.1:8080/internal-admin',
+                headers: new Headers(),
+                text: async () => 'BEGIN:VCALENDAR\nEND:VCALENDAR',
+              }) as unknown as Response,
+          }
+        )
+      ).rejects.toThrow(/SSRF/i);
+
+      await expect(
+        addCalendarFeedService(
+          ctx.db,
+          { name: 'Oversized Header', url: 'https://calendar.google.com/huge.ics' },
+          {
+            fetchFn: async () =>
+              ({
+                ok: true,
+                status: 200,
+                url: 'https://calendar.google.com/huge.ics',
+                headers: new Headers({ 'content-length': String(6 * 1024 * 1024) }),
+                text: async () => 'BEGIN:VCALENDAR\nEND:VCALENDAR',
+              }) as unknown as Response,
+          }
+        )
+      ).rejects.toThrow(/5 MB/i);
+    } finally {
+      ctx.db.close();
+    }
   });
 });

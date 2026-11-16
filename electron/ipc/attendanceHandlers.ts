@@ -7,6 +7,7 @@ import {
   updateCourseAttendanceConfig,
 } from '../db/attendanceRepo.js';
 import { getAppDatabase } from '../db/database.js';
+import { assertTrustedIpcEvent, assertValidIpcId } from '../security.js';
 import type {
   RecordAttendanceInput,
   UpdateCourseAttendanceConfigInput,
@@ -21,25 +22,31 @@ export function registerAttendanceHandlers(
 ): void {
   const resolveDb = (): DatabaseSync => ctx?.db ?? getAppDatabase().db;
 
-  ipcMain.handle('attendance:getCourse', (_event, courseId: string) => {
-    return getCourseAttendance(resolveDb(), courseId);
+  ipcMain.handle('attendance:getCourse', (event, courseId: string) => {
+    assertTrustedIpcEvent(event);
+    const validCourseId = assertValidIpcId(courseId, 'ID de materia');
+    return getCourseAttendance(resolveDb(), validCourseId);
   });
 
   ipcMain.handle(
     'attendance:updateConfig',
-    (_event, input: UpdateCourseAttendanceConfigInput) => {
+    (event, input: UpdateCourseAttendanceConfigInput) => {
+      assertTrustedIpcEvent(event);
       return updateCourseAttendanceConfig(resolveDb(), input);
     }
   );
 
   ipcMain.handle(
     'attendance:record',
-    (_event, input: RecordAttendanceInput) => {
+    (event, input: RecordAttendanceInput) => {
+      assertTrustedIpcEvent(event);
       return recordAttendance(resolveDb(), input);
     }
   );
 
-  ipcMain.handle('attendance:deleteRecord', (_event, recordId: string) => {
-    return deleteAttendanceRecord(resolveDb(), recordId);
+  ipcMain.handle('attendance:deleteRecord', (event, recordId: string) => {
+    assertTrustedIpcEvent(event);
+    const validRecordId = assertValidIpcId(recordId, 'ID de registro');
+    return deleteAttendanceRecord(resolveDb(), validRecordId);
   });
 }
