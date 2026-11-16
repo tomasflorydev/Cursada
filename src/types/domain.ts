@@ -483,6 +483,61 @@ export interface GenerateStudyReportResult {
   note: NoteWithCourse | null;
 }
 
+export interface ReportCitationSource {
+  index: number;
+  kind: 'note' | 'source';
+  id: string;
+  title: string;
+  snippet: string;
+  pageLabel?: string;
+}
+
+export interface StoredReport {
+  id: string;
+  courseId: string;
+  courseName: string;
+  title: string;
+  reportType: StudyReportType;
+  createdAt: string;
+  updatedAt: string;
+  summaryLine: string;
+  content: string;
+  notesCount: number;
+  pdfsCount: number;
+  usedLocalModel: boolean;
+  modelLabel: string;
+  noteId: string | null;
+  citations: ReportCitationSource[];
+  sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
+  examFormat?: PracticeExamFormat;
+  customInstructions?: string;
+}
+
+export interface SaveStudyReportInput {
+  id?: string;
+  courseId: string;
+  courseName?: string;
+  title: string;
+  reportType: StudyReportType;
+  summaryLine?: string;
+  content: string;
+  notesCount?: number;
+  pdfsCount?: number;
+  usedLocalModel?: boolean;
+  modelLabel?: string;
+  noteId?: string | null;
+  citations?: ReportCitationSource[];
+  sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
+  examFormat?: PracticeExamFormat;
+  customInstructions?: string;
+}
+
 // Phase 8: Command Palette (Cmd+K) & Global Shortcuts (Agent A)
 export type CourseTabId =
   | 'resumen'
@@ -890,8 +945,12 @@ export interface CursadaIpcApi {
   deleteChatThread: (threadId: string) => Promise<void>;
   sendChatMessage: (input: SendChatMessageInput) => Promise<SendChatMessageResult>;
   saveChatMessageAsNote: (input: SaveChatMessageAsNoteInput) => Promise<NoteWithCourse>;
-  // AI Study Reports & Material Generator (Phase 7 - Agent B)
+  // AI Study Reports & Material Generator (Phase 7 + SQLite V9)
   generateStudyReport: (input: GenerateStudyReportInput) => Promise<GenerateStudyReportResult>;
+  listStudyReports: (courseId?: string) => Promise<StoredReport[]>;
+  getStudyReportById: (id: string) => Promise<StoredReport | null>;
+  saveStudyReport: (input: SaveStudyReportInput) => Promise<StoredReport>;
+  deleteStudyReport: (id: string) => Promise<void>;
   // Native Notifications & Reminders (Phase 8 - Agent B)
   getNotificationSettings: () => Promise<NotificationSettings>;
   updateNotificationSettings: (

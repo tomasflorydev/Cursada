@@ -17,6 +17,7 @@ import type {
   NoteFilters,
   RecordAttendanceInput,
   SaveChatMessageAsNoteInput,
+  SaveStudyReportInput,
   SearchSourceChunksInput,
   SendChatMessageInput,
   TaskFilters,
@@ -105,9 +106,15 @@ contextBridge.exposeInMainWorld('cursadaApi', {
     ipcRenderer.invoke('chat:sendMessage', input),
   saveChatMessageAsNote: (input: SaveChatMessageAsNoteInput) =>
     ipcRenderer.invoke('chat:saveMessageAsNote', input),
-  // AI Study Reports & Material Generator (Phase 7)
+  // AI Study Reports & Material Generator (Phase 7 + SQLite V9)
   generateStudyReport: (input: GenerateStudyReportInput) =>
     ipcRenderer.invoke('reports:generate', input),
+  listStudyReports: (courseId?: string) =>
+    ipcRenderer.invoke('reports:list', courseId),
+  getStudyReportById: (id: string) => ipcRenderer.invoke('reports:getById', id),
+  saveStudyReport: (input: SaveStudyReportInput) =>
+    ipcRenderer.invoke('reports:save', input),
+  deleteStudyReport: (id: string) => ipcRenderer.invoke('reports:delete', id),
   // Native Notifications & Reminders (Phase 8)
   getNotificationSettings: () => ipcRenderer.invoke('notifications:getSettings'),
   updateNotificationSettings: (input: UpdateNotificationSettingsInput) =>

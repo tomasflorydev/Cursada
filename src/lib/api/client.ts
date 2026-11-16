@@ -43,12 +43,14 @@ import type {
   RecordAttendanceInput,
   RestoreBackupResult,
   SaveChatMessageAsNoteInput,
+  SaveStudyReportInput,
   SearchSourceChunksInput,
   SendChatMessageInput,
   SendChatMessageResult,
   Source,
   SourceChunkSearchResult,
   SourceWithChunks,
+  StoredReport,
   TaskFilters,
   TaskWithCourse,
   UpdateAiSettingsInput,
@@ -394,7 +396,7 @@ export const cursadaClient: CursadaIpcApi = {
     return note;
   },
 
-  // AI Study Reports & Material Generator (Phase 7 - Agent B)
+  // AI Study Reports & Material Generator (Phase 7 + SQLite V9)
   async generateStudyReport(
     input: GenerateStudyReportInput
   ): Promise<GenerateStudyReportResult> {
@@ -404,6 +406,35 @@ export const cursadaClient: CursadaIpcApi = {
       : await mockClient.generateStudyReport(input);
     notifyCursadaDataChanged();
     return result;
+  },
+
+  async listStudyReports(courseId?: string): Promise<StoredReport[]> {
+    const fn = getBridge()?.listStudyReports;
+    return fn ? fn(courseId) : mockClient.listStudyReports(courseId);
+  },
+
+  async getStudyReportById(id: string): Promise<StoredReport | null> {
+    const fn = getBridge()?.getStudyReportById;
+    return fn ? fn(id) : mockClient.getStudyReportById(id);
+  },
+
+  async saveStudyReport(input: SaveStudyReportInput): Promise<StoredReport> {
+    const fn = getBridge()?.saveStudyReport;
+    const saved = fn
+      ? await fn(input)
+      : await mockClient.saveStudyReport(input);
+    notifyCursadaDataChanged();
+    return saved;
+  },
+
+  async deleteStudyReport(id: string): Promise<void> {
+    const fn = getBridge()?.deleteStudyReport;
+    if (fn) {
+      await fn(id);
+    } else {
+      await mockClient.deleteStudyReport(id);
+    }
+    notifyCursadaDataChanged();
   },
 
   // Native Notifications & Reminders (Phase 8 - Agent B)

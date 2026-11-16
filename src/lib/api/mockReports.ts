@@ -5,8 +5,10 @@ import type {
   NoteOrigin,
   NoteWithCourse,
   PracticeExamFormat,
+  SaveStudyReportInput,
   Source,
   SourceWithChunks,
+  StoredReport,
   StudyReportStepInfo,
   StudyReportType,
 } from '../../types/domain';
@@ -740,4 +742,168 @@ export async function mockGenerateStudyReport(
     modelUsed,
     note,
   };
+}
+
+const INITIAL_MOCK_REPORTS: StoredReport[] = [
+  {
+    id: 'report-bd2-parcial',
+    courseId: 'bd-2',
+    courseName: 'Base de Datos II',
+    title: 'Resumen para el parcial de Base de Datos',
+    reportType: 'summary',
+    createdAt: '2026-11-15T20:50:00.000Z',
+    updatedAt: '2026-11-15T20:50:00.000Z',
+    summaryLine: 'Generado desde 6 notas y 2 PDFs.',
+    notesCount: 6,
+    pdfsCount: 2,
+    usedLocalModel: true,
+    modelLabel: 'modelo local',
+    noteId: 'note-3',
+    citations: [
+      {
+        index: 1,
+        kind: 'note',
+        id: 'note-3',
+        title: 'Niveles de aislamiento y fenómenos de lectura',
+        snippet:
+          'Dirty read, non-repeatable read y phantom read en READ COMMITTED vs REPEATABLE READ.',
+      },
+      {
+        index: 2,
+        kind: 'note',
+        id: 'note-3',
+        title: 'Normalización y dependencias funcionales',
+        snippet:
+          'En 3FN ningún atributo no clave depende de otro atributo no clave (dependencia transitiva).',
+      },
+      {
+        index: 3,
+        kind: 'note',
+        id: 'note-3',
+        title: 'Índices B+Tree y planes de ejecución',
+        snippet:
+          'Los índices compuestos requieren respetar el prefijo izquierdo en predicados de búsqueda.',
+      },
+    ],
+    content: [
+      '## Síntesis ejecutiva',
+      'Los temas con mayor peso en evaluaciones recientes son aislamiento transaccional, normalización y optimización de consultas con índices [1][2][3]. Conviene verificar siempre dependencias transitivas antes de definir claves candidatas [2].',
+      '## Transacciones y aislamiento',
+      'En READ COMMITTED se evitan lecturas sucias pero siguen ocurriendo lecturas no repetibles; SERIALIZABLE garantiza equivalencia con ejecución en serie mediante bloqueos o control multiversión [1].',
+      '## Diseño relacional e índices',
+      'Para eliminar dependencias parciales se normaliza hasta 2FN y para eliminar transitivas hasta 3FN [2]. Recordar armar un apunte dedicado de índices compuestos y cobertura de consultas [3].',
+    ].join('\n\n'),
+  },
+  {
+    id: 'report-is1-guia',
+    courseId: 'ing-soft-1',
+    courseName: 'Ingeniería de Software I',
+    title: 'Guía de estudio: Métricas ágiles y criterios INVEST',
+    reportType: 'study_guide',
+    createdAt: '2026-11-14T18:15:00.000Z',
+    updatedAt: '2026-11-14T18:15:00.000Z',
+    summaryLine: 'Generado desde 4 notas.',
+    notesCount: 4,
+    pdfsCount: 0,
+    usedLocalModel: true,
+    modelLabel: 'modelo local',
+    noteId: 'note-1',
+    citations: [
+      {
+        index: 1,
+        kind: 'note',
+        id: 'note-1',
+        title: 'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica',
+        snippet:
+          'La velocidad mide capacidad histórica del equipo y no debe utilizarse para comparar equipos distintos.',
+      },
+    ],
+    content: [
+      '## Foco de repaso',
+      'Diferenciar story points de horas ideales y aplicar los seis criterios INVEST al refinar historias de usuario [1].',
+      '## Checklist de conceptos',
+      'Repasar cycle time, definición de terminado (DoD) y trade-offs al contraer deuda técnica deliberada [1].',
+    ].join('\n\n'),
+  },
+];
+
+let mockStudyReportsStore: StoredReport[] = structuredClone(INITIAL_MOCK_REPORTS);
+let nextMockReportSeq = 1;
+
+export function resetMockStudyReports(): void {
+  mockStudyReportsStore = structuredClone(INITIAL_MOCK_REPORTS);
+  nextMockReportSeq = 1;
+}
+
+export function mockDeleteStudyReportsByCourse(courseId: string): void {
+  mockStudyReportsStore = mockStudyReportsStore.filter(
+    (item) => item.courseId !== courseId
+  );
+}
+
+export async function mockListStudyReports(
+  courseId?: string
+): Promise<StoredReport[]> {
+  const trimmed = (courseId ?? '').trim();
+  const filtered = trimmed
+    ? mockStudyReportsStore.filter((item) => item.courseId === trimmed)
+    : mockStudyReportsStore;
+  return structuredClone(
+    [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  );
+}
+
+export async function mockGetStudyReportById(
+  id: string
+): Promise<StoredReport | null> {
+  const found = mockStudyReportsStore.find((item) => item.id === id);
+  return found ? structuredClone(found) : null;
+}
+
+export async function mockSaveStudyReport(
+  input: SaveStudyReportInput
+): Promise<StoredReport> {
+  const course = await mockGetCourse(input.courseId);
+  const now = new Date().toISOString();
+  const existingIdx = input.id
+    ? mockStudyReportsStore.findIndex((item) => item.id === input.id)
+    : -1;
+  const existing = existingIdx >= 0 ? mockStudyReportsStore[existingIdx] : null;
+  const id = (input.id ?? '').trim() || `report-${Date.now()}-${nextMockReportSeq++}`;
+
+  const saved: StoredReport = {
+    id,
+    courseId: input.courseId,
+    courseName: (input.courseName ?? '').trim() || course?.name || existing?.courseName || 'Materia',
+    title: (input.title ?? '').trim() || existing?.title || 'Informe',
+    reportType: input.reportType,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    summaryLine: (input.summaryLine ?? '').trim(),
+    content: input.content,
+    notesCount: Number(input.notesCount ?? 0),
+    pdfsCount: Number(input.pdfsCount ?? 0),
+    usedLocalModel: Boolean(input.usedLocalModel),
+    modelLabel: (input.modelLabel ?? '').trim() || 'síntesis offline',
+    noteId: input.noteId ?? null,
+    citations: structuredClone(input.citations ?? []),
+    sourceIds: input.sourceIds ? [...input.sourceIds] : undefined,
+    noteIds: input.noteIds ? [...input.noteIds] : undefined,
+    examStage: input.examStage ?? 'all',
+    includeNotes: input.includeNotes ?? true,
+    examFormat: input.examFormat,
+    customInstructions: input.customInstructions,
+  };
+
+  if (existingIdx >= 0) {
+    mockStudyReportsStore[existingIdx] = saved;
+  } else {
+    mockStudyReportsStore = [saved, ...mockStudyReportsStore];
+  }
+
+  return structuredClone(saved);
+}
+
+export async function mockDeleteStudyReport(id: string): Promise<void> {
+  mockStudyReportsStore = mockStudyReportsStore.filter((item) => item.id !== id);
 }

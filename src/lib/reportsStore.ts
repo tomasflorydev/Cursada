@@ -2,45 +2,15 @@ import type {
   ExamStageTag,
   NoteWithCourse,
   PracticeExamFormat,
+  ReportCitationSource,
   Source,
+  StoredReport,
   StudyReportType,
 } from '../types/domain';
 import { cursadaClient, notifyCursadaDataChanged } from './api/client';
 
+export type { ReportCitationSource, StoredReport } from '../types/domain';
 export type NoteFontSize = 'small' | 'normal' | 'large';
-
-export interface ReportCitationSource {
-  index: number;
-  kind: 'note' | 'source';
-  id: string;
-  title: string;
-  snippet: string;
-  pageLabel?: string;
-}
-
-export interface StoredReport {
-  id: string;
-  courseId: string;
-  courseName: string;
-  title: string;
-  reportType: StudyReportType;
-  createdAt: string;
-  updatedAt: string;
-  summaryLine: string;
-  content: string;
-  notesCount: number;
-  pdfsCount: number;
-  usedLocalModel: boolean;
-  modelLabel: string;
-  noteId: string | null;
-  citations: ReportCitationSource[];
-  sourceIds?: string[];
-  noteIds?: string[];
-  examStage?: ExamStageTag | 'all';
-  includeNotes?: boolean;
-  examFormat?: PracticeExamFormat;
-  customInstructions?: string;
-}
 
 export interface GenerateStoredReportInput {
   courseId: string;
@@ -56,132 +26,12 @@ export interface GenerateStoredReportInput {
   autoSaveAsNote?: boolean;
 }
 
-const STORAGE_KEY = 'cursada-reports-v2';
-
-const INITIAL_REPORTS: StoredReport[] = [
-  {
-    id: 'report-bd2-parcial',
-    courseId: 'bd-2',
-    courseName: 'Base de Datos II',
-    title: 'Resumen para el parcial de Base de Datos',
-    reportType: 'summary',
-    createdAt: '2026-11-15T20:50:00.000Z',
-    updatedAt: '2026-11-15T20:50:00.000Z',
-    summaryLine: 'Generado desde 6 notas y 2 PDFs.',
-    notesCount: 6,
-    pdfsCount: 2,
-    usedLocalModel: true,
-    modelLabel: 'modelo local',
-    noteId: 'note-3',
-    citations: [
-      {
-        index: 1,
-        kind: 'note',
-        id: 'note-3',
-        title: 'Niveles de aislamiento y fenómenos de lectura',
-        snippet:
-          'Dirty read, non-repeatable read y phantom read en READ COMMITTED vs REPEATABLE READ.',
-      },
-      {
-        index: 2,
-        kind: 'note',
-        id: 'note-3',
-        title: 'Normalización y dependencias funcionales',
-        snippet:
-          'En 3FN ningún atributo no clave depende de otro atributo no clave (dependencia transitiva).',
-      },
-      {
-        index: 3,
-        kind: 'note',
-        id: 'note-3',
-        title: 'Índices B+Tree y planes de ejecución',
-        snippet:
-          'Los índices compuestos requieren respetar el prefijo izquierdo en predicados de búsqueda.',
-      },
-    ],
-    content: [
-      '## Síntesis ejecutiva',
-      'Los temas con mayor peso en evaluaciones recientes son aislamiento transaccional, normalización y optimización de consultas con índices [1][2][3]. Conviene verificar siempre dependencias transitivas antes de definir claves candidatas [2].',
-      '## Transacciones y aislamiento',
-      'En READ COMMITTED se evitan lecturas sucias pero siguen ocurriendo lecturas no repetibles; SERIALIZABLE garantiza equivalencia con ejecución en serie mediante bloqueos o control multiversión [1].',
-      '## Diseño relacional e índices',
-      'Para eliminar dependencias parciales se normaliza hasta 2FN y para eliminar transitivas hasta 3FN [2]. Recordar armar un apunte dedicado de índices compuestos y cobertura de consultas [3].',
-    ].join('\n\n'),
-  },
-  {
-    id: 'report-is1-guia',
-    courseId: 'ing-soft-1',
-    courseName: 'Ingeniería de Software I',
-    title: 'Guía de estudio: Métricas ágiles y criterios INVEST',
-    reportType: 'study_guide',
-    createdAt: '2026-11-14T18:15:00.000Z',
-    updatedAt: '2026-11-14T18:15:00.000Z',
-    summaryLine: 'Generado desde 4 notas.',
-    notesCount: 4,
-    pdfsCount: 0,
-    usedLocalModel: true,
-    modelLabel: 'modelo local',
-    noteId: 'note-1',
-    citations: [
-      {
-        index: 1,
-        kind: 'note',
-        id: 'note-1',
-        title: 'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica',
-        snippet:
-          'La velocidad mide capacidad histórica del equipo y no debe utilizarse para comparar equipos distintos.',
-      },
-    ],
-    content: [
-      '## Foco de repaso',
-      'Diferenciar story points de horas ideales y aplicar los seis criterios INVEST al refinar historias de usuario [1].',
-      '## Checklist de conceptos',
-      'Repasar cycle time, definición de terminado (DoD) y trade-offs al contraer deuda técnica deliberada [1].',
-    ].join('\n\n'),
-  },
-];
-
 let reportsMemoryStore: StoredReport[] = [];
-let reportsInitialized = false;
-let nextReportSeq = 1;
+let hasHydratedReports = false;
+let inflightRefresh: Promise<StoredReport[]> | null = null;
 const listeners = new Set<() => void>();
 
-function loadInitialReports(): StoredReport[] {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as StoredReport[];
-        }
-      }
-    }
-  } catch {
-    // Ignore storage read errors in restricted test environments.
-  }
-  return structuredClone(INITIAL_REPORTS);
-}
-
-function persistReports(reports: StoredReport[]): void {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
-    }
-  } catch {
-    // Ignore storage quota/security errors.
-  }
-}
-
-function ensureInitialized(): void {
-  if (!reportsInitialized) {
-    reportsMemoryStore = loadInitialReports();
-    reportsInitialized = true;
-  }
-}
-
 function emitChange(): void {
-  persistReports(reportsMemoryStore);
   for (const listener of listeners) {
     listener();
   }
@@ -194,22 +44,43 @@ export function subscribeReports(listener: () => void): () => void {
   };
 }
 
-export function resetStoredReports(): void {
-  reportsMemoryStore = structuredClone(INITIAL_REPORTS);
-  reportsInitialized = true;
-  nextReportSeq = 1;
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  } catch {
-    // Ignore storage errors.
+/**
+ * Fetches persisted reports from SQLite (Electron) or mockClient (browser/tests)
+ * and updates the reactive in-memory cache without touching `localStorage`.
+ */
+export async function refreshStoredReports(): Promise<StoredReport[]> {
+  if (inflightRefresh) {
+    return inflightRefresh;
   }
+
+  inflightRefresh = cursadaClient
+    .listStudyReports()
+    .then((loaded) => {
+      reportsMemoryStore = [...loaded].sort((a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt)
+      );
+      hasHydratedReports = true;
+      emitChange();
+      return [...reportsMemoryStore];
+    })
+    .finally(() => {
+      inflightRefresh = null;
+    });
+
+  return inflightRefresh;
+}
+
+export function resetStoredReports(): void {
+  reportsMemoryStore = [];
+  hasHydratedReports = false;
+  inflightRefresh = null;
   emitChange();
 }
 
 export function listStoredReports(courseId?: string): StoredReport[] {
-  ensureInitialized();
+  if (!hasHydratedReports && typeof window !== 'undefined') {
+    void refreshStoredReports();
+  }
   const items = courseId
     ? reportsMemoryStore.filter((item) => item.courseId === courseId)
     : reportsMemoryStore;
@@ -222,17 +93,23 @@ export function getLatestStoredReport(courseId?: string): StoredReport | null {
 }
 
 export function getStoredReportById(reportId: string): StoredReport | null {
-  ensureInitialized();
   return reportsMemoryStore.find((item) => item.id === reportId) ?? null;
 }
 
-export function deleteStoredReportsByCourse(courseId: string): void {
-  ensureInitialized();
+export async function deleteStoredReport(reportId: string): Promise<void> {
+  await cursadaClient.deleteStudyReport(reportId);
+  reportsMemoryStore = reportsMemoryStore.filter((item) => item.id !== reportId);
+  hasHydratedReports = true;
+  emitChange();
+}
+
+export async function deleteStoredReportsByCourse(courseId: string): Promise<void> {
   const next = reportsMemoryStore.filter((item) => item.courseId !== courseId);
   if (next.length !== reportsMemoryStore.length) {
     reportsMemoryStore = next;
     emitChange();
   }
+  await refreshStoredReports();
 }
 
 export function formatRelativeAgeEs(isoDate: string): string {
@@ -408,11 +285,23 @@ function buildNotesOnlyReportContent(
   };
 }
 
-export async function generateAndStoreReport(
-  input: GenerateStoredReportInput
-): Promise<StoredReport> {
-  ensureInitialized();
+function upsertInMemoryCache(saved: StoredReport): void {
+  const idx = reportsMemoryStore.findIndex((item) => item.id === saved.id);
+  if (idx >= 0) {
+    reportsMemoryStore = reportsMemoryStore.map((item) =>
+      item.id === saved.id ? saved : item
+    );
+  } else {
+    reportsMemoryStore = [saved, ...reportsMemoryStore];
+  }
+  hasHydratedReports = true;
+  emitChange();
+}
 
+export async function generateAndStoreReport(
+  input: GenerateStoredReportInput,
+  options?: { persistId?: string }
+): Promise<StoredReport> {
   const includeNotes = input.includeNotes ?? true;
   const stageFilter =
     input.examStage && input.examStage !== 'all' ? input.examStage : undefined;
@@ -459,7 +348,6 @@ export async function generateAndStoreReport(
   const usedPdfsCount = sources.filter(
     (s) => effectiveSourceIds.includes(s.id) && s.sourceType === 'pdf'
   ).length;
-  const nowIso = new Date().toISOString();
 
   if (readySelectedSources.length > 0 || (includeNotes && notes.length > 0)) {
     try {
@@ -480,15 +368,16 @@ export async function generateAndStoreReport(
       const usedLocalModel =
         Boolean(generated.modelUsed) && generated.modelUsed !== 'offline-deterministic';
 
-      const report: StoredReport = {
-        id: `report-${Date.now()}-${nextReportSeq++}`,
+      const saved = await cursadaClient.saveStudyReport({
+        id: options?.persistId,
         courseId: input.courseId,
         courseName:
-          input.courseName ?? course?.name ?? generated.note?.courseName ?? resolvedCourseName,
+          input.courseName ??
+          course?.name ??
+          generated.note?.courseName ??
+          resolvedCourseName,
         title: generated.title,
         reportType: generated.reportType,
-        createdAt: nowIso,
-        updatedAt: nowIso,
         summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
         content: finalContent,
         notesCount: usedNotesCount,
@@ -503,11 +392,10 @@ export async function generateAndStoreReport(
         includeNotes,
         examFormat: input.examFormat,
         customInstructions: input.customInstructions,
-      };
+      });
 
-      reportsMemoryStore = [report, ...reportsMemoryStore];
-      emitChange();
-      return report;
+      upsertInMemoryCache(saved);
+      return saved;
     } catch (err) {
       if (readySelectedSources.length > 0) {
         throw err;
@@ -540,17 +428,14 @@ export async function generateAndStoreReport(
       ...(stageFilter ? { examStage: stageFilter } : {}),
     });
     savedNoteId = created.id;
-    notifyCursadaDataChanged();
   }
 
-  const report: StoredReport = {
-    id: `report-${Date.now()}-${nextReportSeq++}`,
+  const saved = await cursadaClient.saveStudyReport({
+    id: options?.persistId,
     courseId: input.courseId,
     courseName: resolvedCourseName,
     title: finalTitle,
     reportType: input.reportType,
-    createdAt: nowIso,
-    updatedAt: nowIso,
     summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
     content: ensureBodyHasCitations(notesFallback.content, citations),
     notesCount: usedNotesCount,
@@ -565,50 +450,44 @@ export async function generateAndStoreReport(
     includeNotes,
     examFormat: input.examFormat,
     customInstructions: input.customInstructions,
-  };
+  });
 
-  reportsMemoryStore = [report, ...reportsMemoryStore];
-  emitChange();
-  return report;
+  upsertInMemoryCache(saved);
+  return saved;
 }
 
 export async function regenerateStoredReport(reportId: string): Promise<StoredReport> {
-  const existing = getStoredReportById(reportId);
+  const existing =
+    getStoredReportById(reportId) ??
+    (await cursadaClient.getStudyReportById(reportId));
   if (!existing) {
     throw new Error(`No se encontró el informe "${reportId}".`);
   }
 
-  const next = await generateAndStoreReport({
-    courseId: existing.courseId,
-    courseName: existing.courseName,
-    reportType: existing.reportType,
-    sourceIds: existing.sourceIds,
-    noteIds: existing.noteIds,
-    examStage: existing.examStage,
-    includeNotes: existing.includeNotes ?? true,
-    examFormat: existing.examFormat,
-    customInstructions: existing.customInstructions,
-    title: existing.title,
-    autoSaveAsNote: false,
-  });
-
-  // Replace existing report timestamp/content cleanly so ID stays navigable
-  ensureInitialized();
-  const updated: StoredReport = {
-    ...next,
-    id: existing.id,
-  };
-  reportsMemoryStore = reportsMemoryStore.map((item) =>
-    item.id === existing.id ? updated : item.id === next.id ? null : item
-  ).filter((item): item is StoredReport => item !== null);
-  emitChange();
-  return updated;
+  return generateAndStoreReport(
+    {
+      courseId: existing.courseId,
+      courseName: existing.courseName,
+      reportType: existing.reportType,
+      sourceIds: existing.sourceIds,
+      noteIds: existing.noteIds,
+      examStage: existing.examStage,
+      includeNotes: existing.includeNotes ?? true,
+      examFormat: existing.examFormat,
+      customInstructions: existing.customInstructions,
+      title: existing.title,
+      autoSaveAsNote: false,
+    },
+    { persistId: existing.id }
+  );
 }
 
 export async function saveStoredReportAsNote(
   reportId: string
 ): Promise<NoteWithCourse> {
-  const existing = getStoredReportById(reportId);
+  const existing =
+    getStoredReportById(reportId) ??
+    (await cursadaClient.getStudyReportById(reportId));
   if (!existing) {
     throw new Error(`No se encontró el informe "${reportId}".`);
   }
@@ -620,22 +499,38 @@ export async function saveStoredReportAsNote(
         ? 'ai_practice_exam'
         : 'ai_summary';
 
-  const saved = await cursadaClient.createNote({
+  const savedNote = await cursadaClient.createNote({
     courseId: existing.courseId,
     title: existing.title,
     content: existing.content,
     origin,
   });
 
-  ensureInitialized();
-  reportsMemoryStore = reportsMemoryStore.map((item) =>
-    item.id === reportId
-      ? { ...item, noteId: saved.id, updatedAt: new Date().toISOString() }
-      : item
-  );
-  emitChange();
+  const updatedReport = await cursadaClient.saveStudyReport({
+    id: existing.id,
+    courseId: existing.courseId,
+    courseName: existing.courseName,
+    title: existing.title,
+    reportType: existing.reportType,
+    summaryLine: existing.summaryLine,
+    content: existing.content,
+    notesCount: existing.notesCount,
+    pdfsCount: existing.pdfsCount,
+    usedLocalModel: existing.usedLocalModel,
+    modelLabel: existing.modelLabel,
+    noteId: savedNote.id,
+    citations: existing.citations,
+    sourceIds: existing.sourceIds,
+    noteIds: existing.noteIds,
+    examStage: existing.examStage,
+    includeNotes: existing.includeNotes,
+    examFormat: existing.examFormat,
+    customInstructions: existing.customInstructions,
+  });
+
+  upsertInMemoryCache(updatedReport);
   notifyCursadaDataChanged();
-  return saved;
+  return savedNote;
 }
 
 export function exportReportToPdf(report: StoredReport): {

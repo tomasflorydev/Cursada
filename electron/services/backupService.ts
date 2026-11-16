@@ -20,6 +20,7 @@ const RESTORE_TABLES_ORDER = [
   'tasks',
   'exams',
   'notes',
+  'study_reports',
   'note_links',
   'sources',
   'source_chunks',

@@ -482,6 +482,61 @@ export interface GenerateStudyReportResult {
   note: NoteWithCourse | null;
 }
 
+export interface ReportCitationSource {
+  index: number;
+  kind: 'note' | 'source';
+  id: string;
+  title: string;
+  snippet: string;
+  pageLabel?: string;
+}
+
+export interface StoredReport {
+  id: string;
+  courseId: string;
+  courseName: string;
+  title: string;
+  reportType: StudyReportType;
+  createdAt: string;
+  updatedAt: string;
+  summaryLine: string;
+  content: string;
+  notesCount: number;
+  pdfsCount: number;
+  usedLocalModel: boolean;
+  modelLabel: string;
+  noteId: string | null;
+  citations: ReportCitationSource[];
+  sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
+  examFormat?: PracticeExamFormat;
+  customInstructions?: string;
+}
+
+export interface SaveStudyReportInput {
+  id?: string;
+  courseId: string;
+  courseName?: string;
+  title: string;
+  reportType: StudyReportType;
+  summaryLine?: string;
+  content: string;
+  notesCount?: number;
+  pdfsCount?: number;
+  usedLocalModel?: boolean;
+  modelLabel?: string;
+  noteId?: string | null;
+  citations?: ReportCitationSource[];
+  sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
+  examFormat?: PracticeExamFormat;
+  customInstructions?: string;
+}
+
 // Phase 8: Native macOS Notifications & Configurable Reminders (Agent B)
 export interface NotificationSettings {
   enabled: boolean;

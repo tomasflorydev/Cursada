@@ -3,10 +3,12 @@ import { PracticeExamSimulatorModal } from '../components/assistant/PracticeExam
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import { renderTextWithMathAndCitations } from '../lib/math/latexRenderer';
 import {
+  deleteStoredReport,
   exportReportToPdf,
   formatRelativeAgeEs,
   generateAndStoreReport,
   listStoredReports,
+  refreshStoredReports,
   regenerateStoredReport,
   saveStoredReportAsNote,
   subscribeReports,
@@ -152,6 +154,8 @@ export function ReportsPage({
   // Action states for selected report
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [savedNoteFeedback, setSavedNoteFeedback] = useState<{
     courseId: string;
@@ -177,9 +181,11 @@ export function ReportsPage({
 
   useEffect(() => {
     void loadCourses();
+    void refreshStoredReports();
 
     const handleDataChanged = () => {
       void loadCourses();
+      void refreshStoredReports();
     };
     window.addEventListener(DATA_CHANGED_EVENT, handleDataChanged);
 
@@ -211,6 +217,7 @@ export function ReportsPage({
         setSelectedReportId(initialReportId);
         setActionError(null);
         setSavedNoteFeedback(null);
+        setIsConfirmingDelete(false);
       }
     }
   }, [initialReportId, reportNavigationVersion, reports, selectedReportId]);
@@ -312,6 +319,7 @@ export function ReportsPage({
     if (!selectedReport || isRegenerating) return;
     setActionError(null);
     setSavedNoteFeedback(null);
+    setIsConfirmingDelete(false);
     setIsRegenerating(true);
     try {
       await regenerateStoredReport(selectedReport.id);
@@ -323,6 +331,23 @@ export function ReportsPage({
       );
     } finally {
       setIsRegenerating(false);
+    }
+  }
+
+  async function handleDeleteReport(): Promise<void> {
+    if (!selectedReport || isDeleting) return;
+    setActionError(null);
+    setSavedNoteFeedback(null);
+    setIsDeleting(true);
+    try {
+      await deleteStoredReport(selectedReport.id);
+      setIsConfirmingDelete(false);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'No se pudo eliminar el informe.'
+      );
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -470,6 +495,7 @@ export function ReportsPage({
                         setSelectedReportId(rep.id);
                         setActionError(null);
                         setSavedNoteFeedback(null);
+                        setIsConfirmingDelete(false);
                       }}
                     >
                       <span>{rep.title}</span>
@@ -522,21 +548,53 @@ export function ReportsPage({
                   ) : null}
                   <SwissButton
                     variant="secondary"
-                    disabled={isSavingNote}
+                    disabled={isSavingNote || isDeleting}
                     onClick={() => void handleSaveAsNote()}
                   >
                     {isSavingNote ? 'Guardando…' : 'Guardar como nota'}
                   </SwissButton>
-                  <SwissButton variant="secondary" onClick={handleExportPdf}>
+                  <SwissButton
+                    variant="secondary"
+                    disabled={isDeleting}
+                    onClick={handleExportPdf}
+                  >
                     Exportar PDF
                   </SwissButton>
                   <SwissButton
                     variant="primary"
-                    disabled={isRegenerating}
+                    disabled={isRegenerating || isDeleting}
                     onClick={() => void handleRegenerate()}
                   >
                     {isRegenerating ? 'Regenerando…' : 'Regenerar'}
                   </SwissButton>
+                  {isConfirmingDelete ? (
+                    <>
+                      <SwissButton
+                        variant="secondary"
+                        disabled={isDeleting}
+                        aria-label="Confirmar eliminación"
+                        onClick={() => void handleDeleteReport()}
+                      >
+                        {isDeleting ? 'Eliminando…' : 'Confirmar eliminación'}
+                      </SwissButton>
+                      <SwissButton
+                        variant="secondary"
+                        disabled={isDeleting}
+                        onClick={() => setIsConfirmingDelete(false)}
+                      >
+                        Cancelar
+                      </SwissButton>
+                    </>
+                  ) : (
+                    <SwissButton
+                      variant="secondary"
+                      aria-label="Eliminar informe"
+                      disabled={isRegenerating || isDeleting}
+                      onClick={() => setIsConfirmingDelete(true)}
+                    >
+                      Eliminar
+                    </SwissButton>
+                  )}
                 </div>
               </div>
 

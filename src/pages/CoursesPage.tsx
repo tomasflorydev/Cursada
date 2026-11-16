@@ -280,7 +280,7 @@ export function CoursesPage({
 
   async function handleConfirmDelete(courseId: string): Promise<void> {
     await cursadaClient.deleteCourse(courseId);
-    deleteStoredReportsByCourse(courseId);
+    await deleteStoredReportsByCourse(courseId);
     setDeleteImpact(null);
     if (selectedCourseId === courseId) {
       onSelectCourse(null);

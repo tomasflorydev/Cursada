@@ -21,6 +21,7 @@ import {
   formatRelativeAgeEs,
   generateAndStoreReport,
   getLatestStoredReport,
+  refreshStoredReports,
   subscribeReports,
   type StoredReport,
 } from '../../lib/reportsStore';
@@ -431,6 +432,9 @@ export function CourseDetailView({
     window.addEventListener(DATA_CHANGED_EVENT, handleDataChanged);
 
     setLatestReport(getLatestStoredReport(courseId));
+    void refreshStoredReports().then(() => {
+      setLatestReport(getLatestStoredReport(courseId));
+    });
     const unsubscribeReports = subscribeReports(() => {
       setLatestReport(getLatestStoredReport(courseId));
     });

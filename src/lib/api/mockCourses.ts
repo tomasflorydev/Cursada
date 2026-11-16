@@ -72,6 +72,7 @@ interface CourseTaskHooks {
   deleteNotesByCourse?: (courseId: string) => void;
   countSourcesByCourse?: (courseId: string) => number;
   deleteSourcesByCourse?: (courseId: string) => void;
+  deleteReportsByCourse?: (courseId: string) => void;
   onBeforeDeleteCourse?: (courseId: string) => void;
 }
 
@@ -363,5 +364,6 @@ export async function mockDeleteCourse(id: string): Promise<void> {
   taskHooks.deleteExamsByCourse?.(id);
   taskHooks.deleteNotesByCourse?.(id);
   taskHooks.deleteSourcesByCourse?.(id);
+  taskHooks.deleteReportsByCourse?.(id);
   coursesStore = coursesStore.filter((c) => c.id !== id);
 }

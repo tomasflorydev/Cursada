@@ -91,7 +91,15 @@ import {
   mockSendChatMessage,
   resetMockChat,
 } from './mockChat';
-import { mockGenerateStudyReport } from './mockReports';
+import {
+  mockDeleteStudyReport,
+  mockDeleteStudyReportsByCourse,
+  mockGenerateStudyReport,
+  mockGetStudyReportById,
+  mockListStudyReports,
+  mockSaveStudyReport,
+  resetMockStudyReports,
+} from './mockReports';
 import {
   mockCountSourcesByCourse,
   mockCreateSourceFromText,
@@ -411,6 +419,7 @@ registerCourseTaskHooks({
   deleteNotesByCourse: mockDeleteNotesByCourse,
   countSourcesByCourse: mockCountSourcesByCourse,
   deleteSourcesByCourse: mockDeleteSourcesByCourse,
+  deleteReportsByCourse: mockDeleteStudyReportsByCourse,
   onBeforeDeleteCourse: () => {
     if (!isRestoringMock) {
       createMockBackupSync('pre-course-delete');
@@ -431,6 +440,7 @@ export function resetAllMocks(): void {
   resetMockAttendance();
   resetMockCalendarSync();
   resetPomodoroStore();
+  resetMockStudyReports();
   resetStoredReports();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
@@ -516,6 +526,10 @@ export const mockClient: CursadaIpcApi = {
   sendChatMessage: mockSendChatMessage,
   saveChatMessageAsNote: mockSaveChatMessageAsNote,
   generateStudyReport: mockGenerateStudyReport,
+  listStudyReports: mockListStudyReports,
+  getStudyReportById: mockGetStudyReportById,
+  saveStudyReport: mockSaveStudyReport,
+  deleteStudyReport: mockDeleteStudyReport,
   getNotificationSettings: mockGetNotificationSettings,
   updateNotificationSettings: mockUpdateNotificationSettings,
   sendTestNotification: mockSendTestNotification,

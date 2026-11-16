@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createBackup } from '../services/backupService.js';
 
-export const LATEST_SCHEMA_VERSION = 8;
+export const LATEST_SCHEMA_VERSION = 9;
 
 const MIGRATION_V1_SQL = `
 CREATE TABLE IF NOT EXISTS courses (
@@ -245,6 +245,34 @@ CREATE TABLE IF NOT EXISTS google_calendar_mappings (
 CREATE INDEX IF NOT EXISTS idx_gcal_mappings_entity ON google_calendar_mappings(entity_type, entity_id);
 `;
 
+const MIGRATION_V9_SQL = `
+CREATE TABLE IF NOT EXISTS study_reports (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    course_name TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    report_type TEXT NOT NULL CHECK (report_type IN ('summary', 'report', 'study_guide', 'practice_exam')),
+    summary_line TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL,
+    notes_count INTEGER NOT NULL DEFAULT 0,
+    pdfs_count INTEGER NOT NULL DEFAULT 0,
+    used_local_model INTEGER NOT NULL DEFAULT 0,
+    model_label TEXT NOT NULL DEFAULT 'síntesis offline',
+    note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    source_ids_json TEXT NOT NULL DEFAULT '[]',
+    note_ids_json TEXT NOT NULL DEFAULT '[]',
+    exam_stage TEXT NOT NULL DEFAULT 'all',
+    include_notes INTEGER NOT NULL DEFAULT 1,
+    exam_format TEXT,
+    custom_instructions TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_study_reports_course ON study_reports(course_id);
+CREATE INDEX IF NOT EXISTS idx_study_reports_updated ON study_reports(updated_at DESC);
+`;
+
 export function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   return row?.user_version ?? 0;
@@ -366,6 +394,18 @@ export function runMigrations(
     try {
       db.exec(MIGRATION_V8_SQL);
       db.exec('PRAGMA user_version = 8;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 9) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V9_SQL);
+      db.exec('PRAGMA user_version = 9;');
       db.exec('COMMIT;');
     } catch (err) {
       db.exec('ROLLBACK;');

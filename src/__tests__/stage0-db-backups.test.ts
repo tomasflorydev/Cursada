@@ -42,10 +42,10 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     expect(ctx.dataDir).toBe(path.resolve(customDir));
     expect(ctx.dbPath).toBe(path.join(customDir, 'cursada.sqlite'));
     expect(getSchemaVersion(ctx.db)).toBe(LATEST_SCHEMA_VERSION);
-    expect(getSchemaVersion(ctx.db)).toBe(8);
+    expect(getSchemaVersion(ctx.db)).toBe(9);
     const tables = ctx.db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('chat_threads', 'chat_messages', 'note_links', 'attendance_records', 'calendar_feeds', 'google_calendar_mappings')"
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('chat_threads', 'chat_messages', 'note_links', 'attendance_records', 'calendar_feeds', 'google_calendar_mappings', 'study_reports')"
       )
       .all() as Array<{ name: string }>;
     expect(tables.map((t) => t.name).sort()).toEqual([
@@ -55,6 +55,7 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
       'chat_threads',
       'google_calendar_mappings',
       'note_links',
+      'study_reports',
     ]);
     ctx.close();
   });
@@ -131,7 +132,7 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     const customDir = makeTempDir();
     // Create an initial DB, rewind user_version to simulate an older schema with existing tables
     const initialCtx = openDatabase({ dataDir: customDir, runStartupBackup: false });
-    initialCtx.db.exec('PRAGMA user_version = 7;');
+    initialCtx.db.exec('PRAGMA user_version = 8;');
     initialCtx.close();
 
     const migratedCtx = openDatabase({ dataDir: customDir, runStartupBackup: false });
@@ -139,7 +140,7 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     const backups = listBackups(customDir);
     expect(
       backups.some((b) =>
-        b.filename.includes(`pre-migration-from-v7-to-v${LATEST_SCHEMA_VERSION}`)
+        b.filename.includes(`pre-migration-from-v8-to-v${LATEST_SCHEMA_VERSION}`)
       )
     ).toBe(true);
     migratedCtx.close();

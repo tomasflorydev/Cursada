@@ -8,7 +8,13 @@ import {
   parseIsoDateLocal,
   toIsoDateString,
 } from '../lib/dates';
-import { getLatestStoredReport, listStoredReports, subscribeReports, type StoredReport } from '../lib/reportsStore';
+import {
+  getLatestStoredReport,
+  listStoredReports,
+  refreshStoredReports,
+  subscribeReports,
+  type StoredReport,
+} from '../lib/reportsStore';
 import type {
   CourseWithSchedules,
   DayOfWeek,
@@ -159,16 +165,20 @@ export function HomePage({
   const refIso = useMemo(() => toIsoDateString(effectiveDate), [effectiveDate]);
 
   const loadHomeData = useCallback(async () => {
-    const [loadedTasks, loadedExams, loadedCourses, loadedNotes] = await Promise.all([
-      cursadaClient.listTasks({ status: 'all' }),
-      cursadaClient.listExams({ graded: 'all' }),
-      cursadaClient.listCourses({ status: 'active' }),
-      cursadaClient.listNotes(),
-    ]);
+    const [loadedTasks, loadedExams, loadedCourses, loadedNotes, loadedReports] =
+      await Promise.all([
+        cursadaClient.listTasks({ status: 'all' }),
+        cursadaClient.listExams({ graded: 'all' }),
+        cursadaClient.listCourses({ status: 'active' }),
+        cursadaClient.listNotes(),
+        refreshStoredReports(),
+      ]);
     setTasks(loadedTasks);
     setExams(loadedExams);
     setCourses(loadedCourses);
     setNotes(loadedNotes);
+    setReports(loadedReports);
+    setLatestReport(loadedReports[0] ?? null);
   }, []);
 
   useEffect(() => {
