@@ -4,13 +4,14 @@ import type {
   ChatThread,
   ChatThreadWithMessages,
   CreateChatThreadInput,
+  ExamStageTag,
   NoteWithCourse,
   SaveChatMessageAsNoteInput,
   SendChatMessageInput,
   SendChatMessageResult,
 } from '../../types/domain';
 import { getMockCourseByIdSync } from './mockCourses';
-import { mockCreateNote } from './mockNotes';
+import { mockCreateNote, mockListNotes } from './mockNotes';
 import {
   mockGetAiSettings,
   tryBrowserOllamaChatCompletion,
@@ -115,34 +116,182 @@ function deriveNoteTitleFromMessage(content: string): string {
   return DEFAULT_NOTE_TITLE;
 }
 
-async function retrieveMockCitations(
-  courseId: string,
-  query: string
-): Promise<ChatCitation[]> {
-  const matches = await mockSearchSourceChunks({
+function normalizeSearchText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
+function extractMeaningfulTokens(text: string): string[] {
+  return normalizeSearchText(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3);
+}
+
+function splitNoteIntoPieces(note: NoteWithCourse): string[] {
+  const clean = note.content.replace(/\r\n?/g, '\n').trim();
+  if (!clean) {
+    return note.title.trim() ? [note.title.trim()] : [];
+  }
+  const paragraphs = clean
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (paragraphs.length === 0) {
+    return [clean.slice(0, 800)];
+  }
+  const pieces: string[] = [];
+  let buffer = '';
+  for (const para of paragraphs) {
+    if (!buffer) {
+      buffer = para;
+    } else if (buffer.length + 2 + para.length <= 800) {
+      buffer = `${buffer}\n\n${para}`;
+    } else {
+      pieces.push(buffer);
+      buffer = para;
+    }
+  }
+  if (buffer) {
+    pieces.push(buffer);
+  }
+  return pieces;
+}
+
+async function retrieveMockCitations(params: {
+  courseId: string;
+  query: string;
+  sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
+}): Promise<ChatCitation[]> {
+  const { courseId, query, sourceIds, noteIds, examStage, includeNotes } = params;
+
+  const sourceMatches = await mockSearchSourceChunks({
     courseId,
     query,
     limit: 5,
+    sourceIds,
+    examStage,
   });
 
-  if (matches.length > 0) {
-    return matches.map((match, index) => ({
+  interface RankedItem {
+    chunkId: string;
+    sourceId: string;
+    sourceTitle: string;
+    sourceType: ChatCitation['sourceType'];
+    pageNumber: number | null;
+    excerpt: string;
+    score: number;
+    hasLexicalMatch: boolean;
+  }
+
+  const combined: RankedItem[] = sourceMatches.map((match) => ({
+    chunkId: match.chunk.id,
+    sourceId: match.chunk.sourceId,
+    sourceTitle: match.sourceTitle,
+    sourceType: match.sourceType,
+    pageNumber: match.chunk.pageNumber,
+    excerpt: match.chunk.content.trim(),
+    score: match.score,
+    hasLexicalMatch: match.ftsScore > 0,
+  }));
+
+  const shouldIncludeNotes = includeNotes !== false;
+  let matchingNotes: NoteWithCourse[] = [];
+
+  if (shouldIncludeNotes) {
+    matchingNotes = await mockListNotes({
+      courseId,
+      examStage: examStage && examStage !== 'all' ? examStage : undefined,
+    });
+
+    if (noteIds !== undefined) {
+      const noteSet = new Set(noteIds.map((id) => id.trim()).filter(Boolean));
+      matchingNotes = matchingNotes.filter((n) => noteSet.has(n.id));
+    }
+
+    const queryTokens = extractMeaningfulTokens(query);
+    if (queryTokens.length > 0 && matchingNotes.length > 0) {
+      const noteCandidates: Array<RankedItem & { rawLexical: number }> = [];
+      for (const note of matchingNotes) {
+        const pieces = splitNoteIntoPieces(note);
+        pieces.forEach((piece, idx) => {
+          const normalized = normalizeSearchText(`${note.title}\n${piece}`);
+          const matchedCount = queryTokens.filter((t) =>
+            normalized.includes(t)
+          ).length;
+          if (matchedCount > 0) {
+            const rawLexical = matchedCount / queryTokens.length;
+            noteCandidates.push({
+              chunkId: `note-${note.id}-chunk-${idx}`,
+              sourceId: note.id,
+              sourceTitle: note.title,
+              sourceType: 'note',
+              pageNumber: null,
+              excerpt: piece.trim(),
+              score: 0,
+              hasLexicalMatch: true,
+              rawLexical,
+            });
+          }
+        });
+      }
+
+      noteCandidates.sort((a, b) => b.rawLexical - a.rawLexical);
+      noteCandidates.slice(0, 5).forEach((cand, idx) => {
+        const rank = idx + 1;
+        combined.push({
+          chunkId: cand.chunkId,
+          sourceId: cand.sourceId,
+          sourceTitle: cand.sourceTitle,
+          sourceType: cand.sourceType,
+          pageNumber: cand.pageNumber,
+          excerpt: cand.excerpt,
+          score: 1 / (60 + rank) + cand.rawLexical * 0.015,
+          hasLexicalMatch: true,
+        });
+      });
+    }
+  }
+
+  if (combined.length > 0) {
+    combined.sort((a, b) => {
+      if (a.hasLexicalMatch !== b.hasLexicalMatch) {
+        return a.hasLexicalMatch ? -1 : 1;
+      }
+      return b.score - a.score;
+    });
+    return combined.slice(0, 5).map((item, index) => ({
       citationNumber: index + 1,
-      chunkId: match.chunk.id,
-      sourceId: match.chunk.sourceId,
-      sourceTitle: match.sourceTitle,
-      sourceType: match.sourceType,
-      pageNumber: match.chunk.pageNumber,
-      excerpt: match.chunk.content.trim(),
-      score: match.score,
+      chunkId: item.chunkId,
+      sourceId: item.sourceId,
+      sourceTitle: item.sourceTitle,
+      sourceType: item.sourceType,
+      pageNumber: item.pageNumber,
+      excerpt: item.excerpt,
+      score: item.score,
     }));
   }
 
-  // Fallback for broad summary questions when a course has ready sources
+  // Fallback for broad summary questions when a course has ready sources or matching notes
+  const sourceIdSet =
+    sourceIds !== undefined
+      ? new Set(sourceIds.map((id) => id.trim()).filter(Boolean))
+      : null;
+  const stageFilter = examStage && examStage !== 'all' ? examStage : null;
+
   const courseSources = await mockListSources(courseId);
-  const readySources = courseSources.filter(
-    (source) => source.indexingStatus === 'ready'
-  );
+  const readySources = courseSources.filter((source) => {
+    if (source.indexingStatus !== 'ready') return false;
+    if (sourceIdSet && !sourceIdSet.has(source.id)) return false;
+    if (stageFilter && (source.examStage ?? 'general') !== stageFilter) return false;
+    return true;
+  });
+
   const fallbackCitations: ChatCitation[] = [];
 
   for (const source of readySources) {
@@ -165,6 +314,25 @@ async function retrieveMockCitations(
     if (fallbackCitations.length >= 3) {
       break;
     }
+  }
+
+  for (const note of matchingNotes) {
+    if (fallbackCitations.length >= 4) {
+      break;
+    }
+    const pieces = splitNoteIntoPieces(note);
+    if (pieces.length === 0) continue;
+    const index = fallbackCitations.length;
+    fallbackCitations.push({
+      citationNumber: index + 1,
+      chunkId: `note-${note.id}-chunk-0`,
+      sourceId: note.id,
+      sourceTitle: note.title,
+      sourceType: 'note',
+      pageNumber: null,
+      excerpt: pieces[0].trim(),
+      score: Math.max(0.3, Number((0.54 - index * 0.06).toFixed(4))),
+    });
   }
 
   return fallbackCitations;
@@ -332,7 +500,14 @@ export async function mockSendChatMessage(
   }
   thread.updatedAt = userNow;
 
-  const citations = await retrieveMockCitations(course.id, content);
+  const citations = await retrieveMockCitations({
+    courseId: course.id,
+    query: content,
+    sourceIds: input.sourceIds,
+    noteIds: input.noteIds,
+    examStage: input.examStage,
+    includeNotes: input.includeNotes,
+  });
   const settings = await mockGetAiSettings();
 
   const historyMessages: BrowserOllamaChatMessage[] = store.messages

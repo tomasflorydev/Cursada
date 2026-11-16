@@ -1,4 +1,5 @@
 import type {
+  ExamStageTag,
   GenerateStudyReportInput,
   GenerateStudyReportResult,
   NoteOrigin,
@@ -10,7 +11,7 @@ import type {
   StudyReportType,
 } from '../../types/domain';
 import { mockGetCourse } from './mockCourses';
-import { mockCreateNote } from './mockNotes';
+import { mockCreateNote, mockListNotes } from './mockNotes';
 import {
   mockCheckOllamaStatus,
   mockGetAiSettings,
@@ -389,6 +390,63 @@ function buildMockReportMarkdown(params: {
   return lines.join('\n');
 }
 
+const EXAM_STAGE_LABELS: Record<ExamStageTag, string> = {
+  parcial_1: '1° Parcial',
+  parcial_2: '2° Parcial',
+  final: 'Final',
+  general: 'General',
+};
+
+function mockNoteToSourceWithChunks(note: NoteWithCourse): SourceWithChunks {
+  const rawText = note.content.trim() || note.title.trim();
+  const paragraphs = rawText
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const chunks =
+    paragraphs.length > 0
+      ? paragraphs.map((p, idx) => ({
+          id: `${note.id}-note-chunk-${idx}`,
+          sourceId: note.id,
+          courseId: note.courseId,
+          chunkIndex: idx,
+          pageNumber: null,
+          content: p,
+          embeddingDim: null,
+        }))
+      : [
+          {
+            id: `${note.id}-note-chunk-0`,
+            sourceId: note.id,
+            courseId: note.courseId,
+            chunkIndex: 0,
+            pageNumber: null,
+            content: rawText,
+            embeddingDim: null,
+          },
+        ];
+
+  return {
+    id: note.id,
+    courseId: note.courseId,
+    title: note.title,
+    sourceType: 'note',
+    originalPath: null,
+    storedFilename: null,
+    rawText,
+    pageCount: 1,
+    charCount: rawText.length,
+    chunkCount: chunks.length,
+    indexingStatus: 'ready',
+    indexingError: null,
+    embeddingModel: null,
+    examStage: note.examStage ?? 'general',
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+    chunks,
+  };
+}
+
 export async function mockGenerateStudyReport(
   input: GenerateStudyReportInput
 ): Promise<GenerateStudyReportResult> {
@@ -421,9 +479,14 @@ export async function mockGenerateStudyReport(
     resolvedExamFormat = input.examFormat ?? 'mixed';
   }
 
+  const stageFilter =
+    input.examStage && input.examStage !== 'all' ? input.examStage : null;
+
   const allSources = await mockListSources(course.id);
   const readySources = allSources.filter(
-    (source) => source.indexingStatus === 'ready'
+    (source) =>
+      source.indexingStatus === 'ready' &&
+      (!stageFilter || (source.examStage ?? 'general') === stageFilter)
   );
 
   let selectedBaseSources: Source[];
@@ -443,18 +506,7 @@ export async function mockGenerateStudyReport(
         selectedBaseSources.push(match);
       }
     }
-
-    if (selectedBaseSources.length === 0) {
-      throw new Error(
-        'No hay fuentes indexadas que coincidan con la selección.'
-      );
-    }
   } else {
-    if (readySources.length === 0) {
-      throw new Error(
-        `La materia "${course.name}" no tiene fuentes indexadas listas para generar material.`
-      );
-    }
     selectedBaseSources = readySources;
   }
 
@@ -468,13 +520,63 @@ export async function mockGenerateStudyReport(
     }
   }
 
+  const wantsNotes =
+    input.includeNotes !== false &&
+    (input.includeNotes === true ||
+      input.noteIds !== undefined ||
+      (stageFilter !== null && input.sourceIds === undefined));
+
+  if (wantsNotes) {
+    const candidateNotes = await mockListNotes({
+      courseId: course.id,
+      examStage: stageFilter ?? undefined,
+    });
+    let selectedNotes: NoteWithCourse[] = [];
+    if (input.noteIds !== undefined) {
+      const requestedNoteIds = input.noteIds
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
+      const noteById = new Map(candidateNotes.map((n) => [n.id, n]));
+      const seen = new Set<string>();
+      for (const id of requestedNoteIds) {
+        if (seen.has(id)) continue;
+        const match = noteById.get(id);
+        if (match) {
+          seen.add(id);
+          selectedNotes.push(match);
+        }
+      }
+    } else {
+      selectedNotes = candidateNotes;
+    }
+    for (const note of selectedNotes) {
+      selectedSourcesWithChunks.push(mockNoteToSourceWithChunks(note));
+    }
+  }
+
+  if (selectedSourcesWithChunks.length === 0) {
+    if (input.sourceIds !== undefined || input.noteIds !== undefined) {
+      throw new Error(
+        'No hay fuentes indexadas que coincidan con la selección.'
+      );
+    }
+    if (stageFilter) {
+      throw new Error(
+        `La materia "${course.name}" no tiene fuentes indexadas listas ni notas para ${EXAM_STAGE_LABELS[stageFilter]}.`
+      );
+    }
+    throw new Error(
+      `La materia "${course.name}" no tiene fuentes indexadas listas para generar material.`
+    );
+  }
+
   const totalSteps = selectedSourcesWithChunks.length + 1;
   const steps: StudyReportStepInfo[] = selectedSourcesWithChunks.map(
     (src, idx) => ({
       stepNumber: idx + 1,
       totalSteps,
       stage: 'map',
-      label: `Analizando fuente ${idx + 1}/${selectedSourcesWithChunks.length}: ${src.title}`,
+      label: `Analizando ${src.sourceType === 'note' ? 'nota' : 'fuente'} ${idx + 1}/${selectedSourcesWithChunks.length}: ${src.title}`,
       sourceId: src.id,
       sourceTitle: src.title,
     })
@@ -493,7 +595,13 @@ export async function mockGenerateStudyReport(
   ]);
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
 
-  const customInstructions = (input.customInstructions ?? '').trim();
+  const stageInstruction = stageFilter
+    ? `Instancia de evaluación objetivo: ${EXAM_STAGE_LABELS[stageFilter]}.`
+    : '';
+  const rawCustomInstructions = (input.customInstructions ?? '').trim();
+  const customInstructions = [stageInstruction, rawCustomInstructions]
+    .filter(Boolean)
+    .join(' ');
   const title =
     input.title?.trim() ||
     `${DEFAULT_TITLE_PREFIXES[input.reportType]} — ${course.name}`;
@@ -613,6 +721,7 @@ export async function mockGenerateStudyReport(
       title,
       content,
       origin: REPORT_TYPE_TO_NOTE_ORIGIN[input.reportType],
+      examStage: stageFilter ?? 'general',
     });
   }
 

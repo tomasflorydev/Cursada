@@ -1,10 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { getAiSettings } from '../db/aiSettingsRepo.js';
 import { getCourseById } from '../db/coursesRepo.js';
-import { createNote } from '../db/notesRepo.js';
+import { createNote, listNotes } from '../db/notesRepo.js';
 import { getSourceWithChunks, listSourcesByCourse } from '../db/sourcesRepo.js';
 import type {
   CourseWithSchedules,
+  ExamStageTag,
   GenerateStudyReportInput,
   GenerateStudyReportResult,
   NoteOrigin,
@@ -15,6 +16,7 @@ import type {
   StudyReportStepInfo,
   StudyReportType,
 } from '../types.js';
+import { chunkDocumentPages } from './chunkingService.js';
 import { generateChatCompletion } from './ollamaClient.js';
 
 export const LOCAL_REPORT_FALLBACK_MODEL = 'local-map-reduce-fallback';
@@ -706,48 +708,130 @@ function buildLocalReduceFallback(params: {
   return lines.join('\n');
 }
 
-function selectReadySources(
+const EXAM_STAGE_LABELS: Record<ExamStageTag, string> = {
+  parcial_1: '1° Parcial',
+  parcial_2: '2° Parcial',
+  final: 'Final',
+  general: 'General',
+};
+
+function noteToSourceWithChunks(note: NoteWithCourse): SourceWithChunks {
+  const rawText = note.content.trim() || note.title.trim();
+  const chunkItems = chunkDocumentPages([{ pageNumber: 1, text: rawText }], {
+    maxChars: 800,
+    overlapChars: 100,
+  });
+  const chunks =
+    chunkItems.length > 0
+      ? chunkItems.map((c) => ({
+          id: `${note.id}-note-chunk-${c.chunkIndex}`,
+          sourceId: note.id,
+          courseId: note.courseId,
+          chunkIndex: c.chunkIndex,
+          pageNumber: null,
+          content: c.content,
+          embeddingDim: null,
+        }))
+      : [
+          {
+            id: `${note.id}-note-chunk-0`,
+            sourceId: note.id,
+            courseId: note.courseId,
+            chunkIndex: 0,
+            pageNumber: null,
+            content: rawText,
+            embeddingDim: null,
+          },
+        ];
+
+  return {
+    id: note.id,
+    courseId: note.courseId,
+    title: note.title,
+    sourceType: 'note',
+    originalPath: null,
+    storedFilename: null,
+    rawText,
+    pageCount: 1,
+    charCount: rawText.length,
+    chunkCount: chunks.length,
+    indexingStatus: 'ready',
+    indexingError: null,
+    embeddingModel: null,
+    examStage: note.examStage ?? 'general',
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+    chunks,
+  };
+}
+
+function selectStudyMaterialUnits(
   db: DatabaseSync,
   course: CourseWithSchedules,
-  requestedSourceIds?: string[]
+  input: GenerateStudyReportInput
 ): SourceWithChunks[] {
+  const stageFilter =
+    input.examStage && input.examStage !== 'all' ? input.examStage : null;
+
   const readySources = listSourcesByCourse(db, course.id).filter(
-    (source) => source.indexingStatus === 'ready'
+    (source) =>
+      source.indexingStatus === 'ready' &&
+      (!stageFilter || (source.examStage ?? 'general') === stageFilter)
   );
 
-  let selectedBase: Source[];
-  if (requestedSourceIds !== undefined) {
-    const requestedSet = requestedSourceIds
+  let selectedBaseSources: Source[];
+  if (input.sourceIds !== undefined) {
+    const requestedSet = input.sourceIds
       .map((id) => id.trim())
       .filter((id) => id.length > 0);
     const readyById = new Map(readySources.map((src) => [src.id, src]));
     const seen = new Set<string>();
-    selectedBase = [];
+    selectedBaseSources = [];
 
     for (const id of requestedSet) {
       if (seen.has(id)) continue;
       const match = readyById.get(id);
       if (match) {
         seen.add(id);
-        selectedBase.push(match);
+        selectedBaseSources.push(match);
       }
     }
-
-    if (selectedBase.length === 0) {
-      throw new Error(
-        'No hay fuentes indexadas que coincidan con la selección. Verificá que al menos una fuente elegida esté en estado listo.'
-      );
-    }
   } else {
-    if (readySources.length === 0) {
-      throw new Error(
-        `La materia "${course.name}" no tiene fuentes indexadas listas para generar material.`
-      );
-    }
-    selectedBase = readySources;
+    selectedBaseSources = readySources;
   }
 
-  return selectedBase.map((base) => {
+  const wantsNotes =
+    input.includeNotes !== false &&
+    (input.includeNotes === true ||
+      input.noteIds !== undefined ||
+      (stageFilter !== null && input.sourceIds === undefined));
+
+  let selectedNotes: NoteWithCourse[] = [];
+  if (wantsNotes) {
+    const candidateNotes = listNotes(db, {
+      courseId: course.id,
+      examStage: stageFilter ?? undefined,
+    });
+    if (input.noteIds !== undefined) {
+      const requestedNoteIds = input.noteIds
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
+      const noteById = new Map(candidateNotes.map((n) => [n.id, n]));
+      const seen = new Set<string>();
+      for (const id of requestedNoteIds) {
+        if (seen.has(id)) continue;
+        const match = noteById.get(id);
+        if (match) {
+          seen.add(id);
+          selectedNotes.push(match);
+        }
+      }
+    } else {
+      selectedNotes = candidateNotes;
+    }
+  }
+
+  const sourceUnits: SourceWithChunks[] = selectedBaseSources.map((base) => {
     const full = getSourceWithChunks(db, base.id);
     if (!full) {
       return {
@@ -788,11 +872,32 @@ function selectReadySources(
 
     return full;
   });
+
+  const noteUnits = selectedNotes.map(noteToSourceWithChunks);
+  const combinedUnits = [...sourceUnits, ...noteUnits];
+
+  if (combinedUnits.length === 0) {
+    if (input.sourceIds !== undefined || input.noteIds !== undefined) {
+      throw new Error(
+        'No hay fuentes indexadas que coincidan con la selección. Verificá que al menos una fuente elegida esté en estado listo o seleccioná notas válidas.'
+      );
+    }
+    if (stageFilter) {
+      throw new Error(
+        `La materia "${course.name}" no tiene fuentes indexadas listas ni notas etiquetadas para ${EXAM_STAGE_LABELS[stageFilter]}.`
+      );
+    }
+    throw new Error(
+      `La materia "${course.name}" no tiene fuentes indexadas listas para generar material.`
+    );
+  }
+
+  return combinedUnits;
 }
 
 /**
  * Generates study material (summary, academic report, study guide, or practice exam)
- * via an on-demand Map-Reduce pipeline over a course's ready sources.
+ * via an on-demand Map-Reduce pipeline over a course's ready sources and/or selected notes.
  * Passes `keep_alive: '0s'` to Ollama on every call and falls back cleanly when offline.
  */
 export async function generateStudyReportService(
@@ -829,22 +934,30 @@ export async function generateStudyReportService(
     resolvedExamFormat = input.examFormat ?? 'mixed';
   }
 
-  const customInstructions = (input.customInstructions ?? '').trim();
-  const selectedSources = selectReadySources(db, course, input.sourceIds);
+  const stageFilter =
+    input.examStage && input.examStage !== 'all' ? input.examStage : null;
+  const stageInstruction = stageFilter
+    ? `Instancia de evaluación objetivo: ${EXAM_STAGE_LABELS[stageFilter]}.`
+    : '';
+  const rawCustomInstructions = (input.customInstructions ?? '').trim();
+  const customInstructions = [stageInstruction, rawCustomInstructions]
+    .filter(Boolean)
+    .join(' ');
+  const selectedSources = selectStudyMaterialUnits(db, course, input);
   const aiSettings = getAiSettings(db);
 
   const totalSteps = selectedSources.length + 1;
   const steps: StudyReportStepInfo[] = [];
   const mapOutputs: MapSourceOutput[] = [];
 
-  // Map Phase: process each selected source individually
+  // Map Phase: process each selected source or note individually
   for (let i = 0; i < selectedSources.length; i++) {
     const source = selectedSources[i];
     steps.push({
       stepNumber: i + 1,
       totalSteps,
       stage: 'map',
-      label: `Analizando fuente ${i + 1}/${selectedSources.length}: ${source.title}`,
+      label: `Analizando ${source.sourceType === 'note' ? 'nota' : 'fuente'} ${i + 1}/${selectedSources.length}: ${source.title}`,
       sourceId: source.id,
       sourceTitle: source.title,
     });
@@ -942,6 +1055,7 @@ export async function generateStudyReportService(
       title,
       content,
       origin: REPORT_TYPE_TO_NOTE_ORIGIN[input.reportType],
+      examStage: stageFilter ?? 'general',
     });
   }
 

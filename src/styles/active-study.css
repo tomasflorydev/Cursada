@@ -1,0 +1,684 @@
+/* Phase 13: Pomodoro Header Widget, Attendance Tracking, Exam Stage Pills & Interactive Simulator */
+
+@layer components {
+  /* ==========================================================================
+     POMODORO HEADER WIDGET
+     ========================================================================== */
+  .pomodoro-widget {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    background-color: var(--bg);
+    color: var(--ink);
+    -webkit-app-region: no-drag;
+  }
+
+  .pomodoro-status-group {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .pomodoro-phase {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mut);
+  }
+
+  .pomodoro-phase.is-running {
+    color: var(--acc);
+  }
+
+  .pomodoro-timer {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pomodoro-rounds {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pomodoro-course-tag {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--soft);
+    border-left: 1px solid var(--rule);
+    padding-left: 8px;
+  }
+
+  .pomodoro-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-left: 1px solid var(--rule);
+    padding-left: 8px;
+  }
+
+  .pomodoro-btn {
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 7px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+
+  .pomodoro-btn:hover {
+    color: var(--acc);
+    border-color: var(--rule);
+  }
+
+  .pomodoro-btn.is-primary {
+    background-color: var(--acc);
+    color: var(--on-acc);
+    border-color: var(--acc);
+  }
+
+  .pomodoro-btn.is-primary:hover {
+    filter: brightness(0.92);
+    color: var(--on-acc);
+  }
+
+  .pomodoro-btn.is-active {
+    background-color: var(--ink);
+    color: var(--bg);
+  }
+
+  .pomodoro-notice {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 45;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 2px solid var(--ink);
+    border-left: 4px solid var(--acc);
+    border-radius: 0;
+    background-color: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .pomodoro-notice-dismiss {
+    border: 0;
+    background: transparent;
+    color: var(--mut);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+
+  .pomodoro-notice-dismiss:hover {
+    color: var(--acc);
+  }
+
+  .pomodoro-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 50;
+    width: 310px;
+    padding: 16px;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    background-color: var(--bg);
+    color: var(--ink);
+    box-shadow: none;
+  }
+
+  .pomodoro-popover-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pomodoro-popover-head {
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .pomodoro-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pomodoro-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pomodoro-field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--soft);
+  }
+
+  .pomodoro-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 6px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .pomodoro-popover-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 4px;
+  }
+
+  /* ==========================================================================
+     EXAM STAGE PILLS (1° Parcial / 2° Parcial / Final / General)
+     ========================================================================== */
+  .exam-stage-pills {
+    display: inline-flex;
+    flex-wrap: wrap;
+    border: 2px solid var(--ink);
+    border-radius: 0;
+    background-color: var(--bg);
+  }
+
+  .exam-stage-pill {
+    border: 0;
+    border-right: 1px solid var(--rule);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.25;
+  }
+
+  .exam-stage-pill:last-child {
+    border-right: 0;
+  }
+
+  .exam-stage-pill:hover:not(.is-active) {
+    color: var(--acc);
+  }
+
+  .exam-stage-pill.is-active {
+    background-color: var(--ink);
+    color: var(--bg);
+  }
+
+  /* ==========================================================================
+     COURSE ATTENDANCE PANEL
+     ========================================================================== */
+  .attendance-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .attendance-switch-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .attendance-disabled-copy {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--mut);
+  }
+
+  .attendance-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .attendance-summary-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .attendance-readout-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .attendance-readout-main {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .attendance-progress-wrap.is-alert .swiss-progress-fill {
+    background-color: var(--acc);
+  }
+
+  .attendance-alert {
+    padding: 10px 12px;
+    border-top: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    border-left: 4px solid var(--acc);
+    border-radius: 0;
+    background-color: var(--bg);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  .attendance-alert.is-exceeded {
+    border-color: var(--acc);
+    border-left-width: 4px;
+  }
+
+  .attendance-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .attendance-config-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .attendance-max-input {
+    width: 96px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .attendance-field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--soft);
+  }
+
+  .attendance-record-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .attendance-record-fields {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .attendance-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .attendance-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .attendance-records {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .attendance-records-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .attendance-record-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .attendance-record-row:first-child {
+    border-top: 0;
+  }
+
+  .attendance-record-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .attendance-record-date {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .attendance-record-status {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mut);
+  }
+
+  .attendance-record-status.is-absent {
+    color: var(--acc);
+  }
+
+  .attendance-record-note {
+    font-size: 12px;
+    color: var(--soft);
+  }
+
+  .attendance-delete-btn {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mut);
+    flex-shrink: 0;
+  }
+
+  /* ==========================================================================
+     INTERACTIVE PRACTICE EXAM SIMULATOR MODAL
+     ========================================================================== */
+  .simulator-modal-dialog {
+    width: min(820px, calc(100vw - 32px));
+    max-height: calc(100vh - 40px);
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    background-color: var(--bg);
+    color: var(--ink);
+    box-shadow: none;
+  }
+
+  .simulator-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px 28px;
+  }
+
+  .simulator-modal-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 3px solid var(--ink);
+  }
+
+  .simulator-header-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .simulator-modal-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  .simulator-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .simulator-score-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border: 2px solid var(--ink);
+    border-left: 4px solid var(--acc);
+    border-radius: 0;
+    background-color: var(--bg);
+  }
+
+  .simulator-score-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .simulator-score-number {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .simulator-score-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .simulator-questions-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .simulator-question-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 0;
+    background-color: var(--bg);
+  }
+
+  .simulator-question-card.is-incorrect {
+    border-left: 4px solid var(--acc);
+  }
+
+  .simulator-question-card.is-correct {
+    border-left: 4px solid var(--ink);
+  }
+
+  .simulator-question-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .simulator-result-badge {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    color: var(--ink);
+  }
+
+  .simulator-result-badge.is-incorrect {
+    background-color: var(--acc);
+    border-color: var(--acc);
+    color: var(--on-acc);
+  }
+
+  .simulator-result-badge.is-correct {
+    background-color: var(--ink);
+    color: var(--bg);
+  }
+
+  .simulator-question-prompt {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  .simulator-options-group {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .simulator-option-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 2px solid var(--rule);
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .simulator-option-row:hover {
+    border-color: var(--ink);
+  }
+
+  .simulator-option-row.is-selected {
+    border-color: var(--ink);
+    background-color: var(--grid);
+  }
+
+  .simulator-option-row.is-correct-option {
+    border-color: var(--ink);
+    border-left: 4px solid var(--ink);
+  }
+
+  .simulator-option-row.is-wrong-option {
+    border-color: var(--acc);
+    border-left: 4px solid var(--acc);
+  }
+
+  .simulator-option-letter {
+    font-weight: 800;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+
+  .simulator-option-text {
+    color: var(--soft);
+  }
+
+  .simulator-develop-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .simulator-field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--soft);
+  }
+
+  .simulator-develop-textarea {
+    resize: vertical;
+    min-height: 84px;
+  }
+
+  .simulator-feedback-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--rule);
+    background-color: var(--grid);
+  }
+
+  .simulator-model-answer {
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  .simulator-explanation {
+    font-size: 13px;
+    color: var(--soft);
+    line-height: 1.5;
+  }
+
+  .simulator-citation-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .simulator-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 2px solid var(--ink);
+  }
+
+  .simulator-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+}

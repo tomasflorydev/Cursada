@@ -4,6 +4,7 @@ import {
   deleteSource,
   getSourceWithChunks,
   listSourcesByCourse,
+  updateSourceExamStage,
 } from '../db/sourcesRepo.js';
 import {
   createOllamaSourceEmbedder,
@@ -17,6 +18,7 @@ import type {
   ImportSourceFileInput,
   ImportSourceFileResult,
   SearchSourceChunksInput,
+  UpdateSourceStageInput,
 } from '../types.js';
 
 export function registerSourcesHandlers(): void {
@@ -32,11 +34,18 @@ export function registerSourcesHandlers(): void {
 
   ipcMain.handle(
     'sources:createFromText',
-    (_event, input: CreateSourceFromTextInput) => {
+    async (_event, input: CreateSourceFromTextInput) => {
       const ctx = getAppDatabase();
-      return createSourceFromTextService(ctx.db, input, {
+      const created = await createSourceFromTextService(ctx.db, input, {
         embedder: createOllamaSourceEmbedder(ctx.db),
       });
+      if (input.examStage) {
+        return updateSourceExamStage(ctx.db, {
+          sourceId: created.id,
+          examStage: input.examStage,
+        });
+      }
+      return created;
     }
   );
 
@@ -73,7 +82,7 @@ export function registerSourcesHandlers(): void {
       }
 
       const ctx = getAppDatabase();
-      return importSourceFileService(
+      const result = await importSourceFileService(
         ctx.db,
         { ...input, filePath: resolvedFilePath },
         {
@@ -81,6 +90,24 @@ export function registerSourcesHandlers(): void {
           embedder: createOllamaSourceEmbedder(ctx.db),
         }
       );
+      if (!result.canceled && result.source && input.examStage) {
+        return {
+          canceled: false,
+          source: updateSourceExamStage(ctx.db, {
+            sourceId: result.source.id,
+            examStage: input.examStage,
+          }),
+        };
+      }
+      return result;
+    }
+  );
+
+  ipcMain.handle(
+    'sources:updateStage',
+    (_event, input: UpdateSourceStageInput) => {
+      const ctx = getAppDatabase();
+      return updateSourceExamStage(ctx.db, input);
     }
   );
 

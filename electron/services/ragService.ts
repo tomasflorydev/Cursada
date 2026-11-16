@@ -3,6 +3,7 @@ import type {
   ChatCitation,
   ChatMessage,
   ChatThread,
+  ExamStageTag,
   NoteWithCourse,
   SaveChatMessageAsNoteInput,
   SendChatMessageInput,
@@ -16,11 +17,18 @@ import {
   getChatThread,
 } from '../db/chatRepo.js';
 import { getCourseById } from '../db/coursesRepo.js';
-import { createNote } from '../db/notesRepo.js';
+import { createNote, listNotes } from '../db/notesRepo.js';
+import {
+  cosineSimilarity,
+  getSourceWithChunks,
+  listSourcesByCourse,
+  searchCourseChunksHybrid,
+} from '../db/sourcesRepo.js';
+import { chunkDocumentPages } from './chunkingService.js';
 import { generateChatCompletion, type OllamaChatMessageInput } from './ollamaClient.js';
 import {
+  computeFallbackEmbedding,
   createOllamaSourceEmbedder,
-  searchSourceChunksService,
   type SourceEmbedder,
 } from './sourcesService.js';
 
@@ -35,16 +43,228 @@ const DEFAULT_MAX_RETRIEVED_CHUNKS = 5;
 const DEFAULT_MAX_HISTORY_TURNS = 6;
 const DEFAULT_NOTE_TITLE = 'Respuesta del Asistente';
 const MAX_DERIVED_NOTE_TITLE_LENGTH = 72;
+const RRF_K = 60;
 export const EXTRACTIVE_FALLBACK_MODEL_ID = 'local-rag-extractive';
+
+const EXAM_STAGE_LABELS: Record<ExamStageTag, string> = {
+  parcial_1: '1° Parcial',
+  parcial_2: '2° Parcial',
+  final: 'Final',
+  general: 'General',
+};
+
+function normalizeSearchText(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
+function extractMeaningfulTokens(raw: string): string[] {
+  return normalizeSearchText(raw)
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3);
+}
+
+interface RetrievedCandidate {
+  chunkId: string;
+  sourceId: string;
+  sourceTitle: string;
+  sourceType: ChatCitation['sourceType'];
+  pageNumber: number | null;
+  excerpt: string;
+  score: number;
+  hasLexicalMatch: boolean;
+}
+
+function splitNoteIntoSearchablePieces(note: NoteWithCourse): string[] {
+  const body = note.content.trim();
+  if (!body) {
+    return note.title.trim() ? [note.title.trim()] : [];
+  }
+  const chunks = chunkDocumentPages([{ pageNumber: 1, text: body }], {
+    maxChars: 800,
+    overlapChars: 100,
+  });
+  if (chunks.length > 0) {
+    return chunks.map((c) => c.content);
+  }
+  return [body];
+}
+
+async function searchMatchingNoteCandidates(params: {
+  db: DatabaseSync;
+  courseId: string;
+  query: string;
+  queryEmbedding: Float32Array | null;
+  embedder: SourceEmbedder;
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  limit: number;
+}): Promise<{ candidates: RetrievedCandidate[]; matchingNotes: NoteWithCourse[] }> {
+  const { db, courseId, query, queryEmbedding, embedder, noteIds, examStage, limit } =
+    params;
+
+  let notes = listNotes(db, {
+    courseId,
+    examStage: examStage && examStage !== 'all' ? examStage : undefined,
+  });
+
+  if (noteIds !== undefined) {
+    const requestedSet = new Set(noteIds.map((id) => id.trim()).filter(Boolean));
+    notes = notes.filter((n) => requestedSet.has(n.id));
+  }
+
+  if (notes.length === 0) {
+    return { candidates: [], matchingNotes: [] };
+  }
+
+  const queryTokens = extractMeaningfulTokens(query);
+  const ftsMatchedNoteIds = new Set<string>();
+  if (queryTokens.length > 0) {
+    const safeMatchExpr = queryTokens
+      .map((t) => `"${t.replace(/"/g, '""')}"*`)
+      .join(' OR ');
+    try {
+      const ftsRows = db
+        .prepare(
+          `SELECT note_id FROM notes_fts WHERE notes_fts MATCH ? AND course_id = ?`
+        )
+        .all(safeMatchExpr, courseId) as Array<{ note_id: string }>;
+      for (const row of ftsRows) {
+        ftsMatchedNoteIds.add(row.note_id);
+      }
+    } catch {
+      // Ignore FTS edge errors and rely on normalized token scan
+    }
+  }
+
+  interface RawNotePiece {
+    chunkId: string;
+    note: NoteWithCourse;
+    piece: string;
+    lexicalScore: number;
+    vectorScore: number;
+    lexicalRank: number | null;
+    vectorRank: number | null;
+  }
+
+  const rawPieces: RawNotePiece[] = [];
+  for (const note of notes) {
+    const pieces = splitNoteIntoSearchablePieces(note);
+    pieces.forEach((piece, idx) => {
+      const searchable = normalizeSearchText(`${note.title}\n${piece}`);
+      const matchedCount = queryTokens.filter((token) =>
+        searchable.includes(token)
+      ).length;
+      let lexicalScore =
+        queryTokens.length > 0 ? matchedCount / queryTokens.length : 0;
+      if (lexicalScore === 0 && ftsMatchedNoteIds.has(note.id)) {
+        lexicalScore = 0.2;
+      }
+      rawPieces.push({
+        chunkId: `note-${note.id}-chunk-${idx}`,
+        note,
+        piece,
+        lexicalScore,
+        vectorScore: 0,
+        lexicalRank: null,
+        vectorRank: null,
+      });
+    });
+  }
+
+  if (rawPieces.length === 0) {
+    return { candidates: [], matchingNotes: notes };
+  }
+
+  if (queryEmbedding && queryEmbedding.length > 0) {
+    let pieceEmbeddings: Float32Array[] | null = null;
+    try {
+      const embedded = await embedder(
+        rawPieces.map((item) => `${item.note.title}\n${item.piece}`)
+      );
+      if (embedded.embeddings.length === rawPieces.length) {
+        pieceEmbeddings = embedded.embeddings;
+      }
+    } catch {
+      pieceEmbeddings = null;
+    }
+
+    const effectiveQueryVec = queryEmbedding;
+    for (let i = 0; i < rawPieces.length; i++) {
+      const vec =
+        pieceEmbeddings?.[i] &&
+        pieceEmbeddings[i].length === effectiveQueryVec.length
+          ? pieceEmbeddings[i]
+          : computeFallbackEmbedding(
+              `${rawPieces[i].note.title}\n${rawPieces[i].piece}`,
+              effectiveQueryVec.length
+            );
+      const sim = cosineSimilarity(effectiveQueryVec, vec);
+      rawPieces[i].vectorScore =
+        rawPieces[i].lexicalScore > 0 || sim >= 0.35 ? Math.max(0, sim) : 0;
+    }
+  }
+
+  const lexicalSorted = rawPieces
+    .filter((p) => p.lexicalScore > 0)
+    .sort((a, b) => b.lexicalScore - a.lexicalScore);
+  lexicalSorted.forEach((p, idx) => {
+    p.lexicalRank = idx + 1;
+  });
+
+  const vectorSorted = rawPieces
+    .filter((p) => p.vectorScore > 0)
+    .sort((a, b) => b.vectorScore - a.vectorScore);
+  vectorSorted.forEach((p, idx) => {
+    p.vectorRank = idx + 1;
+  });
+
+  const candidates: RetrievedCandidate[] = [];
+  for (const item of rawPieces) {
+    const rrfScore =
+      (item.lexicalRank !== null ? 1 / (RRF_K + item.lexicalRank) : 0) +
+      (item.vectorRank !== null ? 1 / (RRF_K + item.vectorRank) : 0);
+    if (rrfScore > 0) {
+      candidates.push({
+        chunkId: item.chunkId,
+        sourceId: item.note.id,
+        sourceTitle: item.note.title,
+        sourceType: 'note',
+        pageNumber: null,
+        excerpt: item.piece.trim(),
+        score: rrfScore,
+        hasLexicalMatch: item.lexicalScore > 0,
+      });
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return {
+    candidates: candidates.slice(0, limit),
+    matchingNotes: notes,
+  };
+}
 
 function formatCitationHeader(citation: ChatCitation): string {
   const pageSuffix = citation.pageNumber != null ? ` · pág. ${citation.pageNumber}` : '';
-  return `[${citation.citationNumber}] ${citation.sourceTitle}${pageSuffix}`;
+  const typeTag = citation.sourceType === 'note' ? ' (Nota)' : '';
+  return `[${citation.citationNumber}] ${citation.sourceTitle}${typeTag}${pageSuffix}`;
 }
 
-function buildSystemPrompt(courseName: string, customInstructions: string): string {
+function buildSystemPrompt(
+  courseName: string,
+  customInstructions: string,
+  examStage?: ExamStageTag | 'all'
+): string {
+  const stageContext =
+    examStage && examStage !== 'all'
+      ? ` Enfoque de estudio actual: ${EXAM_STAGE_LABELS[examStage]}.`
+      : '';
   const sections = [
-    `Sos un asistente académico universitario para la materia "${courseName}" dentro de la aplicación Cursada.`,
+    `Sos un asistente académico universitario para la materia "${courseName}" dentro de la aplicación Cursada.${stageContext}`,
     [
       'REGLAS ESTRICTAS DE RESPUESTA:',
       '1. Respondé siempre en español académico claro, conciso y preciso.',
@@ -214,25 +434,128 @@ export async function sendChatMessageService(
   const embedder =
     deps?.embedder ?? createOllamaSourceEmbedder(db, { fetchImpl: deps?.fetchFn });
 
-  const searchResults = await searchSourceChunksService(
-    db,
-    {
-      courseId: course.id,
-      query: content,
-      limit: DEFAULT_MAX_RETRIEVED_CHUNKS,
-    },
-    { embedder }
+  let queryEmbedding: Float32Array | null = null;
+  try {
+    const embRes = await embedder([content]);
+    queryEmbedding = embRes.embeddings[0] ?? null;
+  } catch {
+    queryEmbedding = null;
+  }
+
+  const sourceSearchResults = searchCourseChunksHybrid(db, {
+    courseId: course.id,
+    query: content,
+    queryEmbedding,
+    limit: DEFAULT_MAX_RETRIEVED_CHUNKS,
+    sourceIds: input.sourceIds,
+    examStage: input.examStage,
+  });
+
+  const combinedCandidates: RetrievedCandidate[] = sourceSearchResults.map(
+    (result) => ({
+      chunkId: result.chunk.id,
+      sourceId: result.chunk.sourceId,
+      sourceTitle: result.sourceTitle,
+      sourceType: result.sourceType,
+      pageNumber: result.chunk.pageNumber,
+      excerpt: result.chunk.content.trim(),
+      score: result.score,
+      hasLexicalMatch: result.ftsScore > 0,
+    })
   );
 
-  const citations: ChatCitation[] = searchResults.map((result, index) => ({
+  const shouldIncludeNotes = input.includeNotes !== false;
+  let matchingNotes: NoteWithCourse[] = [];
+
+  if (shouldIncludeNotes) {
+    const noteSearch = await searchMatchingNoteCandidates({
+      db,
+      courseId: course.id,
+      query: content,
+      queryEmbedding,
+      embedder,
+      noteIds: input.noteIds,
+      examStage: input.examStage,
+      limit: DEFAULT_MAX_RETRIEVED_CHUNKS,
+    });
+    matchingNotes = noteSearch.matchingNotes;
+    combinedCandidates.push(...noteSearch.candidates);
+  }
+
+  // Fallback for broad summary questions when explicit filters or examStage are active
+  const hasExplicitFilter =
+    input.sourceIds !== undefined ||
+    input.noteIds !== undefined ||
+    (input.examStage !== undefined && input.examStage !== 'all');
+
+  if (combinedCandidates.length === 0 && hasExplicitFilter) {
+    const stageFilter =
+      input.examStage && input.examStage !== 'all' ? input.examStage : null;
+    const requestedSourceIds =
+      input.sourceIds !== undefined
+        ? new Set(input.sourceIds.map((id) => id.trim()).filter(Boolean))
+        : null;
+
+    const matchingSources = listSourcesByCourse(db, course.id).filter((src) => {
+      if (src.indexingStatus !== 'ready') return false;
+      if (requestedSourceIds && !requestedSourceIds.has(src.id)) return false;
+      if (stageFilter && (src.examStage ?? 'general') !== stageFilter) return false;
+      return true;
+    });
+
+    for (const src of matchingSources) {
+      if (combinedCandidates.length >= DEFAULT_MAX_RETRIEVED_CHUNKS) break;
+      const full = getSourceWithChunks(db, src.id);
+      const firstChunk = full?.chunks[0];
+      if (firstChunk) {
+        combinedCandidates.push({
+          chunkId: firstChunk.id,
+          sourceId: src.id,
+          sourceTitle: src.title,
+          sourceType: src.sourceType,
+          pageNumber: firstChunk.pageNumber,
+          excerpt: firstChunk.content.trim(),
+          score: 0.5,
+          hasLexicalMatch: false,
+        });
+      }
+    }
+
+    for (const note of matchingNotes) {
+      if (combinedCandidates.length >= DEFAULT_MAX_RETRIEVED_CHUNKS) break;
+      const pieces = splitNoteIntoSearchablePieces(note);
+      if (pieces.length > 0) {
+        combinedCandidates.push({
+          chunkId: `note-${note.id}-chunk-0`,
+          sourceId: note.id,
+          sourceTitle: note.title,
+          sourceType: 'note',
+          pageNumber: null,
+          excerpt: pieces[0].trim(),
+          score: 0.45,
+          hasLexicalMatch: false,
+        });
+      }
+    }
+  }
+
+  combinedCandidates.sort((a, b) => {
+    if (a.hasLexicalMatch !== b.hasLexicalMatch) {
+      return a.hasLexicalMatch ? -1 : 1;
+    }
+    return b.score - a.score;
+  });
+
+  const topCandidates = combinedCandidates.slice(0, DEFAULT_MAX_RETRIEVED_CHUNKS);
+  const citations: ChatCitation[] = topCandidates.map((item, index) => ({
     citationNumber: index + 1,
-    chunkId: result.chunk.id,
-    sourceId: result.chunk.sourceId,
-    sourceTitle: result.sourceTitle,
-    sourceType: result.sourceType,
-    pageNumber: result.chunk.pageNumber,
-    excerpt: result.chunk.content.trim(),
-    score: result.score,
+    chunkId: item.chunkId,
+    sourceId: item.sourceId,
+    sourceTitle: item.sourceTitle,
+    sourceType: item.sourceType,
+    pageNumber: item.pageNumber,
+    excerpt: item.excerpt,
+    score: item.score,
   }));
 
   const settings = getAiSettings(db);
@@ -240,7 +563,7 @@ export async function sendChatMessageService(
   const ollamaMessages: OllamaChatMessageInput[] = [
     {
       role: 'system',
-      content: buildSystemPrompt(course.name, customInstructions),
+      content: buildSystemPrompt(course.name, customInstructions, input.examStage),
     },
     ...priorMessages.map<OllamaChatMessageInput>((msg) => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
