@@ -65,7 +65,8 @@ function blendOver(dstR, dstG, dstB, dstA, srcR, srcG, srcB, srcA) {
 
 /**
  * Generates a valid RGBA PNG buffer containing the Cursada macOS squircle icon
- * with a soft indigo gradient (#3b5bdb -> #2b44b8) and centered anti-aliased "C".
+ * matching build/icon-dark.svg: #1E2023 graphite squircle, crisp white "C" arc,
+ * and coral accent dot (#FF5F52).
  *
  * @param {number} [size=1024]
  * @returns {Buffer}
@@ -79,19 +80,22 @@ export function generateIconPngBuffer(size = 1024) {
   const raw = Buffer.alloc(rowStride * size);
   const pixelScale = 1024 / size;
 
-  // Squircle metrics in 1024x1024 reference coordinates
-  const halfBox = 432;
-  const cornerRadius = 196;
+  // Full-bleed macOS squircle aligned with build/icon-dark.svg (1024x1024, rx=230)
+  const halfBox = 512;
+  const cornerRadius = 230;
   const innerBox = halfBox - cornerRadius;
 
-  // Letter "C" metrics in 1024x1024 reference coordinates
-  const cCenterX = 506;
+  // Transformed coordinates matching transform="translate(512 512) scale(7.9) translate(-48.25 -50)"
+  const logoScale = 7.9;
+  const cCenterX = 512 + logoScale * (44 - 48.25);
   const cCenterY = 512;
-  const cRadius = 208;
-  const cHalfStroke = 52;
-  const gapAngle = Math.PI / 4;
-  const capX = cRadius * Math.cos(gapAngle);
-  const capY = cRadius * Math.sin(gapAngle);
+  const cRadius = 26 * logoScale;
+  const cHalfStroke = 6 * logoScale;
+  const gapAngle = 0.7;
+
+  const dotCenterX = 512 + logoScale * (77 - 48.25);
+  const dotCenterY = 512 + logoScale * (70 - 50);
+  const dotRadius = 7.5 * logoScale;
 
   for (let y = 0; y < size; y += 1) {
     const rowOffset = y * rowStride;
@@ -101,7 +105,6 @@ export function generateIconPngBuffer(size = 1024) {
     const py = v * 1024;
     const qy = Math.abs(py - 512) - innerBox;
     const dyC = py - cCenterY;
-    const absDyC = Math.abs(dyC);
 
     for (let x = 0; x < size; x += 1) {
       const u = (x + 0.5) / size;
@@ -125,66 +128,31 @@ export function generateIconPngBuffer(size = 1024) {
         continue;
       }
 
-      // Diagonal indigo gradient (#3b5bdb -> #2b44b8)
-      const gradT = clamp01((0.55 * u + 0.45 * v - 0.08) / 0.84);
-      let r = 59 + (43 - 59) * gradT;
-      let g = 91 + (68 - 91) * gradT;
-      let b = 219 + (184 - 219) * gradT;
+      // Solid Swiss graphite background (#1E2023)
+      let r = 30;
+      let g = 32;
+      let b = 35;
       let a = bgAlpha;
 
-      // Soft top-left radial sheen
-      const sheenDist = Math.hypot((px - 320) / 640, (py - 240) / 640);
-      const sheenAlpha = clamp01(1 - sheenDist) * 0.14;
-      if (sheenAlpha > 0) {
-        [r, g, b, a] = blendOver(r, g, b, a, 255, 255, 255, sheenAlpha * bgAlpha);
-      }
-
-      // Subtle inner rim highlight
-      const rimThicknessPx = Math.max(1, 8 / pixelScale);
-      if (sdSquircle > -rimThicknessPx && sdSquircle <= 0.5) {
-        const rimAlpha =
-          smoothCoverage(sdSquircle) *
-          (1 - smoothCoverage(sdSquircle + rimThicknessPx)) *
-          0.18;
-        if (rimAlpha > 0) {
-          [r, g, b, a] = blendOver(r, g, b, a, 255, 255, 255, rimAlpha);
-        }
-      }
-
-      // Subtle academic bookmark tab on top-right inside squircle
-      const sdBookmarkLeftRight = Math.abs(px - 712) - 44;
-      const sdBookmarkTop = 80 - py;
-      const sdBookmarkNotch = py - (301 + 0.55 * Math.abs(px - 712));
-      const sdBookmark =
-        Math.max(sdBookmarkLeftRight, sdBookmarkTop, sdBookmarkNotch) / pixelScale;
-      const bookmarkCov = Math.min(bgAlpha, smoothCoverage(sdBookmark)) * 0.9;
-      if (bookmarkCov > 0) {
-        const bmT = clamp01((py - 80) / 245);
-        const bmR = 219 + (145 - 219) * bmT;
-        const bmG = 228 + (167 - 228) * bmT;
-        const bmB = 255;
-        [r, g, b, a] = blendOver(r, g, b, a, bmR, bmG, bmB, bookmarkCov);
-      }
-
-      // Geometric anti-aliased letter "C"
+      // Geometric anti-aliased letter "C" (#FFFFFF)
       const dxC = px - cCenterX;
       const distC = Math.hypot(dxC, dyC);
       const theta = Math.atan2(dyC, dxC);
       const sdC =
         Math.abs(theta) >= gapAngle
           ? (Math.abs(distC - cRadius) - cHalfStroke) / pixelScale
-          : (Math.hypot(dxC - capX, absDyC - capY) - cHalfStroke) / pixelScale;
+          : 100;
 
-      const cCov = smoothCoverage(sdC);
+      const cCov = Math.min(bgAlpha, smoothCoverage(sdC));
       if (cCov > 0) {
         [r, g, b, a] = blendOver(r, g, b, a, 255, 255, 255, cCov);
       }
 
-      // Subtle dot accent in C opening
-      const sdDot = (Math.hypot(px - 672, py - 512) - 34) / pixelScale;
-      const dotCov = smoothCoverage(sdDot);
+      // Coral Swiss period accent (#FF5F52)
+      const sdDot = (Math.hypot(px - dotCenterX, py - dotCenterY) - dotRadius) / pixelScale;
+      const dotCov = Math.min(bgAlpha, smoothCoverage(sdDot));
       if (dotCov > 0) {
-        [r, g, b, a] = blendOver(r, g, b, a, 186, 200, 255, dotCov);
+        [r, g, b, a] = blendOver(r, g, b, a, 255, 95, 82, dotCov);
       }
 
       const pxOffset = rowOffset + 1 + x * 4;
@@ -437,6 +405,10 @@ export function packageMacOsApp(options = {}) {
   if (fs.existsSync(iconIcnsPath)) {
     fs.copyFileSync(iconIcnsPath, path.join(resourcesDir, 'Cursada.icns'));
     fs.copyFileSync(iconIcnsPath, path.join(resourcesDir, 'electron.icns'));
+  }
+
+  if (fs.existsSync(iconPngPath)) {
+    fs.copyFileSync(iconPngPath, path.join(resourcesDir, 'icon.png'));
   }
 
   if (!skipCodesign && process.platform === 'darwin') {

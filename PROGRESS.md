@@ -1,14 +1,14 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Versión actual**: **`v2.4.0` (Ciclo 2 — Fases 11 a 14 completadas e integradas en `main`)**.
-- **Próximo hito planificado**: **Validación manual en macOS (checklists Fases 11–14)**, reconstrucción opcional del paquete `release/Cursada.app` (`npm run package`) y configuración opcional de credenciales OAuth2 Desktop de Google Calendar si se usa sincronización bidireccional en la nube.
+- **Versión actual**: **`v2.4.0` (Ciclo 2 completado + Correcciones de Auditoría Fase 1 aplicadas en `main`)**.
+- **Próximo hito planificado**: **Confirmación de poda de worktrees/ramas Git obsoletas**, **Fase 2 de auditoría** (informes en SQLite, embeddings unificados, ajustes desconectados y optimización del editor), validación manual en Electron (`npm run dev`) y reempaquetado opcional de `release/Cursada.app` (`npm run package`).
 - **Última actualización**: 2026-11-16
 - **Métricas de verificación automatizada en `main`**:
-  - **35 archivos de test** y **155 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v8`).
+  - **37 archivos de test** y **178 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v8`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción compilado sin errores** (`npm run build`).
-- **Alineación documental**: Sincronizado con `ROADMAP.md` (`v2.4.0`, Fases 10–14 marcadas como completadas), `ARCHITECTURE.md` (esquema `v8` y módulos Ciclo 2) y `DESIGN.md` (`v2.0`).
+  - **Build de producción compilado sin errores** (`npm run build`, incluyendo `dist-electron/preload.cjs` e inyección CSP).
+- **Alineación documental**: Sincronizado con `README.md`, `ROADMAP.md` (`v2.4.0`), `ARCHITECTURE.md` (esquema `v8` y hardening Fase 1), `DESIGN.md` (`v2.0`) y `AUDITORIA.md`.
 
 ## Avances Completados
 
@@ -184,7 +184,18 @@
   - Centralización exclusiva del botón **Importar Vault de Obsidian** (`<ObsidianImportModal />`) en **Ajustes → Datos** (`SettingsPage.tsx`).
   - Tests de regresión agregados en `src/__tests__/UIEditorialOverhaul.test.tsx` (10 tests; suite completa: 36 archivos, 165 tests en verde).
 
-## Qué sigue (Verificación Manual y Cierre de Ciclo 2)
+### Correcciones de Auditoría — Fase 1 (Quick Wins: Seguridad, Integridad, Empaquetado y Docs)
+- [x] **T1.1 — Seguridad Electron y arranque (`electron/main.ts`, `electron/security.ts`, `scripts/build-preload.mjs`, `public/theme-init.js`, `vite.config.ts`)**:
+  - `sandbox: true` con preload compilado a CommonJS (`dist-electron/preload.cjs`), unificación de `userData` en `com.cursada.app` (respetando `CURSADA_DATA_DIR`), CSP estricta en desarrollo y producción, script anti-FOUC externo, guards `will-navigate`/`will-attach-webview`/`setWindowOpenHandler`, denegación por defecto en `setPermissionRequestHandler`/`setPermissionCheckHandler` y manejo fatal de arranque con `dialog.showErrorBox`.
+- [x] **T1.2 — Seguridad IPC, OAuth2 en Keychain y SSRF (`electron/ipc/*`, `calendarSyncRepo.ts`, `aiSettingsRepo.ts`, `calendarSyncService.ts`)**:
+  - Verificación `assertTrustedIpcEvent` y validación `assertValidIpcId` en los 14 dominios IPC; bloqueo de rutas arbitrarias del renderer en producción (`resolveRendererRequestedPath`); cifrado de tokens Google Calendar con `safeStorage` (`v: 1` envelope); restricción de Ollama por defecto a hosts locales/`.local`; y defensa anti-SSRF + tope de 5 MB para feeds `.ics`.
+- [x] **T1.3 — Integridad SQLite, disco y fechas (`coursesRepo.ts`, `sourcesRepo.ts`, `notesRepo.ts`, `wikiLinks.ts`, `migrations.ts`, `exportService.ts`, `mockExport.ts`)**:
+  - Eliminación física de archivos en `sources/` al borrar una materia (`coursesHandlers.ts` → `deleteCourse`), sincronización completa de `attendance_enabled`/`max_absences` en `coursesRepo.ts`, actualización automática de `note_links` desde `createNote`/`updateNote` vía `electron/db/wikiLinks.ts`, limpieza de llamadas duplicadas en `sourcesHandlers.ts`, etiqueta `pre-migration-from-vX-to-vY` en `migrations.ts` y formateo local de fechas al exportar Markdown.
+- [x] **T1.4 — Empaquetado, CSS, `dev` y documentación (`build/icon.svg`, `scripts/package-macos-app.mjs`, `scripts/dev-electron.mjs`, `src/styles/courses-calendar.css`, `package.json`, `README.md`)**:
+  - Ícono SVG/PNG programático unificado con `build/icon-dark.svg` (`#1E2023` + `#FF5F52`), copia de `icon.png` dentro de `Contents/Resources/`, corrección de sintaxis CSS en `.course-overview-card`, `npm run dev` unificado (Vite + Electron) y creación de `README.md`.
+  - Tests nuevos de seguridad, integridad y empaquetado (`src/__tests__/phase1Security.test.ts`, `coursesRepo.test.ts`, `notesRepo.test.ts`, `exportService.test.ts`, `stage0-db-backups.test.ts`, `notificationsAndPackaging.test.ts`; suite total: **37 archivos / 178 tests en verde**).
+
+## Qué sigue (Verificación Manual y Siguientes Fases)
 - [x] **Fase 9 (`v1.1.0`) — Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base**.
 - [x] **Fase 10 (`v2.0.0`) — Overhaul Total de la Interfaz Gráfica (Estilo Tipográfico Suizo)**.
 - [x] **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview en tiempo real, Matemática KaTeX y Atajos Configurables)**.
@@ -192,4 +203,5 @@
 - [x] **Fase 13 (`v2.3.0`) — Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro Timer, Notas como Fuentes + Selector/Filtro `1°/2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia)**.
 - [x] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
 - [x] **Iteración Post-Fase 14 — Refinamiento UI Editorial Suizo, contraste de toggles/segmentados y centralización de Obsidian en Ajustes**.
-- [ ] **Pendientes post-implementación**: Checklist manual en Electron (`npm run dev` / `Cursada.app`), empaquetado `.app` actualizado (`npm run package`) y carga opcional de credenciales OAuth2 Desktop para Google Calendar.
+- [x] **Auditoría Fase 1 (Quick Wins T1.1–T1.4 — salvo poda git pendiente de confirmación)**.
+- [ ] **Pendientes post-Fase 1**: Confirmar eliminación de los 10 worktrees externos y 12 ramas Git huérfanas (`AUDITORIA.md`), ejecutar **Fase 2** (informes en SQLite, embeddings locales unificados, ajustes/CommandPalette, optimización de editor/bundle) y **Fase 3**, más verificación manual interactiva en Electron (`npm run dev` / `npm run package`).

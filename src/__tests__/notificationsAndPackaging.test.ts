@@ -467,6 +467,11 @@ describe('Phase 8 Task 8.2 Backend: notificationSettingsRepo, notificationServic
       'console.log("cursada main");',
       'utf8'
     );
+    fs.mkdirSync(path.join(tmpRoot, 'build'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpRoot, 'build', 'icon.png'),
+      generateIconPngBuffer(32)
+    );
     fs.writeFileSync(
       path.join(tmpRoot, 'package.json'),
       JSON.stringify({
@@ -542,6 +547,9 @@ describe('Phase 8 Task 8.2 Backend: notificationSettingsRepo, notificationServic
         path.join(result.appPath, 'Contents', 'Resources', 'default_app.asar')
       )
     ).toBe(false);
+    expect(
+      fs.existsSync(path.join(result.appPath, 'Contents', 'Resources', 'icon.png'))
+    ).toBe(true);
 
     const bundledPkg = JSON.parse(
       fs.readFileSync(path.join(bundledAppDir, 'package.json'), 'utf8')

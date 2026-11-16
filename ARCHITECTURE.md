@@ -327,32 +327,39 @@ CREATE INDEX idx_gcal_mappings_entity ON google_calendar_mappings(entity_type, e
 
 ```text
 Cursada/
+├── README.md                        # Guía de uso, comandos, rutas locales y seguridad
 ├── AGENTS.md                        # Reglas, convenciones y comandos para sesiones futuras
 ├── ARCHITECTURE.md                  # Diseño técnico, decisiones de stack y esquema de datos
 ├── PROGRESS.md                      # Estado actual, historial de avances y próximos pasos
 ├── ROADMAP.md                       # Plan detallado por fases con tareas y criterios de aceptación
 ├── package.json                     # Dependencias y scripts (Vite + Electron + Vitest + Packager)
 ├── tsconfig.json                    # Configuración estricta de TypeScript
-├── vite.config.ts                   # Configuración de Vite y Vitest
+├── vite.config.ts                   # Configuración de Vite (con inyección CSP en build) y Vitest
 ├── index.html                       # Entrada HTML de la ventana de Cursada
-├── build/                           # Íconos nativos de macOS (icon.svg, icon.png, icon.icns)
+├── public/
+│   └── theme-init.js                # Script externo anti-FOUC compatible con CSP estricta
+├── build/                           # Íconos nativos de macOS (icon.svg, icon-dark.svg, icon.png, icon.icns)
 ├── scripts/
-│   └── package-macos-app.mjs        # Generador de íconos y empaquetador nativo release/Cursada.app
+│   ├── build-preload.mjs            # Transpilación CJS del preload (dist-electron/preload.cjs) para sandbox: true
+│   ├── dev-electron.mjs             # Lanzador unificado de desarrollo (Vite + tsc + preload + Electron)
+│   └── package-macos-app.mjs        # Generador de íconos Suizos y empaquetador nativo release/Cursada.app
 ├── electron/                        # Backend local en Node.js / Electron Main Process
-│   ├── main.ts                      # Creación de BrowserWindow nativa macOS, dock icon y scheduler de recordatorios
-│   ├── preload.ts                   # Puente contextBridge seguro (window.cursadaApi)
+│   ├── main.ts                      # Creación de BrowserWindow (sandbox, CSP, guards), dock icon y scheduler
+│   ├── security.ts                  # Utilidades de seguridad (CSP, orígenes IPC, rutas nativas, SSRF, userData)
+│   ├── preload.ts                   # Fuente TS del puente contextBridge seguro (window.cursadaApi)
 │   ├── db/
 │   │   ├── database.ts              # Conexión node:sqlite, WAL mode y aislamiento en tests
 │   │   ├── migrations.ts            # Migraciones versionadas (PRAGMA user_version v1..v8)
-│   │   ├── coursesRepo.ts           # Persistencia de materias, horarios semanales y configuración de asistencia
+│   │   ├── coursesRepo.ts           # Materias, horarios, asistencia y borrado físico de fuentes
 │   │   ├── tasksRepo.ts             # Persistencia de tareas
 │   │   ├── examsRepo.ts             # Persistencia de exámenes y cálculo de promedios
-│   │   ├── notesRepo.ts             # Persistencia de notas (frontmatter/etapa) y sincronización FTS5
-│   │   ├── knowledgeRepo.ts         # Persistencia de enlaces [[WikiLinks]] y construcción del grafo
+│   │   ├── notesRepo.ts             # Persistencia de notas (frontmatter/etapa), FTS5 y sync de WikiLinks
+│   │   ├── wikiLinks.ts             # Parser puro de [[WikiLinks]] y sincronización note_links sin ciclos
+│   │   ├── knowledgeRepo.ts         # Consultas de backlinks, grafo y creación/apertura por WikiLink
 │   │   ├── attendanceRepo.ts        # Registro de asistencias, inasistencias y estado del límite por materia
-│   │   ├── sourcesRepo.ts           # Persistencia de fuentes (etapa), chunks y búsqueda híbrida
-│   │   ├── calendarSyncRepo.ts      # Suscripciones .ics y mapeos/tokens de Google Calendar
-│   │   ├── aiSettingsRepo.ts        # Configuración local de Ollama (host y modelos activos)
+│   │   ├── sourcesRepo.ts           # Persistencia de fuentes (etapa), chunks, limpieza en disco y búsqueda híbrida
+│   │   ├── calendarSyncRepo.ts      # Feeds .ics, mapeos y tokens Google Calendar cifrados vía safeStorage
+│   │   ├── aiSettingsRepo.ts        # Configuración local de Ollama (hosts locales/.local por defecto)
 │   │   ├── notificationSettingsRepo.ts # Preferencias locales de recordatorios en app_settings
 │   │   └── chatRepo.ts              # Persistencia de conversaciones y mensajes con citas
 │   ├── services/
@@ -409,6 +416,14 @@ Cursada/
 
 ## 5. Aislamiento de Entorno, Navegación y Seguridad Operativa
 
-- **`CURSADA_DATA_DIR`**: `electron/db/database.ts` prioriza la variable de entorno `CURSADA_DATA_DIR` sobre `~/Library/Application Support/com.cursada.app/`, permitiendo que entornos de desarrollo y agentes en paralelo operen sobre directorios aislados. En `VITEST` / `NODE_ENV=test`, cualquier apertura sin directorio explícito usa automáticamente un directorio temporal (`fs.mkdtempSync(path.join(os.tmpdir(), 'cursada-test-'))`).
-- **Borrado seguro de materias**: Antes de eliminar una materia (`courses:delete`), se consulta el impacto (`courses:getDeleteImpact` devuelve cuántas tareas, exámenes y notas asociadas se eliminarán en cascada para informar en el diálogo de confirmación) y se ejecuta un backup automático (`createBackup(..., 'pre-course-delete')`).
+- **`CURSADA_DATA_DIR` y `userData` unificado**: `electron/main.ts` y `electron/db/database.ts` unifican el directorio `userData` de Chromium y la base de datos SQLite en `~/Library/Application Support/com.cursada.app/` mediante `resolveUnifiedUserDataDir()` (`electron/security.ts`), priorizando `CURSADA_DATA_DIR` para aislar entornos de desarrollo y pruebas. En `VITEST` / `NODE_ENV=test`, las bases sin directorio explícito se crean en `os.tmpdir()`.
+- **Sandbox de Electron, CSP y control de navegación (`electron/main.ts`, `vite.config.ts`, `scripts/build-preload.mjs`)**:
+  - `BrowserWindow` corre con `contextIsolation: true`, `nodeIntegration: false` y **`sandbox: true`**, cargando `dist-electron/preload.cjs` (transpilado a CommonJS por `scripts/build-preload.mjs`).
+  - Se inyecta una **Content Security Policy (CSP)** estricta tanto por cabecera HTTP (`session.defaultSession.webRequest.onHeadersReceived`) como en el HTML de producción (`vite.config.ts`), apoyada en el script externo `public/theme-init.js`.
+  - Se bloquean WebViews (`will-attach-webview`), popups (`setWindowOpenHandler`) y navegaciones fuera del origen permitido (`will-navigate`), derivando solo URLs `http:`/`https:` al navegador externo (`shell.openExternal`) y denegando permisos del navegador (`setPermissionRequestHandler` / `setPermissionCheckHandler`).
+- **Validación IPC, cifrado Keychain y red (`electron/ipc/*`, `calendarSyncRepo.ts`, `aiSettingsRepo.ts`, `calendarSyncService.ts`)**:
+  - Los 14 módulos `electron/ipc/*.ts` verifican el origen del frame remitente (`assertTrustedIpcEvent`) y validan identificadores (`assertValidIpcId`); los 4 handlers con rutas de archivos rechazan rutas arbitrarias del renderer en producción (`resolveRendererRequestedPath`), exigiendo diálogos nativos de macOS.
+  - Los tokens OAuth2 de Google Calendar se cifran en reposo con `safeStorage` (macOS Keychain) en un sobre versionado `{ v: 1, alg: 'electron-safeStorage', payloadBase64 }`.
+  - `normalizeOllamaBaseUrl` restringe Ollama por defecto a hosts locales (`localhost`, `127.0.0.1`, `::1`, `.local`) y `calendarSyncService.ts` aplica defensa anti-SSRF (bloqueando IPs privadas/loopback antes y después de redirecciones) más un límite de 5 MB por feed `.ics`.
+- **Borrado seguro de materias e integridad (`coursesRepo.ts`, `wikiLinks.ts`)**: Antes de eliminar una materia (`courses:delete`), se consulta el impacto (`courses:getDeleteImpact`), se crea un backup automático (`createBackup(..., 'pre-course-delete')`) y `deleteCourse(db, id, dataDir)` elimina también del disco los archivos físicos asociados en `sources/`. Además, `notesRepo.ts` sincroniza automáticamente `note_links` al crear o editar notas mediante `electron/db/wikiLinks.ts`.
 - **Contrato de navegación y refresco reactivo**: `App.tsx` coordina el shell compartido `SwissHeader` (en modo menú de 6 secciones + Ajustes o en modo detalle `← Inicio` con resumen en vivo de la materia) e inyecta handlers tipados a las vistas y a `reportsStore.ts`, escuchando `cursada:data-changed` tras cada mutación para mantener sincronizadas todas las vistas y contadores.

@@ -315,7 +315,7 @@
 
   .course-overview-card {
     position: relative;
-    transition: border-color 140ms ease, ;
+    transition: border-color 140ms ease;
   }
 
   .course-overview-card:has(.card-link) .card-link::after {
