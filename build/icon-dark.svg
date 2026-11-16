@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Cursada">
+  <rect width="1024" height="1024" rx="230" fill="#1E2023"/>
+  <g transform="translate(512 512) scale(7.9) translate(-48.25 -50)">
+    <path d="M63.9 33.3 A26 26 0 1 0 63.9 66.7" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+    <circle cx="77" cy="70" r="7.5" fill="#FF5F52"/>
+  </g>
+</svg>

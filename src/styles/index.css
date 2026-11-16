@@ -242,10 +242,17 @@
   }
 
   .swiss-header-wordmark {
+    /* Brand rules: see docs/brand.md */
+    --accent: #FF5F52;
+    --brand-mark-ink: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.035em;
     line-height: 1.1;
+    text-align: left;
     color: var(--ink);
     background: transparent;
     border: 0;
@@ -254,8 +261,32 @@
     -webkit-app-region: no-drag;
   }
 
-  .swiss-header-wordmark:hover {
-    color: var(--acc);
+  :root[data-theme='light'] .swiss-header-wordmark {
+    --brand-mark-ink: #1E2023;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root[data-theme='system'] .swiss-header-wordmark {
+      --brand-mark-ink: #1E2023;
+    }
+  }
+
+  .swiss-header-wordmark .cursada-mark {
+    color: var(--brand-mark-ink);
+  }
+
+  .swiss-header-wordmark-dot {
+    color: var(--accent);
+  }
+
+  .cursada-mark {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  .cursada-mark svg {
+    height: 100%;
+    width: auto;
   }
 
   .swiss-nav {

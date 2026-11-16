@@ -424,13 +424,14 @@ export function packageMacOsApp(options = {}) {
   const infoPlistPath = path.join(contentsDir, 'Info.plist');
   updateInfoPlist(infoPlistPath, version);
 
-  let iconPngPath = path.join(projectRoot, 'build', 'icon.png');
-  let iconIcnsPath = path.join(projectRoot, 'build', 'icon.icns');
+  // The app icon is rendered from build/icon-dark.svg by scripts/build-icons.sh.
+  const iconPngPath = path.join(projectRoot, 'build', 'icon.png');
+  const iconIcnsPath = path.join(projectRoot, 'build', 'icon.icns');
 
-  if (!skipIcons) {
-    const generated = ensureMacOsIcons(projectRoot);
-    iconPngPath = generated.iconPngPath;
-    iconIcnsPath = generated.iconIcnsPath ?? iconIcnsPath;
+  if (!skipIcons && !fs.existsSync(iconIcnsPath)) {
+    throw new Error(
+      `No se encontró el ícono en "${iconIcnsPath}". Ejecutá "bash scripts/build-icons.sh" primero.`
+    );
   }
 
   if (fs.existsSync(iconIcnsPath)) {

@@ -1,3 +1,4 @@
+import { CursadaMark } from '../components/brand/CursadaMark';
 import { PomodoroHeaderWidget } from '../components/pomodoro/PomodoroHeaderWidget';
 import type { NavSectionId } from '../types/design';
 
@@ -72,9 +73,13 @@ export function SwissHeader({
       <button
         type="button"
         className="swiss-header-wordmark"
+        aria-label="Cursada"
         onClick={() => onSelectSection('inicio')}
       >
-        Cursada
+        <CursadaMark size={24} />
+        <span className="swiss-header-wordmark-text">
+          Cursada<span className="swiss-header-wordmark-dot">.</span>
+        </span>
       </button>
 
       <nav aria-label="Navegación principal">
