@@ -1,12 +1,15 @@
 import type {
   AiSettings,
   BackupInfo,
+  CalendarFeed,
   ChatThread,
   ChatThreadWithMessages,
   CheckRemindersResult,
+  CourseAttendanceSummary,
   CourseDeleteImpact,
   CourseStatus,
   CourseWithSchedules,
+  CreateCalendarFeedInput,
   CreateChatThreadInput,
   CreateCourseInput,
   CreateExamInput,
@@ -16,18 +19,28 @@ import type {
   CursadaIpcApi,
   ExamFilters,
   ExamWithCourse,
+  ExportIcsInput,
+  ExportIcsResult,
   ExportMarkdownRequest,
   ExportMarkdownResult,
+  ExternalCalendarEvent,
   GenerateStudyReportInput,
   GenerateStudyReportResult,
+  GoogleCalendarSyncConfig,
+  GoogleCalendarSyncResult,
+  ImportObsidianVaultInput,
+  ImportObsidianVaultResult,
   ImportSourceFileInput,
   ImportSourceFileResult,
+  KnowledgeGraphData,
   NoteFilters,
+  NoteLinksSummary,
   NoteWithCourse,
   NotificationDispatchResult,
   NotificationSettings,
   OllamaHealthCheckResult,
   OpenDataDirResult,
+  RecordAttendanceInput,
   RestoreBackupResult,
   SaveChatMessageAsNoteInput,
   SearchSourceChunksInput,
@@ -39,10 +52,13 @@ import type {
   TaskFilters,
   TaskWithCourse,
   UpdateAiSettingsInput,
+  UpdateCourseAttendanceConfigInput,
   UpdateCourseInput,
   UpdateExamInput,
+  UpdateGoogleCalendarConfigInput,
   UpdateNoteInput,
   UpdateNotificationSettingsInput,
+  UpdateSourceStageInput,
   UpdateTaskInput,
 } from '../../types/domain';
 import { mockClient } from './mockClient';
@@ -418,5 +434,177 @@ export const cursadaClient: CursadaIpcApi = {
   }): Promise<CheckRemindersResult> {
     const fn = getBridge()?.checkDueReminders;
     return fn ? fn(opts) : mockClient.checkDueReminders(opts);
+  },
+
+  // Knowledge Graph, WikiLinks & Obsidian (Phase 12)
+  async getNoteLinks(noteId: string): Promise<NoteLinksSummary> {
+    const fn = getBridge()?.getNoteLinks;
+    return fn ? fn(noteId) : mockClient.getNoteLinks(noteId);
+  },
+
+  async openOrCreateWikiLink(input: {
+    courseId: string;
+    targetTitle: string;
+  }): Promise<NoteWithCourse> {
+    const fn = getBridge()?.openOrCreateWikiLink;
+    const note = fn
+      ? await fn(input)
+      : await mockClient.openOrCreateWikiLink(input);
+    notifyCursadaDataChanged();
+    return note;
+  },
+
+  async getKnowledgeGraph(opts?: {
+    courseId?: string;
+    includeArchived?: boolean;
+  }): Promise<KnowledgeGraphData> {
+    const fn = getBridge()?.getKnowledgeGraph;
+    return fn ? fn(opts) : mockClient.getKnowledgeGraph(opts);
+  },
+
+  async importObsidianVault(
+    input?: ImportObsidianVaultInput
+  ): Promise<ImportObsidianVaultResult> {
+    const fn = getBridge()?.importObsidianVault;
+    const result = fn
+      ? await fn(input)
+      : await mockClient.importObsidianVault(input);
+    if (!result.canceled) {
+      notifyCursadaDataChanged();
+    }
+    return result;
+  },
+
+  // Active Study, Exam Stage & Attendance (Phase 13)
+  async updateSourceStage(input: UpdateSourceStageInput): Promise<Source> {
+    const fn = getBridge()?.updateSourceStage;
+    const updated = fn
+      ? await fn(input)
+      : await mockClient.updateSourceStage(input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async getCourseAttendance(courseId: string): Promise<CourseAttendanceSummary> {
+    const fn = getBridge()?.getCourseAttendance;
+    return fn ? fn(courseId) : mockClient.getCourseAttendance(courseId);
+  },
+
+  async updateCourseAttendanceConfig(
+    input: UpdateCourseAttendanceConfigInput
+  ): Promise<CourseAttendanceSummary> {
+    const fn = getBridge()?.updateCourseAttendanceConfig;
+    const updated = fn
+      ? await fn(input)
+      : await mockClient.updateCourseAttendanceConfig(input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async recordAttendance(
+    input: RecordAttendanceInput
+  ): Promise<CourseAttendanceSummary> {
+    const fn = getBridge()?.recordAttendance;
+    const updated = fn
+      ? await fn(input)
+      : await mockClient.recordAttendance(input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async deleteAttendanceRecord(
+    recordId: string
+  ): Promise<CourseAttendanceSummary> {
+    const fn = getBridge()?.deleteAttendanceRecord;
+    const updated = fn
+      ? await fn(recordId)
+      : await mockClient.deleteAttendanceRecord(recordId);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  // Google Calendar Sync & iCal (Phase 14)
+  async exportCalendarIcs(input?: ExportIcsInput): Promise<ExportIcsResult> {
+    const fn = getBridge()?.exportCalendarIcs;
+    return fn ? fn(input) : mockClient.exportCalendarIcs(input);
+  },
+
+  async listCalendarFeeds(): Promise<CalendarFeed[]> {
+    const fn = getBridge()?.listCalendarFeeds;
+    return fn ? fn() : mockClient.listCalendarFeeds();
+  },
+
+  async addCalendarFeed(input: CreateCalendarFeedInput): Promise<CalendarFeed> {
+    const fn = getBridge()?.addCalendarFeed;
+    const created = fn ? await fn(input) : await mockClient.addCalendarFeed(input);
+    notifyCursadaDataChanged();
+    return created;
+  },
+
+  async removeCalendarFeed(feedId: string): Promise<void> {
+    const fn = getBridge()?.removeCalendarFeed;
+    if (fn) {
+      await fn(feedId);
+    } else {
+      await mockClient.removeCalendarFeed(feedId);
+    }
+    notifyCursadaDataChanged();
+  },
+
+  async syncCalendarFeeds(): Promise<CalendarFeed[]> {
+    const fn = getBridge()?.syncCalendarFeeds;
+    const feeds = fn ? await fn() : await mockClient.syncCalendarFeeds();
+    notifyCursadaDataChanged();
+    return feeds;
+  },
+
+  async listExternalCalendarEvents(opts?: {
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<ExternalCalendarEvent[]> {
+    const fn = getBridge()?.listExternalCalendarEvents;
+    return fn ? fn(opts) : mockClient.listExternalCalendarEvents(opts);
+  },
+
+  async getGoogleCalendarConfig(): Promise<GoogleCalendarSyncConfig> {
+    const fn = getBridge()?.getGoogleCalendarConfig;
+    return fn ? fn() : mockClient.getGoogleCalendarConfig();
+  },
+
+  async updateGoogleCalendarConfig(
+    input: UpdateGoogleCalendarConfigInput
+  ): Promise<GoogleCalendarSyncConfig> {
+    const fn = getBridge()?.updateGoogleCalendarConfig;
+    const updated = fn
+      ? await fn(input)
+      : await mockClient.updateGoogleCalendarConfig(input);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async connectGoogleCalendar(opts?: {
+    email?: string;
+    clientId?: string;
+  }): Promise<GoogleCalendarSyncConfig> {
+    const fn = getBridge()?.connectGoogleCalendar;
+    const updated = fn
+      ? await fn(opts)
+      : await mockClient.connectGoogleCalendar(opts);
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async disconnectGoogleCalendar(): Promise<GoogleCalendarSyncConfig> {
+    const fn = getBridge()?.disconnectGoogleCalendar;
+    const updated = fn ? await fn() : await mockClient.disconnectGoogleCalendar();
+    notifyCursadaDataChanged();
+    return updated;
+  },
+
+  async syncGoogleCalendarNow(): Promise<GoogleCalendarSyncResult> {
+    const fn = getBridge()?.syncGoogleCalendarNow;
+    const res = fn ? await fn() : await mockClient.syncGoogleCalendarNow();
+    notifyCursadaDataChanged();
+    return res;
   },
 };

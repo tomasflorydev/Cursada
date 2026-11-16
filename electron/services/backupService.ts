@@ -20,10 +20,14 @@ const RESTORE_TABLES_ORDER = [
   'tasks',
   'exams',
   'notes',
+  'note_links',
   'sources',
   'source_chunks',
   'chat_threads',
   'chat_messages',
+  'attendance_records',
+  'calendar_feeds',
+  'google_calendar_mappings',
   'app_settings',
 ] as const;
 

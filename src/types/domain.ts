@@ -29,6 +29,8 @@ export interface Course {
   professor: string;
   term: string;
   status: CourseStatus;
+  attendanceEnabled?: boolean;
+  maxAbsences?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +53,8 @@ export interface CreateCourseInput {
   professor?: string;
   term?: string;
   status?: CourseStatus;
+  attendanceEnabled?: boolean;
+  maxAbsences?: number;
   schedules?: ClassScheduleInput[];
 }
 
@@ -60,6 +64,8 @@ export interface UpdateCourseInput {
   professor?: string;
   term?: string;
   status?: CourseStatus;
+  attendanceEnabled?: boolean;
+  maxAbsences?: number;
   schedules?: ClassScheduleInput[];
 }
 
@@ -184,6 +190,8 @@ export interface OpenDataDirResult {
   opened: boolean;
 }
 
+export type ExamStageTag = 'parcial_1' | 'parcial_2' | 'final' | 'general';
+
 export type NoteOrigin = 'manual' | 'ai_summary' | 'ai_study_guide' | 'ai_practice_exam';
 
 export interface Note {
@@ -193,6 +201,8 @@ export interface Note {
   content: string;
   origin: NoteOrigin;
   isPinned: boolean;
+  examStage?: ExamStageTag;
+  frontmatter?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -208,6 +218,8 @@ export interface CreateNoteInput {
   content?: string;
   origin?: NoteOrigin;
   isPinned?: boolean;
+  examStage?: ExamStageTag;
+  frontmatter?: Record<string, string>;
 }
 
 export interface UpdateNoteInput {
@@ -215,12 +227,15 @@ export interface UpdateNoteInput {
   title?: string;
   content?: string;
   isPinned?: boolean;
+  examStage?: ExamStageTag;
+  frontmatter?: Record<string, string>;
 }
 
 export interface NoteFilters {
   courseId?: string;
   query?: string;
   pinnedOnly?: boolean;
+  examStage?: ExamStageTag | 'all';
 }
 
 export type ExportScope = 'note' | 'course' | 'all';
@@ -276,7 +291,7 @@ export interface OllamaHealthCheckResult {
 }
 
 // Phase 5: Sources & Local Indexing
-export type SourceType = 'pdf' | 'markdown' | 'txt' | 'pasted_text';
+export type SourceType = 'pdf' | 'markdown' | 'txt' | 'pasted_text' | 'note';
 
 export type SourceIndexingStatus = 'pending' | 'indexing' | 'ready' | 'error';
 
@@ -294,6 +309,7 @@ export interface Source {
   indexingStatus: SourceIndexingStatus;
   indexingError: string | null;
   embeddingModel: string | null;
+  examStage?: ExamStageTag;
   createdAt: string;
   updatedAt: string;
 }
@@ -329,6 +345,7 @@ export interface CreateSourceFromTextInput {
   pageCount?: number;
   pages?: Array<{ pageNumber: number; text: string }>;
   originalPath?: string | null;
+  examStage?: ExamStageTag;
 }
 
 export interface ImportSourceFileInput {
@@ -337,6 +354,12 @@ export interface ImportSourceFileInput {
   title?: string;
   contentBase64?: string;
   fileName?: string;
+  examStage?: ExamStageTag;
+}
+
+export interface UpdateSourceStageInput {
+  sourceId: string;
+  examStage: ExamStageTag;
 }
 
 export interface ImportSourceFileResult {
@@ -396,6 +419,10 @@ export interface SendChatMessageInput {
   threadId?: string;
   content: string;
   customInstructions?: string;
+  sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
 }
 
 export interface SendChatMessageResult {
@@ -431,6 +458,9 @@ export interface GenerateStudyReportInput {
   courseId: string;
   reportType: StudyReportType;
   sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
+  includeNotes?: boolean;
   examFormat?: PracticeExamFormat;
   customInstructions?: string;
   title?: string;
@@ -553,6 +583,238 @@ export interface CheckRemindersResult {
   results: NotificationDispatchResult[];
 }
 
+// Phase 11: Super-Editor Markdown, Math & Configurable Shortcuts
+export type EditorShortcutActionId =
+  | 'insert_table'
+  | 'insert_callout_note'
+  | 'insert_callout_warning'
+  | 'insert_callout_tip'
+  | 'insert_math_block'
+  | 'insert_code_block'
+  | 'toggle_task'
+  | 'heading_1'
+  | 'heading_2'
+  | 'heading_3'
+  | 'bold'
+  | 'italic'
+  | 'insert_wikilink';
+
+export type EditorShortcutsMap = Record<EditorShortcutActionId, string>;
+
+export interface EditorShortcutDefinition {
+  id: EditorShortcutActionId;
+  title: string;
+  description: string;
+  defaultBinding: string;
+}
+
+// Phase 12: Knowledge Graph, WikiLinks & Obsidian Vault Importer
+export interface NoteLinkItem {
+  id: string;
+  sourceNoteId: string;
+  sourceNoteTitle: string;
+  sourceCourseId: string;
+  sourceCourseName: string;
+  targetNoteId: string | null;
+  targetTitle: string;
+  displayText: string;
+  contextSnippet: string;
+}
+
+export interface NoteLinksSummary {
+  noteId: string;
+  forwardLinks: NoteLinkItem[];
+  backlinks: NoteLinkItem[];
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  noteId: string;
+  title: string;
+  courseId: string;
+  courseName: string;
+  courseColor: CourseColor;
+  courseStatus: CourseStatus;
+  degree: number;
+  updatedAt: string;
+}
+
+export interface KnowledgeGraphEdge {
+  id: string;
+  sourceNoteId: string;
+  targetNoteId: string;
+  label: string;
+}
+
+export interface KnowledgeGraphData {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+}
+
+export interface ImportObsidianVaultInput {
+  vaultDir?: string;
+  targetStatus?: CourseStatus;
+  courseNameOverride?: string;
+  filesPayload?: Array<{ relativePath: string; content: string }>;
+}
+
+export interface ImportObsidianVaultResult {
+  canceled: boolean;
+  vaultPath: string | null;
+  coursesCreated: CourseWithSchedules[];
+  notesImportedCount: number;
+  linksResolvedCount: number;
+}
+
+// Phase 13: Pomodoro, Exam Stage AI Context, Interactive Simulator & Attendance
+export interface PomodoroSettings {
+  focusMinutes: number;
+  shortBreakMinutes: number;
+  longBreakMinutes: number;
+  roundsBeforeLongBreak: number;
+  notifyOnComplete: boolean;
+}
+
+export type AttendanceStatus = 'present' | 'absent';
+
+export interface AttendanceRecord {
+  id: string;
+  courseId: string;
+  sessionDate: string;
+  status: AttendanceStatus;
+  note: string;
+  createdAt: string;
+}
+
+export interface CourseAttendanceSummary {
+  courseId: string;
+  attendanceEnabled: boolean;
+  maxAbsences: number;
+  absencesCount: number;
+  presentsCount: number;
+  remainingAbsences: number;
+  absenceRatio: number;
+  isWarning: boolean;
+  isExceeded: boolean;
+  records: AttendanceRecord[];
+}
+
+export interface UpdateCourseAttendanceConfigInput {
+  courseId: string;
+  attendanceEnabled?: boolean;
+  maxAbsences?: number;
+}
+
+export interface RecordAttendanceInput {
+  courseId: string;
+  sessionDate?: string;
+  status: AttendanceStatus;
+  note?: string;
+}
+
+export interface PracticeExamQuestionItem {
+  id: string;
+  number: number;
+  kind: 'multiple_choice' | 'develop';
+  prompt: string;
+  options?: Array<{ letter: 'A' | 'B' | 'C' | 'D'; text: string }>;
+  correctOption?: 'A' | 'B' | 'C' | 'D';
+  modelAnswer: string;
+  explanation: string;
+  citationIndex: number;
+  citationTitle: string;
+  citationSourceId: string;
+  citationKind: 'note' | 'source';
+  pageLabel?: string;
+}
+
+export interface PracticeExamSimulationAttempt {
+  courseId: string;
+  courseName: string;
+  examStage: ExamStageTag | 'all';
+  questions: PracticeExamQuestionItem[];
+  answers: Record<string, string>;
+  scorePercent: number;
+  correctCount: number;
+  totalCount: number;
+  completedAt: string;
+}
+
+// Phase 14: Google Calendar Sync & iCal
+export interface ExportIcsInput {
+  courseId?: string;
+  includeSchedules?: boolean;
+  includeTasks?: boolean;
+  includeExams?: boolean;
+  targetPath?: string;
+}
+
+export interface ExportIcsResult {
+  canceled: boolean;
+  filePath: string | null;
+  icsContent: string;
+  eventsCount: number;
+  mode: 'filesystem' | 'download';
+}
+
+export interface CalendarFeed {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  eventsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExternalCalendarEvent {
+  id: string;
+  feedId: string;
+  feedName: string;
+  uid: string;
+  title: string;
+  dateIso: string;
+  startTime: string | null;
+  endTime: string | null;
+  location: string;
+  description: string;
+}
+
+export interface CreateCalendarFeedInput {
+  name: string;
+  url: string;
+  rawIcsOverride?: string;
+}
+
+export interface GoogleCalendarSyncConfig {
+  clientId: string;
+  connectedEmail: string | null;
+  isConnected: boolean;
+  targetCalendarId: string;
+  autoSyncEnabled: boolean;
+  lastSyncedAt: string | null;
+  lastSyncSummary: string | null;
+}
+
+export interface UpdateGoogleCalendarConfigInput {
+  clientId?: string;
+  targetCalendarId?: string;
+  autoSyncEnabled?: boolean;
+  connectedEmail?: string | null;
+}
+
+export interface GoogleCalendarSyncResult {
+  syncedAt: string;
+  createdCount: number;
+  updatedCount: number;
+  totalMappedCount: number;
+  calendarId: string;
+  mode: 'google-api' | 'local-loopback-simulated';
+  summary: string;
+}
+
 /**
  * Shared navigation contract injected by App.tsx into domain views.
  * - `onSelectCourse(courseId)`: Navigates to the 'materias' section with `courseId` selected
@@ -640,6 +902,47 @@ export interface CursadaIpcApi {
     referenceIso?: string;
     dispatch?: boolean;
   }) => Promise<CheckRemindersResult>;
+  // Knowledge Graph, WikiLinks & Obsidian (Phase 12)
+  getNoteLinks: (noteId: string) => Promise<NoteLinksSummary>;
+  openOrCreateWikiLink: (input: {
+    courseId: string;
+    targetTitle: string;
+  }) => Promise<NoteWithCourse>;
+  getKnowledgeGraph: (opts?: {
+    courseId?: string;
+    includeArchived?: boolean;
+  }) => Promise<KnowledgeGraphData>;
+  importObsidianVault: (
+    input?: ImportObsidianVaultInput
+  ) => Promise<ImportObsidianVaultResult>;
+  // Active Study, Exam Stage & Attendance (Phase 13)
+  updateSourceStage: (input: UpdateSourceStageInput) => Promise<Source>;
+  getCourseAttendance: (courseId: string) => Promise<CourseAttendanceSummary>;
+  updateCourseAttendanceConfig: (
+    input: UpdateCourseAttendanceConfigInput
+  ) => Promise<CourseAttendanceSummary>;
+  recordAttendance: (input: RecordAttendanceInput) => Promise<CourseAttendanceSummary>;
+  deleteAttendanceRecord: (recordId: string) => Promise<CourseAttendanceSummary>;
+  // Google Calendar Sync & iCal (Phase 14)
+  exportCalendarIcs: (input?: ExportIcsInput) => Promise<ExportIcsResult>;
+  listCalendarFeeds: () => Promise<CalendarFeed[]>;
+  addCalendarFeed: (input: CreateCalendarFeedInput) => Promise<CalendarFeed>;
+  removeCalendarFeed: (feedId: string) => Promise<void>;
+  syncCalendarFeeds: () => Promise<CalendarFeed[]>;
+  listExternalCalendarEvents: (opts?: {
+    dateFrom?: string;
+    dateTo?: string;
+  }) => Promise<ExternalCalendarEvent[]>;
+  getGoogleCalendarConfig: () => Promise<GoogleCalendarSyncConfig>;
+  updateGoogleCalendarConfig: (
+    input: UpdateGoogleCalendarConfigInput
+  ) => Promise<GoogleCalendarSyncConfig>;
+  connectGoogleCalendar: (opts?: {
+    email?: string;
+    clientId?: string;
+  }) => Promise<GoogleCalendarSyncConfig>;
+  disconnectGoogleCalendar: () => Promise<GoogleCalendarSyncConfig>;
+  syncGoogleCalendarNow: () => Promise<GoogleCalendarSyncResult>;
 }
 
 declare global {

@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { createBackup } from '../services/backupService.js';
 
-export const LATEST_SCHEMA_VERSION = 5;
+export const LATEST_SCHEMA_VERSION = 8;
 
 const MIGRATION_V1_SQL = `
 CREATE TABLE IF NOT EXISTS courses (
@@ -183,6 +183,68 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 CREATE INDEX IF NOT EXISTS idx_chat_messages_thread ON chat_messages(thread_id);
 `;
 
+const MIGRATION_V6_SQL = `
+ALTER TABLE notes ADD COLUMN frontmatter_json TEXT NOT NULL DEFAULT '{}';
+
+CREATE TABLE IF NOT EXISTS note_links (
+    id TEXT PRIMARY KEY,
+    source_note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    target_note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
+    target_title TEXT NOT NULL,
+    display_text TEXT NOT NULL DEFAULT '',
+    context_snippet TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_note_links_source ON note_links(source_note_id);
+CREATE INDEX IF NOT EXISTS idx_note_links_target ON note_links(target_note_id);
+CREATE INDEX IF NOT EXISTS idx_note_links_title ON note_links(target_title);
+`;
+
+const MIGRATION_V7_SQL = `
+ALTER TABLE notes ADD COLUMN exam_stage TEXT NOT NULL DEFAULT 'general' CHECK (exam_stage IN ('parcial_1', 'parcial_2', 'final', 'general'));
+ALTER TABLE sources ADD COLUMN exam_stage TEXT NOT NULL DEFAULT 'general' CHECK (exam_stage IN ('parcial_1', 'parcial_2', 'final', 'general'));
+ALTER TABLE courses ADD COLUMN attendance_enabled INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE courses ADD COLUMN max_absences INTEGER NOT NULL DEFAULT 4;
+
+CREATE TABLE IF NOT EXISTS attendance_records (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    session_date TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('present', 'absent')),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_attendance_course ON attendance_records(course_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_records(session_date);
+`;
+
+const MIGRATION_V8_SQL = `
+CREATE TABLE IF NOT EXISTS calendar_feeds (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    raw_ics_cache TEXT NOT NULL DEFAULT '',
+    last_synced_at TEXT,
+    last_error TEXT,
+    events_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS google_calendar_mappings (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('schedule', 'task', 'exam')),
+    entity_id TEXT NOT NULL,
+    google_calendar_id TEXT NOT NULL,
+    google_event_id TEXT NOT NULL,
+    etag TEXT NOT NULL DEFAULT '',
+    last_synced_at TEXT NOT NULL,
+    UNIQUE(entity_type, entity_id, google_calendar_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gcal_mappings_entity ON google_calendar_mappings(entity_type, entity_id);
+`;
+
 export function getSchemaVersion(db: DatabaseSync): number {
   const row = db.prepare('PRAGMA user_version').get() as { user_version: number } | undefined;
   return row?.user_version ?? 0;
@@ -264,6 +326,42 @@ export function runMigrations(
     try {
       db.exec(MIGRATION_V5_SQL);
       db.exec('PRAGMA user_version = 5;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 6) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V6_SQL);
+      db.exec('PRAGMA user_version = 6;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 7) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V7_SQL);
+      db.exec('PRAGMA user_version = 7;');
+      db.exec('COMMIT;');
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
+    }
+  }
+
+  if (currentVersion < 8) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      db.exec(MIGRATION_V8_SQL);
+      db.exec('PRAGMA user_version = 8;');
       db.exec('COMMIT;');
     } catch (err) {
       db.exec('ROLLBACK;');

@@ -27,6 +27,7 @@ const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   markdown: 'Markdown',
   txt: 'TXT',
   pasted_text: 'Texto pegado',
+  note: 'Nota',
 };
 
 const INDEXING_STATUS_LABELS: Record<SourceIndexingStatus, string> = {

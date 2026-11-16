@@ -32,6 +32,8 @@ function formatSourceType(sourceType: SourceType): string {
       return 'Archivo de texto';
     case 'pasted_text':
       return 'Texto pegado';
+    case 'note':
+      return 'Nota';
   }
 }
 

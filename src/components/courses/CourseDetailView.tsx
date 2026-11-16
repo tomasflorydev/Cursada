@@ -74,6 +74,7 @@ const SOURCE_TYPE_SHORT: Record<SourceType, string> = {
   markdown: 'MD',
   txt: 'TXT',
   pasted_text: 'Texto',
+  note: 'Nota',
 };
 
 function countWords(text: string): number {

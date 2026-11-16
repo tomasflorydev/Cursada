@@ -42,13 +42,20 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     expect(ctx.dataDir).toBe(path.resolve(customDir));
     expect(ctx.dbPath).toBe(path.join(customDir, 'cursada.sqlite'));
     expect(getSchemaVersion(ctx.db)).toBe(LATEST_SCHEMA_VERSION);
-    expect(getSchemaVersion(ctx.db)).toBe(5);
+    expect(getSchemaVersion(ctx.db)).toBe(8);
     const tables = ctx.db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('chat_threads', 'chat_messages')"
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('chat_threads', 'chat_messages', 'note_links', 'attendance_records', 'calendar_feeds', 'google_calendar_mappings')"
       )
       .all() as Array<{ name: string }>;
-    expect(tables.map((t) => t.name).sort()).toEqual(['chat_messages', 'chat_threads']);
+    expect(tables.map((t) => t.name).sort()).toEqual([
+      'attendance_records',
+      'calendar_feeds',
+      'chat_messages',
+      'chat_threads',
+      'google_calendar_mappings',
+      'note_links',
+    ]);
     ctx.close();
   });
 

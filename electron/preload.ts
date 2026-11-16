@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   CourseStatus,
+  CreateCalendarFeedInput,
   CreateChatThreadInput,
   CreateCourseInput,
   CreateExamInput,
@@ -8,19 +9,25 @@ import type {
   CreateSourceFromTextInput,
   CreateTaskInput,
   ExamFilters,
+  ExportIcsInput,
   ExportMarkdownRequest,
   GenerateStudyReportInput,
+  ImportObsidianVaultInput,
   ImportSourceFileInput,
   NoteFilters,
+  RecordAttendanceInput,
   SaveChatMessageAsNoteInput,
   SearchSourceChunksInput,
   SendChatMessageInput,
   TaskFilters,
   UpdateAiSettingsInput,
+  UpdateCourseAttendanceConfigInput,
   UpdateCourseInput,
   UpdateExamInput,
+  UpdateGoogleCalendarConfigInput,
   UpdateNoteInput,
   UpdateNotificationSettingsInput,
+  UpdateSourceStageInput,
   UpdateTaskInput,
 } from './types.js';
 
@@ -108,4 +115,45 @@ contextBridge.exposeInMainWorld('cursadaApi', {
   sendTestNotification: () => ipcRenderer.invoke('notifications:sendTest'),
   checkDueReminders: (opts?: { referenceIso?: string; dispatch?: boolean }) =>
     ipcRenderer.invoke('notifications:checkReminders', opts),
+  // Knowledge Graph, WikiLinks & Obsidian (Phase 12)
+  getNoteLinks: (noteId: string) =>
+    ipcRenderer.invoke('knowledge:getNoteLinks', noteId),
+  openOrCreateWikiLink: (input: { courseId: string; targetTitle: string }) =>
+    ipcRenderer.invoke('knowledge:openOrCreateWikiLink', input),
+  getKnowledgeGraph: (opts?: { courseId?: string; includeArchived?: boolean }) =>
+    ipcRenderer.invoke('knowledge:getGraph', opts),
+  importObsidianVault: (input?: ImportObsidianVaultInput) =>
+    ipcRenderer.invoke('knowledge:importObsidianVault', input),
+  // Active Study, Exam Stage & Attendance (Phase 13)
+  updateSourceStage: (input: UpdateSourceStageInput) =>
+    ipcRenderer.invoke('sources:updateStage', input),
+  getCourseAttendance: (courseId: string) =>
+    ipcRenderer.invoke('attendance:getCourse', courseId),
+  updateCourseAttendanceConfig: (input: UpdateCourseAttendanceConfigInput) =>
+    ipcRenderer.invoke('attendance:updateConfig', input),
+  recordAttendance: (input: RecordAttendanceInput) =>
+    ipcRenderer.invoke('attendance:record', input),
+  deleteAttendanceRecord: (recordId: string) =>
+    ipcRenderer.invoke('attendance:deleteRecord', recordId),
+  // Google Calendar Sync & iCal (Phase 14)
+  exportCalendarIcs: (input?: ExportIcsInput) =>
+    ipcRenderer.invoke('calendarSync:exportIcs', input),
+  listCalendarFeeds: () => ipcRenderer.invoke('calendarSync:listFeeds'),
+  addCalendarFeed: (input: CreateCalendarFeedInput) =>
+    ipcRenderer.invoke('calendarSync:addFeed', input),
+  removeCalendarFeed: (feedId: string) =>
+    ipcRenderer.invoke('calendarSync:removeFeed', feedId),
+  syncCalendarFeeds: () => ipcRenderer.invoke('calendarSync:syncFeeds'),
+  listExternalCalendarEvents: (opts?: { dateFrom?: string; dateTo?: string }) =>
+    ipcRenderer.invoke('calendarSync:listExternalEvents', opts),
+  getGoogleCalendarConfig: () =>
+    ipcRenderer.invoke('calendarSync:getGoogleConfig'),
+  updateGoogleCalendarConfig: (input: UpdateGoogleCalendarConfigInput) =>
+    ipcRenderer.invoke('calendarSync:updateGoogleConfig', input),
+  connectGoogleCalendar: (opts?: { email?: string; clientId?: string }) =>
+    ipcRenderer.invoke('calendarSync:connectGoogle', opts),
+  disconnectGoogleCalendar: () =>
+    ipcRenderer.invoke('calendarSync:disconnectGoogle'),
+  syncGoogleCalendarNow: () =>
+    ipcRenderer.invoke('calendarSync:syncGoogleNow'),
 });
