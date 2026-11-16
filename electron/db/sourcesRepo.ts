@@ -3,12 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
+  ExamStageTag,
   Source,
   SourceChunk,
   SourceChunkSearchResult,
   SourceIndexingStatus,
   SourceType,
   SourceWithChunks,
+  UpdateSourceStageInput,
 } from '../types.js';
 import { buildSafeFtsQuery } from './notesRepo.js';
 
@@ -28,6 +30,13 @@ const VALID_INDEXING_STATUSES = new Set<SourceIndexingStatus>([
   'error',
 ]);
 
+const VALID_EXAM_STAGES = new Set<ExamStageTag>([
+  'parcial_1',
+  'parcial_2',
+  'final',
+  'general',
+]);
+
 interface SourceRow {
   id: string;
   course_id: string;
@@ -42,6 +51,7 @@ interface SourceRow {
   indexing_status: SourceIndexingStatus;
   indexing_error: string | null;
   embedding_model: string | null;
+  exam_stage?: ExamStageTag;
   created_at: string;
   updated_at: string;
 }
@@ -79,6 +89,7 @@ export interface CreateSourceRecordInput {
   pageCount: number;
   indexingStatus?: SourceIndexingStatus;
   embeddingModel?: string | null;
+  examStage?: ExamStageTag;
 }
 
 export interface SaveSourceChunkInput {
@@ -93,6 +104,8 @@ export interface HybridChunkSearchInput {
   query: string;
   queryEmbedding?: Float32Array | null;
   limit?: number;
+  sourceIds?: string[];
+  examStage?: ExamStageTag | 'all';
 }
 
 /**
@@ -195,7 +208,21 @@ function validateIndexingStatus(
   return resolved;
 }
 
+function validateExamStage(stage: ExamStageTag | undefined): ExamStageTag {
+  const resolved = stage ?? 'general';
+  if (!VALID_EXAM_STAGES.has(resolved)) {
+    throw new Error(
+      `Invalid examStage "${String(stage)}". Expected 'parcial_1', 'parcial_2', 'final', or 'general'.`
+    );
+  }
+  return resolved;
+}
+
 function mapSourceRow(row: SourceRow): Source {
+  const examStage: ExamStageTag =
+    row.exam_stage && VALID_EXAM_STAGES.has(row.exam_stage)
+      ? row.exam_stage
+      : 'general';
   return {
     id: row.id,
     courseId: row.course_id,
@@ -210,6 +237,7 @@ function mapSourceRow(row: SourceRow): Source {
     indexingStatus: row.indexing_status,
     indexingError: row.indexing_error ?? null,
     embeddingModel: row.embedding_model ?? null,
+    examStage,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -306,6 +334,7 @@ export function createSourceRecord(
   const originalPath = input.originalPath ?? null;
   const storedFilename = input.storedFilename ?? null;
   const embeddingModel = input.embeddingModel ?? null;
+  const examStage = validateExamStage(input.examStage);
   const now = new Date().toISOString();
 
   db.prepare(
@@ -322,10 +351,11 @@ export function createSourceRecord(
        indexing_status,
        indexing_error,
        embedding_model,
+       exam_stage,
        created_at,
        updated_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`
   ).run(
     id,
     courseId,
@@ -338,6 +368,7 @@ export function createSourceRecord(
     charCount,
     indexingStatus,
     embeddingModel,
+    examStage,
     now,
     now
   );
@@ -347,6 +378,34 @@ export function createSourceRecord(
     throw new Error('Failed to load created source');
   }
   return created;
+}
+
+export function updateSourceExamStage(
+  db: DatabaseSync,
+  input: UpdateSourceStageInput
+): Source {
+  const sourceId = (input.sourceId ?? '').trim();
+  if (!sourceId) {
+    throw new Error('Source ID is required');
+  }
+  const existing = getSourceById(db, sourceId);
+  if (!existing) {
+    throw new Error(`Source not found: ${sourceId}`);
+  }
+  const examStage = validateExamStage(input.examStage);
+  const now = new Date().toISOString();
+
+  db.prepare(
+    `UPDATE sources
+     SET exam_stage = ?, updated_at = ?
+     WHERE id = ?`
+  ).run(examStage, now, sourceId);
+
+  const updated = getSourceById(db, sourceId);
+  if (!updated) {
+    throw new Error(`Source not found after updating exam stage: ${sourceId}`);
+  }
+  return updated;
 }
 
 export function saveSourceChunksAndMarkReady(
@@ -492,11 +551,44 @@ function buildOrFallbackFtsQuery(rawQuery: string): string | null {
     .join(' OR ');
 }
 
+function buildSourceFilterSql(options: {
+  sourceIds?: string[];
+  examStage?: ExamStageTag | 'all';
+}): { extraSql: string; params: string[]; emptyMatch: boolean } {
+  const clauses: string[] = [];
+  const params: string[] = [];
+
+  if (options.sourceIds !== undefined) {
+    const cleanIds = Array.from(
+      new Set(options.sourceIds.map((id) => id.trim()).filter((id) => id.length > 0))
+    );
+    if (cleanIds.length === 0) {
+      return { extraSql: '', params: [], emptyMatch: true };
+    }
+    clauses.push(`s.id IN (${cleanIds.map(() => '?').join(', ')})`);
+    params.push(...cleanIds);
+  }
+
+  if (options.examStage && options.examStage !== 'all') {
+    const validStage = validateExamStage(options.examStage);
+    clauses.push('s.exam_stage = ?');
+    params.push(validStage);
+  }
+
+  return {
+    extraSql: clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : '',
+    params,
+    emptyMatch: false,
+  };
+}
+
 function runFtsChunkQuery(
   db: DatabaseSync,
   courseId: string,
   ftsQuery: string,
-  limit: number
+  limit: number,
+  extraSql: string,
+  extraParams: string[]
 ): FtsChunkMatchRow[] {
   return db
     .prepare(
@@ -515,11 +607,11 @@ function runFtsChunkQuery(
        INNER JOIN source_chunks sc ON sc.id = source_chunks_fts.chunk_id
        INNER JOIN sources s ON s.id = sc.source_id
        WHERE source_chunks_fts MATCH ?
-         AND sc.course_id = ?
+         AND sc.course_id = ?${extraSql}
        ORDER BY raw_bm25 ASC, sc.chunk_index ASC
        LIMIT ?`
     )
-    .all(ftsQuery, courseId, limit) as unknown as FtsChunkMatchRow[];
+    .all(ftsQuery, courseId, ...extraParams, limit) as unknown as FtsChunkMatchRow[];
 }
 
 export function searchCourseChunksHybrid(
@@ -528,6 +620,14 @@ export function searchCourseChunksHybrid(
 ): SourceChunkSearchResult[] {
   const courseId = (input.courseId ?? '').trim();
   if (!courseId) {
+    return [];
+  }
+
+  const filterSql = buildSourceFilterSql({
+    sourceIds: input.sourceIds,
+    examStage: input.examStage,
+  });
+  if (filterSql.emptyMatch) {
     return [];
   }
 
@@ -555,11 +655,25 @@ export function searchCourseChunksHybrid(
 
   const ftsQuery = buildSafeFtsQuery(rawQuery);
   if (ftsQuery) {
-    let ftsRows = runFtsChunkQuery(db, courseId, ftsQuery, ftsLimit);
+    let ftsRows = runFtsChunkQuery(
+      db,
+      courseId,
+      ftsQuery,
+      ftsLimit,
+      filterSql.extraSql,
+      filterSql.params
+    );
     if (ftsRows.length === 0) {
       const orQuery = buildOrFallbackFtsQuery(rawQuery);
       if (orQuery) {
-        ftsRows = runFtsChunkQuery(db, courseId, orQuery, ftsLimit);
+        ftsRows = runFtsChunkQuery(
+          db,
+          courseId,
+          orQuery,
+          ftsLimit,
+          filterSql.extraSql,
+          filterSql.params
+        );
       }
     }
 
@@ -600,9 +714,13 @@ export function searchCourseChunksHybrid(
          INNER JOIN sources s ON s.id = sc.source_id
          WHERE sc.course_id = ?
            AND sc.embedding IS NOT NULL
-           AND sc.embedding_dim = ?`
+           AND sc.embedding_dim = ?${filterSql.extraSql}`
       )
-      .all(courseId, queryEmbedding.length) as unknown as SourceChunkWithEmbeddingRow[];
+      .all(
+        courseId,
+        queryEmbedding.length,
+        ...filterSql.params
+      ) as unknown as SourceChunkWithEmbeddingRow[];
 
     const scoredVectorRows: Array<{
       row: SourceChunkWithEmbeddingRow;

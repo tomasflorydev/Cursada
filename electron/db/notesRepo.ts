@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type {
   CourseColor,
   CreateNoteInput,
+  ExamStageTag,
   NoteFilters,
   NoteOrigin,
   NoteWithCourse,
@@ -16,6 +17,8 @@ interface NoteJoinedRow {
   content: string;
   origin: NoteOrigin;
   is_pinned: number;
+  exam_stage?: ExamStageTag;
+  frontmatter_json?: string;
   created_at: string;
   updated_at: string;
   course_name: string;
@@ -28,6 +31,54 @@ const VALID_ORIGINS = new Set<NoteOrigin>([
   'ai_study_guide',
   'ai_practice_exam',
 ]);
+
+const VALID_EXAM_STAGES = new Set<ExamStageTag>([
+  'parcial_1',
+  'parcial_2',
+  'final',
+  'general',
+]);
+
+function validateExamStage(stage: ExamStageTag | undefined): ExamStageTag {
+  const resolved = stage ?? 'general';
+  if (!VALID_EXAM_STAGES.has(resolved)) {
+    throw new Error(
+      `Invalid examStage "${String(stage)}". Expected 'parcial_1', 'parcial_2', 'final', or 'general'.`
+    );
+  }
+  return resolved;
+}
+
+function normalizeFrontmatter(
+  raw: Record<string, string> | undefined
+): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {};
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const cleanKey = String(key).trim();
+    if (cleanKey && value !== undefined && value !== null) {
+      result[cleanKey] = String(value);
+    }
+  }
+  return result;
+}
+
+function parseFrontmatterJson(rawJson: string | undefined): Record<string, string> {
+  if (typeof rawJson !== 'string' || !rawJson.trim()) {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(rawJson);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+    return normalizeFrontmatter(parsed as Record<string, string>);
+  } catch {
+    return {};
+  }
+}
 
 function validateTitle(rawTitle: string): string {
   const title = (rawTitle ?? '').trim();
@@ -85,6 +136,10 @@ export function buildSafeFtsQuery(rawQuery: string): string | null {
 }
 
 function mapNoteRow(row: NoteJoinedRow): NoteWithCourse {
+  const examStage: ExamStageTag =
+    row.exam_stage && VALID_EXAM_STAGES.has(row.exam_stage)
+      ? row.exam_stage
+      : 'general';
   return {
     id: row.id,
     courseId: row.course_id,
@@ -92,6 +147,8 @@ function mapNoteRow(row: NoteJoinedRow): NoteWithCourse {
     content: row.content,
     origin: row.origin,
     isPinned: Boolean(row.is_pinned),
+    examStage,
+    frontmatter: parseFrontmatterJson(row.frontmatter_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     courseName: row.course_name,
@@ -113,6 +170,12 @@ export function listNotes(
 
   if (filters?.pinnedOnly) {
     conditions.push('n.is_pinned = 1');
+  }
+
+  if (filters?.examStage && filters.examStage !== 'all') {
+    const validStage = validateExamStage(filters.examStage);
+    conditions.push('n.exam_stage = ?');
+    params.push(validStage);
   }
 
   if (filters?.query) {
@@ -168,11 +231,24 @@ export function createNote(
   const content = typeof input.content === 'string' ? input.content : '';
   const origin = validateOrigin(input.origin);
   const isPinned = input.isPinned ? 1 : 0;
+  const examStage = validateExamStage(input.examStage);
+  const frontmatterJson = JSON.stringify(normalizeFrontmatter(input.frontmatter));
 
   db.prepare(
-    `INSERT INTO notes (id, course_id, title, content, origin, is_pinned, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, courseId, title, content, origin, isPinned, now, now);
+    `INSERT INTO notes (id, course_id, title, content, origin, is_pinned, exam_stage, frontmatter_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    courseId,
+    title,
+    content,
+    origin,
+    isPinned,
+    examStage,
+    frontmatterJson,
+    now,
+    now
+  );
 
   const created = getNoteById(db, id);
   if (!created) {
@@ -208,12 +284,21 @@ export function updateNote(
       : existing.isPinned
         ? 1
         : 0;
+  const examStage =
+    input.examStage !== undefined
+      ? validateExamStage(input.examStage)
+      : existing.examStage ?? 'general';
+  const frontmatterJson = JSON.stringify(
+    input.frontmatter !== undefined
+      ? normalizeFrontmatter(input.frontmatter)
+      : existing.frontmatter ?? {}
+  );
 
   db.prepare(
     `UPDATE notes
-     SET course_id = ?, title = ?, content = ?, is_pinned = ?, updated_at = ?
+     SET course_id = ?, title = ?, content = ?, is_pinned = ?, exam_stage = ?, frontmatter_json = ?, updated_at = ?
      WHERE id = ?`
-  ).run(courseId, title, content, isPinned, now, id);
+  ).run(courseId, title, content, isPinned, examStage, frontmatterJson, now, id);
 
   const updated = getNoteById(db, id);
   if (!updated) {

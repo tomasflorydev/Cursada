@@ -1,5 +1,6 @@
 import type {
   CreateNoteInput,
+  ExamStageTag,
   Note,
   NoteFilters,
   NoteOrigin,
@@ -14,6 +15,37 @@ const VALID_ORIGINS = new Set<NoteOrigin>([
   'ai_study_guide',
   'ai_practice_exam',
 ]);
+
+const VALID_EXAM_STAGES = new Set<ExamStageTag>([
+  'parcial_1',
+  'parcial_2',
+  'final',
+  'general',
+]);
+
+function validateExamStage(stage: ExamStageTag | undefined): ExamStageTag {
+  const resolved = stage ?? 'general';
+  if (!VALID_EXAM_STAGES.has(resolved)) {
+    throw new Error(`Etapa de examen inválida: "${String(stage)}"`);
+  }
+  return resolved;
+}
+
+function normalizeFrontmatter(
+  raw: Record<string, string> | undefined
+): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {};
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const cleanKey = String(key).trim();
+    if (cleanKey && value !== undefined && value !== null) {
+      result[cleanKey] = String(value);
+    }
+  }
+  return result;
+}
 
 const INITIAL_MOCK_NOTES: Note[] = [
   {
@@ -233,6 +265,8 @@ function enrichNote(note: Note): NoteWithCourse {
   const course = getMockCourseByIdSync(note.courseId);
   return {
     ...note,
+    examStage: note.examStage ?? 'general',
+    frontmatter: note.frontmatter ?? {},
     courseName: course?.name ?? 'Materia',
     courseColor: course?.color ?? 'slate',
   };
@@ -277,6 +311,11 @@ export async function mockListNotes(
     result = result.filter((n) => n.isPinned);
   }
 
+  if (filters?.examStage && filters.examStage !== 'all') {
+    const validStage = validateExamStage(filters.examStage);
+    result = result.filter((n) => (n.examStage ?? 'general') === validStage);
+  }
+
   if (filters?.query) {
     const queryTokens = extractTokens(filters.query);
     if (queryTokens.length > 0) {
@@ -306,6 +345,8 @@ export async function mockCreateNote(
   const content = typeof input.content === 'string' ? input.content : '';
   const origin = validateOrigin(input.origin);
   const isPinned = Boolean(input.isPinned);
+  const examStage = validateExamStage(input.examStage);
+  const frontmatter = normalizeFrontmatter(input.frontmatter);
   const now = new Date().toISOString();
 
   const created: Note = {
@@ -315,6 +356,8 @@ export async function mockCreateNote(
     content,
     origin,
     isPinned,
+    examStage,
+    frontmatter,
     createdAt: now,
     updatedAt: now,
   };
@@ -344,6 +387,14 @@ export async function mockUpdateNote(
     input.content !== undefined ? input.content : current.content;
   const isPinned =
     input.isPinned !== undefined ? Boolean(input.isPinned) : current.isPinned;
+  const examStage =
+    input.examStage !== undefined
+      ? validateExamStage(input.examStage)
+      : current.examStage ?? 'general';
+  const frontmatter =
+    input.frontmatter !== undefined
+      ? normalizeFrontmatter(input.frontmatter)
+      : current.frontmatter ?? {};
 
   const updated: Note = {
     ...current,
@@ -351,6 +402,8 @@ export async function mockUpdateNote(
     title,
     content,
     isPinned,
+    examStage,
+    frontmatter,
     updatedAt: now,
   };
 

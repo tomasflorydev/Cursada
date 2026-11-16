@@ -1,5 +1,6 @@
 import type {
   CreateSourceFromTextInput,
+  ExamStageTag,
   ImportSourceFileInput,
   ImportSourceFileResult,
   SearchSourceChunksInput,
@@ -8,6 +9,7 @@ import type {
   SourceChunkSearchResult,
   SourceType,
   SourceWithChunks,
+  UpdateSourceStageInput,
 } from '../../types/domain';
 import {
   buildSyntheticPdfBuffer,
@@ -18,6 +20,20 @@ import {
 const ALLOWED_EXTENSIONS = ['.pdf', '.md', '.markdown', '.txt'] as const;
 const RRF_K = 60;
 const MOCK_EMBEDDING_MODEL = 'local-fnv1a-128';
+const VALID_EXAM_STAGES = new Set<ExamStageTag>([
+  'parcial_1',
+  'parcial_2',
+  'final',
+  'general',
+]);
+
+function validateExamStage(stage?: ExamStageTag): ExamStageTag {
+  const resolved = stage ?? 'general';
+  if (!VALID_EXAM_STAGES.has(resolved)) {
+    throw new Error(`Etapa de examen inválida: "${String(stage)}"`);
+  }
+  return resolved;
+}
 
 interface StoredMockSource extends SourceWithChunks {
   embeddings: Float32Array[];
@@ -216,6 +232,7 @@ function createStoredSourceFromPages(params: {
   rawText: string;
   pageCount: number;
   pages: PdfPageText[];
+  examStage?: ExamStageTag;
   createdAt?: string;
 }): StoredMockSource {
   const id = params.id ?? `src-${nextSourceSeq++}`;
@@ -225,6 +242,7 @@ function createStoredSourceFromPages(params: {
   }
 
   const now = params.createdAt ?? new Date().toISOString();
+  const examStage = validateExamStage(params.examStage);
   const chunks: SourceChunk[] = [];
   const embeddings: Float32Array[] = [];
 
@@ -256,6 +274,7 @@ function createStoredSourceFromPages(params: {
     indexingStatus: 'ready',
     indexingError: null,
     embeddingModel: MOCK_EMBEDDING_MODEL,
+    examStage,
     createdAt: now,
     updatedAt: now,
     chunks,
@@ -393,6 +412,7 @@ export async function mockCreateSourceFromText(
     rawText,
     pageCount: input.pageCount ?? pages.length,
     pages,
+    examStage: input.examStage,
   });
 
   sourcesStore.unshift(record);
@@ -464,10 +484,29 @@ export async function mockImportSourceFile(
     rawText,
     pageCount,
     pages,
+    examStage: input.examStage,
   });
 
   sourcesStore.unshift(record);
   return { canceled: false, source: toPublicSource(record) };
+}
+
+export async function mockUpdateSourceStage(
+  input: UpdateSourceStageInput
+): Promise<Source> {
+  const sourceId = (input.sourceId ?? '').trim();
+  const idx = sourcesStore.findIndex((item) => item.id === sourceId);
+  if (idx === -1) {
+    throw new Error(`Source not found: ${input.sourceId}`);
+  }
+  const examStage = validateExamStage(input.examStage);
+  const updated: StoredMockSource = {
+    ...sourcesStore[idx],
+    examStage,
+    updatedAt: new Date().toISOString(),
+  };
+  sourcesStore[idx] = updated;
+  return toPublicSource(updated);
 }
 
 export async function mockReindexSource(sourceId: string): Promise<Source> {
@@ -505,6 +544,7 @@ export async function mockReindexSource(sourceId: string): Promise<Source> {
     rawText: current.rawText,
     pageCount: current.pageCount,
     pages,
+    examStage: current.examStage,
     createdAt: current.createdAt,
   });
 
@@ -518,7 +558,10 @@ export async function mockDeleteSource(sourceId: string): Promise<void> {
 }
 
 export async function mockSearchSourceChunks(
-  input: SearchSourceChunksInput
+  input: SearchSourceChunksInput & {
+    sourceIds?: string[];
+    examStage?: ExamStageTag | 'all';
+  }
 ): Promise<SourceChunkSearchResult[]> {
   const query = (input.query ?? '').trim();
   if (!query) {
@@ -529,9 +572,30 @@ export async function mockSearchSourceChunks(
   const queryTokens = tokenizeNormalized(query);
   const queryEmbedding = computeMockEmbedding(query);
 
-  const courseSources = sourcesStore.filter(
-    (src) => src.courseId === input.courseId
-  );
+  const sourceIdSet =
+    input.sourceIds !== undefined
+      ? new Set(input.sourceIds.map((id) => id.trim()).filter(Boolean))
+      : null;
+  if (sourceIdSet && sourceIdSet.size === 0) {
+    return [];
+  }
+  const stageFilter =
+    input.examStage && input.examStage !== 'all'
+      ? validateExamStage(input.examStage)
+      : null;
+
+  const courseSources = sourcesStore.filter((src) => {
+    if (src.courseId !== input.courseId) {
+      return false;
+    }
+    if (sourceIdSet && !sourceIdSet.has(src.id)) {
+      return false;
+    }
+    if (stageFilter && (src.examStage ?? 'general') !== stageFilter) {
+      return false;
+    }
+    return true;
+  });
 
   interface Candidate {
     chunk: SourceChunk;
