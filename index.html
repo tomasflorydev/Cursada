@@ -5,24 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/svg+xml" href="./src/assets/cursada-mark.svg" />
-    <script>
-      try {
-        const storedScheme = localStorage.getItem('color-scheme');
-        const theme =
-          storedScheme === 'light' || storedScheme === 'dark' || storedScheme === 'system'
-            ? storedScheme
-            : 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-        const meta = document.querySelector('meta[name="color-scheme"]');
-        if (meta) {
-          meta.content = theme === 'system' ? 'light dark' : theme;
-        }
-        const storedNoteSize = localStorage.getItem('cursada-note-size');
-        if (storedNoteSize === 'small' || storedNoteSize === 'normal' || storedNoteSize === 'large') {
-          document.documentElement.setAttribute('data-note-size', storedNoteSize);
-        }
-      } catch {}
-    </script>
+    <script src="./theme-init.js"></script>
     <title>Inicio | Cursada</title>
   </head>
   <body>

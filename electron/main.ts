@@ -1,10 +1,18 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog, session, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getAppDatabase, initAppDatabase } from './db/database.js';
 import { registerAllIpcHandlers } from './ipc/handlers.js';
 import { createElectronNotificationDispatcher } from './ipc/notificationHandlers.js';
+import {
+  getDevCspDirectives,
+  isAllowedAppNavigation,
+  isSafeExternalUrl,
+  PROD_CSP_DIRECTIVES,
+  resolveUnifiedUserDataDir,
+  type AppOriginOptions,
+} from './security.js';
 import { checkAndDispatchDueReminders } from './services/notificationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,6 +21,28 @@ const __dirname = path.dirname(__filename);
 const REMINDER_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
 app.setName('Cursada');
+try {
+  const appDataDir = app.getPath('appData');
+  if (appDataDir) {
+    app.setPath('userData', resolveUnifiedUserDataDir(appDataDir, process.env));
+  }
+} catch {
+  // Ignore if appData path resolution is unavailable in constrained environments
+}
+
+function getAppOriginOptions(): AppOriginOptions {
+  const isPackagedBundle =
+    app.isPackaged ||
+    __dirname.includes(`${path.sep}Contents${path.sep}Resources${path.sep}app`) ||
+    !fs.existsSync(path.join(__dirname, '../src'));
+
+  return {
+    isPackagedBundle,
+    loadDist: process.env.CURSADA_LOAD_DIST === '1',
+    devServerUrl: process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173',
+    distHtmlPath: path.join(__dirname, '../dist/index.html'),
+  };
+}
 
 function resolveAppIconPath(): string | undefined {
   const candidates = [
@@ -27,7 +57,35 @@ function resolveAppIconPath(): string | undefined {
   return undefined;
 }
 
-function createMainWindow(): void {
+function configureSessionSecurity(originOptions: AppOriginOptions): void {
+  const defaultSession = session.defaultSession;
+  if (!defaultSession) {
+    return;
+  }
+
+  defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+  defaultSession.setPermissionCheckHandler(() => false);
+
+  const cspHeaderValue =
+    !originOptions.isPackagedBundle && !originOptions.loadDist
+      ? getDevCspDirectives(originOptions.devServerUrl)
+      : PROD_CSP_DIRECTIVES;
+
+  defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    if (details.resourceType !== 'mainFrame') {
+      callback({ responseHeaders: details.responseHeaders });
+      return;
+    }
+
+    const headers = { ...(details.responseHeaders ?? {}) };
+    headers['Content-Security-Policy'] = [cspHeaderValue];
+    callback({ responseHeaders: headers });
+  });
+}
+
+function createMainWindow(originOptions: AppOriginOptions): void {
   const iconPath = resolveAppIconPath();
 
   const mainWindow = new BrowserWindow({
@@ -41,24 +99,37 @@ function createMainWindow(): void {
     backgroundColor: '#1E2023',
     icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
-  const isPackagedBundle =
-    app.isPackaged ||
-    __dirname.includes(`${path.sep}Contents${path.sep}Resources${path.sep}app`) ||
-    !fs.existsSync(path.join(__dirname, '../src'));
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (isSafeExternalUrl(url)) {
+      void shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
+  mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
+    if (!isAllowedAppNavigation(targetUrl, originOptions)) {
+      event.preventDefault();
+      if (isSafeExternalUrl(targetUrl)) {
+        void shell.openExternal(targetUrl);
+      }
+    }
+  });
 
-  if (!isPackagedBundle && !process.env.CURSADA_LOAD_DIST) {
-    void mainWindow.loadURL(devServerUrl);
+  mainWindow.webContents.on('will-attach-webview', (event) => {
+    event.preventDefault();
+  });
+
+  if (!originOptions.isPackagedBundle && !originOptions.loadDist) {
+    void mainWindow.loadURL(originOptions.devServerUrl);
   } else {
-    void mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    void mainWindow.loadFile(originOptions.distHtmlPath);
   }
 
   mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
@@ -118,24 +189,41 @@ function startReminderScheduler(): void {
   timer.unref();
 }
 
-void app.whenReady().then(() => {
-  initAppDatabase();
-  registerAllIpcHandlers();
+void app
+  .whenReady()
+  .then(() => {
+    const originOptions = getAppOriginOptions();
+    initAppDatabase();
+    registerAllIpcHandlers();
+    configureSessionSecurity(originOptions);
 
-  const iconPath = resolveAppIconPath();
-  if (process.platform === 'darwin' && iconPath && app.dock) {
-    app.dock.setIcon(iconPath);
-  }
-
-  createMainWindow();
-  startReminderScheduler();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
+    const iconPath = resolveAppIconPath();
+    if (process.platform === 'darwin' && iconPath && app.dock) {
+      app.dock.setIcon(iconPath);
     }
+
+    createMainWindow(originOptions);
+    startReminderScheduler();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow(originOptions);
+      }
+    });
+  })
+  .catch((err: unknown) => {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[startup-fatal]', err);
+    try {
+      dialog.showErrorBox(
+        'Error al iniciar Cursada',
+        `No se pudo inicializar la base de datos o la ventana principal.\n\nDetalle: ${detail}`
+      );
+    } catch {
+      // Ignore if dialog cannot be shown in headless shutdown
+    }
+    app.quit();
   });
-});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
