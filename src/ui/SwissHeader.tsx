@@ -50,14 +50,7 @@ export function SwissHeader({
           </button>
           <span className="swiss-header-detail-course">{courseDetail.name}</span>
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            flexShrink: 0,
-          }}
-        >
+        <div className="swiss-header-right">
           <div className="swiss-header-detail-meta">{courseDetail.summary}</div>
           <PomodoroHeaderWidget
             activeCourseId={activeCourseId}
@@ -102,14 +95,7 @@ export function SwissHeader({
         </ul>
       </nav>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          flexShrink: 0,
-        }}
-      >
+      <div className="swiss-header-right">
         <PomodoroHeaderWidget
           activeCourseId={activeCourseId}
           activeCourseName={activeCourseName}

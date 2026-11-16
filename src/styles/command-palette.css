@@ -162,10 +162,10 @@
     min-block-size: 26px;
     padding: 3px 10px;
     border-radius: 0;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.76rem;
+    border: 1px solid var(--toggle-border);
+    background: var(--toggle-inactive-bg);
+    color: var(--toggle-inactive-fg);
+    font-size: 0.8125rem;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
@@ -176,14 +176,14 @@
   }
 
   .command-palette-filter-pill:hover:not(.is-active) {
-    background-color: var(--bg-surface-active);
-    color: var(--text-primary);
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
   }
 
   .command-palette-filter-pill.is-active {
-    background-color: var(--accent-soft);
-    color: var(--accent-primary);
-    border-color: var(--accent-primary);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
+    border-color: var(--toggle-active-bg);
     font-weight: 600;
   }
 

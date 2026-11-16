@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
-import { ObsidianImportModal } from '../components/courses/ObsidianImportModal';
-import { NotesGraphView } from '../components/notes/NotesGraphView';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import {
   DAY_SHORT_NAMES_ES,
@@ -134,8 +132,6 @@ export function CoursesPage({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
-  const [isGlobalGraphOpen, setIsGlobalGraphOpen] = useState(false);
-  const [isObsidianModalOpen, setIsObsidianModalOpen] = useState(false);
 
   const lastCreateRequestVersionRef = useRef<number>(0);
 
@@ -328,170 +324,150 @@ export function CoursesPage({
             </div>
 
             <div className="swiss-page-actions">
-              <SwissButton
-                variant="secondary"
-                onClick={() => setIsGlobalGraphOpen((v) => !v)}
-              >
-                {isGlobalGraphOpen ? 'Ver listado' : 'Grafo global'}
-              </SwissButton>
-              <SwissButton
-                variant="secondary"
-                onClick={() => setIsObsidianModalOpen(true)}
-              >
-                Importar Vault de Obsidian
-              </SwissButton>
               <SwissButton variant="secondary" onClick={handleOpenCreate}>
                 + Nueva materia
               </SwissButton>
             </div>
           </header>
 
-          {isGlobalGraphOpen ? (
-            <NotesGraphView
-              onSelectNote={(noteId, targetCourseId) => {
-                setIsGlobalGraphOpen(false);
-                onSelectCourse(targetCourseId, { noteId });
-              }}
-              onClose={() => setIsGlobalGraphOpen(false)}
-            />
-          ) : activeCourses.length === 0 ? (
-            <SwissEmptyState
-              title="No tenés materias activas"
-              description="Creá una materia para organizar tus notas, fuentes, tareas y próximos exámenes."
-              actionLabel="+ Nueva materia"
-              onAction={handleOpenCreate}
-            />
-          ) : (
-            <div className="courses-table" role="table" aria-label="Materias activas">
-              <div className="courses-table-head" role="row">
-                <span className="swiss-section-label" role="columnheader">
-                  Nº
-                </span>
-                <span className="swiss-section-label" role="columnheader">
-                  Materia
-                </span>
-                <span className="swiss-section-label" role="columnheader">
-                  Próxima clase
-                </span>
-                <span className="swiss-section-label" role="columnheader">
-                  Notas
-                </span>
-                <span className="swiss-section-label" role="columnheader">
-                  Tareas
-                </span>
-                <span className="swiss-section-label" role="columnheader">
-                  Próximo examen
-                </span>
-                <span className="visually-hidden" role="columnheader">
-                  Acción
-                </span>
-              </div>
+          {activeCourses.length === 0 ? (
+              <SwissEmptyState
+                title="No tenés materias activas"
+                description="Creá una materia para organizar tus notas, fuentes, tareas y próximos exámenes."
+                actionLabel="+ Nueva materia"
+                onAction={handleOpenCreate}
+              />
+            ) : (
+              <div className="courses-table" role="table" aria-label="Materias activas">
+                <div className="courses-table-head" role="row">
+                  <span className="swiss-section-label" role="columnheader">
+                    Nº
+                  </span>
+                  <span className="swiss-section-label" role="columnheader">
+                    Materia
+                  </span>
+                  <span className="swiss-section-label" role="columnheader">
+                    Próxima clase
+                  </span>
+                  <span className="swiss-section-label" role="columnheader">
+                    Notas
+                  </span>
+                  <span className="swiss-section-label" role="columnheader">
+                    Tareas
+                  </span>
+                  <span className="swiss-section-label" role="columnheader">
+                    Próximo examen
+                  </span>
+                  <span className="visually-hidden" role="columnheader">
+                    Acción
+                  </span>
+                </div>
 
-              {activeCourses.map((course, idx) => {
-                const indexText = String(idx + 1).padStart(2, '0');
-                const notesCount = notesByCourse[course.id] ?? 0;
-                const tasksCount = pendingByCourse[course.id] ?? 0;
-                const nextExam = nextExamByCourse[course.id];
-                const isGlobalClosest =
-                  nextExam !== null && nextExam.id === globalClosestExamId;
-                const daysLeft = nextExam
-                  ? Math.max(0, diffCalendarDays(nextExam.examDate, todayIso))
-                  : null;
+                {activeCourses.map((course, idx) => {
+                  const indexText = String(idx + 1).padStart(2, '0');
+                  const notesCount = notesByCourse[course.id] ?? 0;
+                  const tasksCount = pendingByCourse[course.id] ?? 0;
+                  const nextExam = nextExamByCourse[course.id];
+                  const isGlobalClosest =
+                    nextExam !== null && nextExam.id === globalClosestExamId;
+                  const daysLeft = nextExam
+                    ? Math.max(0, diffCalendarDays(nextExam.examDate, todayIso))
+                    : null;
 
-                return (
-                  <div
-                    key={course.id}
-                    className="courses-table-row"
-                    role="row"
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest('button')) return;
-                      onSelectCourse(course.id);
-                    }}
-                  >
-                    <span className="courses-row-idx" role="cell">
-                      {indexText}
-                    </span>
+                  return (
+                    <div
+                      key={course.id}
+                      className="courses-table-row"
+                      role="row"
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('button')) return;
+                        onSelectCourse(course.id);
+                      }}
+                    >
+                      <span className="courses-row-idx" role="cell">
+                        {indexText}
+                      </span>
 
-                    <div role="cell">
-                      <button
-                        type="button"
-                        className="courses-row-name"
-                        onClick={() => onSelectCourse(course.id)}
-                      >
-                        {course.name}
-                      </button>
-                      <div className="swiss-meta">
-                        {course.professor.trim() ? `${course.professor.trim()} · ` : ''}
-                        <SwissLinkButton
-                          style={{ fontSize: '12px', fontWeight: 500 }}
-                          onClick={() => handleOpenEdit(course)}
+                      <div role="cell">
+                        <button
+                          type="button"
+                          className="courses-row-name"
+                          onClick={() => onSelectCourse(course.id)}
                         >
-                          Editar
-                        </SwissLinkButton>
-                        {' · '}
+                          {course.name}
+                        </button>
+                        <div className="swiss-meta">
+                          {course.professor.trim() ? `${course.professor.trim()} · ` : ''}
+                          <SwissLinkButton
+                            className="swiss-link-sm"
+                            onClick={() => handleOpenEdit(course)}
+                          >
+                            Editar
+                          </SwissLinkButton>
+                          {' · '}
+                          <SwissLinkButton
+                            className="swiss-link-sm"
+                            onClick={() => void handleToggleArchive(course)}
+                          >
+                            Archivar
+                          </SwissLinkButton>
+                          {' · '}
+                          <SwissLinkButton
+                            className="swiss-link-sm"
+                            onClick={() => void handleRequestDelete(course.id)}
+                          >
+                            Eliminar
+                          </SwissLinkButton>
+                        </div>
+                      </div>
+
+                      <span className="courses-row-nextclass" role="cell">
+                        {formatNextClassLabel(course, now)}
+                      </span>
+
+                      <span className="courses-row-num" role="cell">
+                        {notesCount}
+                      </span>
+
+                      <span className="courses-row-num" role="cell">
+                        {tasksCount}
+                      </span>
+
+                      <div className="courses-row-exam" role="cell">
+                        {nextExam && daysLeft !== null ? (
+                          <>
+                            <span
+                              className={`courses-row-exam-label ${isGlobalClosest ? 'is-closest' : ''}`}
+                            >
+                              {EXAM_CATEGORY_LABELS[nextExam.category]} ·{' '}
+                              {daysLeft === 0
+                                ? 'hoy'
+                                : daysLeft === 1
+                                  ? 'en 1 día'
+                                  : `en ${daysLeft} días`}
+                            </span>
+                            <span className="courses-row-exam-sub">
+                              {formatShortExamDate(nextExam.examDate)} · {nextExam.title}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="swiss-meta">Sin exámenes</span>
+                        )}
+                      </div>
+
+                      <div className="courses-row-actions" role="cell">
                         <SwissLinkButton
-                          style={{ fontSize: '12px', fontWeight: 500 }}
-                          onClick={() => void handleToggleArchive(course)}
+                          aria-label={`Abrir ${course.name}`}
+                          onClick={() => onSelectCourse(course.id)}
                         >
-                          Archivar
-                        </SwissLinkButton>
-                        {' · '}
-                        <SwissLinkButton
-                          style={{ fontSize: '12px', fontWeight: 500 }}
-                          onClick={() => void handleRequestDelete(course.id)}
-                        >
-                          Eliminar
+                          →
                         </SwissLinkButton>
                       </div>
                     </div>
-
-                    <span className="courses-row-nextclass" role="cell">
-                      {formatNextClassLabel(course, now)}
-                    </span>
-
-                    <span className="courses-row-num" role="cell">
-                      {notesCount}
-                    </span>
-
-                    <span className="courses-row-num" role="cell">
-                      {tasksCount}
-                    </span>
-
-                    <div className="courses-row-exam" role="cell">
-                      {nextExam && daysLeft !== null ? (
-                        <>
-                          <span
-                            className={`courses-row-exam-label ${isGlobalClosest ? 'is-closest' : ''}`}
-                          >
-                            {EXAM_CATEGORY_LABELS[nextExam.category]} ·{' '}
-                            {daysLeft === 0
-                              ? 'hoy'
-                              : daysLeft === 1
-                                ? 'en 1 día'
-                                : `en ${daysLeft} días`}
-                          </span>
-                          <span className="courses-row-exam-sub">
-                            {formatShortExamDate(nextExam.examDate)} · {nextExam.title}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="swiss-meta">Sin exámenes</span>
-                      )}
-                    </div>
-
-                    <div className="courses-row-actions" role="cell">
-                      <SwissLinkButton
-                        aria-label={`Abrir ${course.name}`}
-                        onClick={() => onSelectCourse(course.id)}
-                      >
-                        →
-                      </SwissLinkButton>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
 
           <footer className="courses-footer">
             <span className="swiss-meta-md">
@@ -569,15 +545,6 @@ export function CoursesPage({
         impact={deleteImpact}
         onCancel={() => setDeleteImpact(null)}
         onConfirm={handleConfirmDelete}
-      />
-
-      <ObsidianImportModal
-        isOpen={isObsidianModalOpen}
-        onClose={() => setIsObsidianModalOpen(false)}
-        onImported={() => {
-          void loadCourses();
-          onCoursesChanged?.();
-        }}
       />
     </>
   );

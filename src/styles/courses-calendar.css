@@ -380,8 +380,8 @@
     gap: 4px;
     padding: 4px;
     border-radius: 0;
-    background-color: var(--bg-surface-subtle);
-    border: 1px solid var(--border-subtle);
+    background-color: var(--toggle-inactive-bg);
+    border: 2px solid var(--toggle-border);
     max-width: 100%;
     overflow-x: auto;
   }
@@ -392,8 +392,8 @@
     border: none;
     border-radius: 0;
     background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
+    color: var(--toggle-inactive-fg);
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
@@ -401,12 +401,13 @@
   }
 
   .course-tab-button:hover:not(.is-active) {
-    color: var(--text-primary);
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
   }
 
   .course-tab-button.is-active {
-    background-color: var(--bg-surface);
-    color: var(--text-primary);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
     font-weight: 600;
     box-shadow: none;
   }
@@ -523,12 +524,13 @@
   .calendar-month-cell {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    min-block-size: 120px;
-    padding: 8px 8px 10px;
-    border-block-end: 1px solid var(--border-subtle);
-    border-inline-end: 1px solid var(--border-subtle);
-    background-color: var(--bg-surface);
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+    min-block-size: 112px;
+    padding: 8px;
+    border-block-end: 1px solid var(--grid);
+    background-color: var(--bg);
     min-inline-size: 0;
     overflow: hidden;
   }
@@ -536,10 +538,6 @@
   .calendar-day-col {
     min-inline-size: 0;
     overflow: hidden;
-  }
-
-  .calendar-month-cell:nth-child(7n) {
-    border-inline-end: none;
   }
 
   .calendar-month-cell:nth-last-child(-n + 7) {

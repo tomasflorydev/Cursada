@@ -1,5 +1,7 @@
 /* Styles for Phase 12: Knowledge Network (WikiLinks, Backlinks, 2D Graph, Obsidian Importer) */
 
+@layer reset, tokens, base, layout, components, utilities;
+
 @layer components {
   /* ==========================================================================
      1. Backlinks & Forward WikiLinks Panel (.backlinks-panel)
@@ -11,6 +13,17 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .notebook-knowledge-section .backlinks-panel {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .notebook-knowledge-section .backlinks-panel-body {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .backlinks-panel-toggle {
@@ -32,7 +45,7 @@
   }
 
   .backlinks-panel-title {
-    font-size: 11px;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -409,6 +422,16 @@
     color: var(--mut);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
+  }
+
+  @container editor-pane (inline-size < 620px) {
+    .graph-workspace-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .graph-nodes-index {
+      max-block-size: 260px;
+    }
   }
 
   @media (max-width: 960px) {

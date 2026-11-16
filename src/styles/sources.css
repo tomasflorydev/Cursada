@@ -422,8 +422,8 @@
     gap: 4px;
     padding: 4px;
     border-radius: 0;
-    border: 1px solid var(--border-subtle);
-    background-color: var(--bg-surface-subtle);
+    border: 2px solid var(--toggle-border);
+    background-color: var(--toggle-inactive-bg);
   }
 
   .sources-tab-button {
@@ -431,15 +431,20 @@
     border: 0;
     border-radius: 0;
     background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
+    color: var(--toggle-inactive-fg);
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
   }
 
+  .sources-tab-button:hover:not(.is-active) {
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
+  }
+
   .sources-tab-button.is-active {
-    background-color: var(--bg-surface);
-    color: var(--text-primary);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
     font-weight: 600;
     box-shadow: none;
   }

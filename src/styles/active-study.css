@@ -99,8 +99,9 @@
   }
 
   .pomodoro-btn.is-active {
-    background-color: var(--ink);
-    color: var(--bg);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
+    border-color: var(--toggle-active-bg);
   }
 
   .pomodoro-notice {
@@ -199,24 +200,55 @@
   }
 
   /* ==========================================================================
-     EXAM STAGE PILLS (1° Parcial / 2° Parcial / Final / General)
+     EXAM STAGE PILLS (Todo / 1° Parcial / 2° Parcial / Final / Solo Fuentes / Solo Notas)
      ========================================================================== */
+  .stage-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .stage-pill {
+    border: 2px solid var(--toggle-border);
+    border-radius: 0;
+    background-color: var(--toggle-inactive-bg);
+    color: var(--toggle-inactive-fg);
+    padding: 5px 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.25;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+
+  .stage-pill:hover:not(.is-active) {
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
+  }
+
+  .stage-pill.is-active {
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
+    border-color: var(--toggle-active-bg);
+  }
+
   .exam-stage-pills {
     display: inline-flex;
     flex-wrap: wrap;
-    border: 2px solid var(--ink);
+    border: 2px solid var(--toggle-border);
     border-radius: 0;
-    background-color: var(--bg);
+    background-color: var(--toggle-inactive-bg);
   }
 
   .exam-stage-pill {
     border: 0;
-    border-right: 1px solid var(--rule);
+    border-right: 1px solid var(--toggle-border);
     border-radius: 0;
-    background: transparent;
-    color: var(--ink);
+    background-color: var(--toggle-inactive-bg);
+    color: var(--toggle-inactive-fg);
     padding: 5px 10px;
-    font-size: 12px;
+    font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
     line-height: 1.25;
@@ -227,12 +259,13 @@
   }
 
   .exam-stage-pill:hover:not(.is-active) {
-    color: var(--acc);
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
   }
 
   .exam-stage-pill.is-active {
-    background-color: var(--ink);
-    color: var(--bg);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
   }
 
   /* ==========================================================================

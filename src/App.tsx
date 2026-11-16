@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { MotionConfig, motion } from 'framer-motion';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { cursadaClient, DATA_CHANGED_EVENT } from './lib/api/client';
 import { resolveGlobalShortcut } from './lib/shortcuts/commandPaletteSearch';
@@ -313,8 +314,13 @@ export function App() {
         }
       : null;
 
+  const viewTransitionKey =
+    activeSection === 'materias' && selectedCourseId
+      ? `materias-${selectedCourseId}`
+      : activeSection;
+
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <div className="swiss-drag-strip" aria-hidden="true" />
       <div className="swiss-shell">
         <a href="#main-title" className="skip-link visually-hidden">
@@ -335,73 +341,82 @@ export function App() {
         />
 
         <main className="swiss-main">
-          {activeSection === 'inicio' ? (
-            <HomePage
-              onNavigateSection={handleSelectSection}
-              onSelectCourse={(courseId, opts) =>
-                handleSelectCourse(courseId, opts)
-              }
-            />
-          ) : null}
+          <motion.div
+            key={viewTransitionKey}
+            className="swiss-view-stage"
+            data-testid="view-transition-stage"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            {activeSection === 'inicio' ? (
+              <HomePage
+                onNavigateSection={handleSelectSection}
+                onSelectCourse={(courseId, opts) =>
+                  handleSelectCourse(courseId, opts)
+                }
+              />
+            ) : null}
 
-          {activeSection === 'materias' ? (
-            <CoursesPage
-              selectedCourseId={selectedCourseId}
-              onSelectCourse={handleSelectCourse}
-              onCoursesChanged={() => void refreshCoursesCache()}
-              onCourseDetailHeaderChange={setCourseDetailHeader}
-              onOpenReport={handleOpenReport}
-              initialCourseTab={courseNavTarget.tab}
-              initialNoteId={courseNavTarget.noteId}
-              courseNavigationVersion={courseNavTarget.version}
-              createRequestVersion={coursesCreateVersion}
-              newNoteRequestVersion={newNoteRequestVersion}
-            />
-          ) : null}
+            {activeSection === 'materias' ? (
+              <CoursesPage
+                selectedCourseId={selectedCourseId}
+                onSelectCourse={handleSelectCourse}
+                onCoursesChanged={() => void refreshCoursesCache()}
+                onCourseDetailHeaderChange={setCourseDetailHeader}
+                onOpenReport={handleOpenReport}
+                initialCourseTab={courseNavTarget.tab}
+                initialNoteId={courseNavTarget.noteId}
+                courseNavigationVersion={courseNavTarget.version}
+                createRequestVersion={coursesCreateVersion}
+                newNoteRequestVersion={newNoteRequestVersion}
+              />
+            ) : null}
 
-          {activeSection === 'calendario' ? (
-            <CalendarPage
-              onSelectCourse={(courseId) => handleSelectCourse(courseId)}
-              onNavigateSection={(sec) => handleSelectSection(sec)}
-            />
-          ) : null}
+            {activeSection === 'calendario' ? (
+              <CalendarPage
+                onSelectCourse={(courseId) => handleSelectCourse(courseId)}
+                onNavigateSection={(sec) => handleSelectSection(sec)}
+              />
+            ) : null}
 
-          {activeSection === 'tareas' ? (
-            <TasksPage
-              onSelectCourse={(courseId) => handleSelectCourse(courseId)}
-              onTasksChanged={() => void refreshCoursesCache()}
-              externalCreateVersion={tasksCreateVersion}
-            />
-          ) : null}
+            {activeSection === 'tareas' ? (
+              <TasksPage
+                onSelectCourse={(courseId) => handleSelectCourse(courseId)}
+                onTasksChanged={() => void refreshCoursesCache()}
+                externalCreateVersion={tasksCreateVersion}
+              />
+            ) : null}
 
-          {activeSection === 'examenes' ? (
-            <ExamsPage
-              onSelectCourse={(courseId) => handleSelectCourse(courseId)}
-              onExamsChanged={() => void refreshCoursesCache()}
-              externalCreateVersion={examsCreateVersion}
-              onOpenReport={handleOpenReport}
-            />
-          ) : null}
+            {activeSection === 'examenes' ? (
+              <ExamsPage
+                onSelectCourse={(courseId) => handleSelectCourse(courseId)}
+                onExamsChanged={() => void refreshCoursesCache()}
+                externalCreateVersion={examsCreateVersion}
+                onOpenReport={handleOpenReport}
+              />
+            ) : null}
 
-          {activeSection === 'informes' ? (
-            <ReportsPage
-              initialReportId={selectedReportId}
-              reportNavigationVersion={reportNavVersion}
-              createRequestVersion={reportsCreateVersion}
-              onSelectCourseNote={(courseId, noteId) =>
-                handleSelectCourse(courseId, noteId ? { noteId } : undefined)
-              }
-            />
-          ) : null}
+            {activeSection === 'informes' ? (
+              <ReportsPage
+                initialReportId={selectedReportId}
+                reportNavigationVersion={reportNavVersion}
+                createRequestVersion={reportsCreateVersion}
+                onSelectCourseNote={(courseId, noteId) =>
+                  handleSelectCourse(courseId, noteId ? { noteId } : undefined)
+                }
+              />
+            ) : null}
 
-          {activeSection === 'ajustes' ? (
-            <SettingsPage
-              themeMode={themeMode}
-              onChangeThemeMode={setThemeMode}
-              noteFontSize={noteFontSize}
-              onChangeNoteFontSize={setNoteFontSize}
-            />
-          ) : null}
+            {activeSection === 'ajustes' ? (
+              <SettingsPage
+                themeMode={themeMode}
+                onChangeThemeMode={setThemeMode}
+                noteFontSize={noteFontSize}
+                onChangeNoteFontSize={setNoteFontSize}
+              />
+            ) : null}
+          </motion.div>
         </main>
 
         <CommandPalette
@@ -410,6 +425,6 @@ export function App() {
           onSelectTarget={handleCommandPaletteTarget}
         />
       </div>
-    </>
+    </MotionConfig>
   );
 }

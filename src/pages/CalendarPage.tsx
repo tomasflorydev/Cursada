@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import {
   addDays,
@@ -588,9 +589,13 @@ export function CalendarPage({
       ) : null}
 
       {viewMode === 'week' ? (
-        <section
+        <motion.section
+          key="calendar-week"
           className="calendar-week-grid"
           aria-label="Grilla semanal de cursada"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
         >
           <div className="calendar-day-heads">
             <div aria-hidden="true" />
@@ -745,9 +750,15 @@ export function CalendarPage({
               );
             })}
           </div>
-        </section>
+        </motion.section>
       ) : (
-        <section aria-label="Calendario mensual de cursada">
+        <motion.section
+          key="calendar-month"
+          aria-label="Calendario mensual de cursada"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
           <div className="calendar-month-grid">
             {WEEKDAY_ORDER.map((dayOfWeek) => (
               <div key={dayOfWeek} className="calendar-month-head">
@@ -765,6 +776,34 @@ export function CalendarPage({
                 ? (blocksByDay.get(day.dayOfWeek) ?? [])
                 : [];
               const isSelected = selectedMonthDateIso === day.dateIso;
+
+              const monthBadges: Array<{
+                key: string;
+                label: string;
+                variantClass: string;
+                title: string;
+              }> = [
+                ...dayExams.map((exam) => ({
+                  key: `exam-${exam.id}`,
+                  label: `${EXAM_CATEGORY_SHORT[exam.category]} · ${exam.title}`,
+                  variantClass: 'is-exam',
+                  title: `${EXAM_CATEGORY_SHORT[exam.category]} · ${exam.title} · ${exam.courseName}`,
+                })),
+                ...dayTasks.map((task) => ({
+                  key: `task-${task.id}`,
+                  label: `Entrega · ${task.title}`,
+                  variantClass: task.status === 'done' ? 'is-done' : '',
+                  title: `${task.title} · ${task.courseName}`,
+                })),
+                ...dayExternal.map((evt) => ({
+                  key: `ext-${evt.id}`,
+                  label: evt.startTime ? `${evt.startTime} · ${evt.title}` : evt.title,
+                  variantClass: 'is-external',
+                  title: `${evt.feedName}: ${evt.title}`,
+                })),
+              ];
+              const visibleMonthBadges = monthBadges.slice(0, 3);
+              const extraBadgesCount = Math.max(0, monthBadges.length - visibleMonthBadges.length);
 
               return (
                 <div
@@ -796,36 +835,37 @@ export function CalendarPage({
                   <span className="calendar-month-daynum">
                     {Number(day.dayNumber)}
                   </span>
-                  <div className="calendar-event-dots" aria-hidden="true">
-                    {dayExams.map((exam) => (
-                      <span
-                        key={exam.id}
-                        className="calendar-event-rect is-accent"
-                        title={`Examen: ${exam.title}`}
-                      />
-                    ))}
-                    {dayTasks.map((task) => (
-                      <span
-                        key={task.id}
-                        className="calendar-event-rect"
-                        title={`Entrega: ${task.title}`}
-                      />
-                    ))}
-                    {dayClasses.map((block) => (
-                      <span
-                        key={`${day.dateIso}-${block.scheduleId}`}
-                        className="calendar-event-rect"
-                        title={`Clase: ${block.courseName}`}
-                      />
-                    ))}
-                    {dayExternal.map((evt) => (
-                      <span
-                        key={evt.id}
-                        className="calendar-event-rect"
-                        title={`Externo (${evt.feedName}): ${evt.title}`}
-                      />
-                    ))}
-                  </div>
+
+                  {visibleMonthBadges.length > 0 ? (
+                    <div className="calendar-month-deliverables">
+                      {visibleMonthBadges.map((badge) => (
+                        <span
+                          key={badge.key}
+                          className={`calendar-month-badge ${badge.variantClass}`.trim()}
+                          title={badge.title}
+                        >
+                          {badge.label}
+                        </span>
+                      ))}
+                      {extraBadgesCount > 0 ? (
+                        <span className="calendar-month-badge-more">
+                          +{extraBadgesCount} más
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {dayClasses.length > 0 ? (
+                    <div className="calendar-event-dots" aria-hidden="true">
+                      {dayClasses.map((block) => (
+                        <span
+                          key={`${day.dateIso}-${block.scheduleId}`}
+                          className="calendar-event-rect"
+                          title={`Clase: ${block.courseName}`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -944,7 +984,7 @@ export function CalendarPage({
               </div>
             </div>
           ) : null}
-        </section>
+        </motion.section>
       )}
     </section>
   );

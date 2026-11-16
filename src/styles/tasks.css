@@ -47,8 +47,8 @@
     gap: 2px;
     padding: 3px;
     border-radius: 0;
-    background-color: var(--bg-surface-subtle);
-    border: 1px solid var(--border-subtle);
+    background-color: var(--toggle-inactive-bg);
+    border: 2px solid var(--toggle-border);
   }
 
   .task-filter-pill {
@@ -57,20 +57,21 @@
     border: none;
     border-radius: 0;
     background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.78rem;
+    color: var(--toggle-inactive-fg);
+    font-size: 0.8125rem;
     font-weight: 500;
     cursor: pointer;
     transition: background-color 120ms ease, color 120ms ease;
   }
 
   .task-filter-pill:hover:not(.is-active) {
-    color: var(--text-primary);
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
   }
 
   .task-filter-pill.is-active {
-    background-color: var(--bg-surface);
-    color: var(--text-primary);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
     font-weight: 600;
     box-shadow: none;
   }

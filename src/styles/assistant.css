@@ -45,29 +45,30 @@
     gap: 4px;
     padding: 4px;
     border-radius: 0;
-    border: 1px solid var(--border-subtle);
-    background-color: var(--bg-surface-subtle);
+    border: 2px solid var(--toggle-border);
+    background-color: var(--toggle-inactive-bg);
   }
 
   .assistant-mode-btn {
     border: 0 solid;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--toggle-inactive-fg);
     padding: 7px 14px;
     border-radius: 0;
-    font-size: 0.84rem;
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
   }
 
-  .assistant-mode-btn:hover {
-    color: var(--text-primary);
+  .assistant-mode-btn:hover:not(.is-active) {
+    background-color: var(--grid);
+    color: var(--toggle-inactive-fg);
   }
 
   .assistant-mode-btn.is-active {
-    background-color: var(--bg-surface);
-    color: var(--text-primary);
+    background-color: var(--toggle-active-bg);
+    color: var(--toggle-active-fg);
     font-weight: 600;
     box-shadow: none;
   }
@@ -353,16 +354,19 @@
     border-radius: 0;
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-surface);
-    color: var(--accent-primary);
-    font-size: 0.78rem;
+    color: var(--ink);
+    font-size: 0.8125rem;
     font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--mut);
+    text-underline-offset: 4px;
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, text-decoration-color 0.15s ease;
   }
 
   .assistant-citation-chip:hover {
-    border-color: var(--accent-primary);
-    background-color: var(--accent-soft);
+    border-color: var(--ink);
+    text-decoration-color: currentColor;
   }
 
   .assistant-message-actions {

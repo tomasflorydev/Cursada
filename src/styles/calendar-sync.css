@@ -1,5 +1,7 @@
 /* Swiss Typographic Design v2.0 styles for Calendar Sync (Phase 14) */
 
+@layer reset, tokens, base, layout, components, utilities;
+
 @layer components {
   .calendar-sync-section {
     margin-bottom: 32px;
@@ -154,6 +156,17 @@
     color: var(--ink);
     text-align: left;
     min-width: 0;
+  }
+
+  .calendar-deliverable-item.calendar-external-event {
+    display: block;
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px dashed var(--rule);
+    border-left: 4px dashed var(--acc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .calendar-external-event-badge {
