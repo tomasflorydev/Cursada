@@ -2,7 +2,7 @@
 
 ## Estado Actual
 - **Versión actual**: **`v2.4.0` (Ciclo 2 completado + Correcciones de Auditoría Fase 1 aplicadas en `main`)**.
-- **Próximo hito planificado**: **Confirmación de poda de worktrees/ramas Git obsoletas**, **Fase 2 de auditoría** (informes en SQLite, embeddings unificados, ajustes desconectados y optimización del editor), validación manual en Electron (`npm run dev`) y reempaquetado opcional de `release/Cursada.app` (`npm run package`).
+- **Próximo hito planificado**: **Fase 2 de auditoría** (informes en SQLite, embeddings unificados, ajustes desconectados y optimización del editor), validación manual en Electron (`npm run dev`) y reempaquetado opcional de `release/Cursada.app` (`npm run package`).
 - **Última actualización**: 2026-11-16
 - **Métricas de verificación automatizada en `main`**:
   - **37 archivos de test** y **178 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v8`).
@@ -191,8 +191,8 @@
   - Verificación `assertTrustedIpcEvent` y validación `assertValidIpcId` en los 14 dominios IPC; bloqueo de rutas arbitrarias del renderer en producción (`resolveRendererRequestedPath`); cifrado de tokens Google Calendar con `safeStorage` (`v: 1` envelope); restricción de Ollama por defecto a hosts locales/`.local`; y defensa anti-SSRF + tope de 5 MB para feeds `.ics`.
 - [x] **T1.3 — Integridad SQLite, disco y fechas (`coursesRepo.ts`, `sourcesRepo.ts`, `notesRepo.ts`, `wikiLinks.ts`, `migrations.ts`, `exportService.ts`, `mockExport.ts`)**:
   - Eliminación física de archivos en `sources/` al borrar una materia (`coursesHandlers.ts` → `deleteCourse`), sincronización completa de `attendance_enabled`/`max_absences` en `coursesRepo.ts`, actualización automática de `note_links` desde `createNote`/`updateNote` vía `electron/db/wikiLinks.ts`, limpieza de llamadas duplicadas en `sourcesHandlers.ts`, etiqueta `pre-migration-from-vX-to-vY` en `migrations.ts` y formateo local de fechas al exportar Markdown.
-- [x] **T1.4 — Empaquetado, CSS, `dev` y documentación (`build/icon.svg`, `scripts/package-macos-app.mjs`, `scripts/dev-electron.mjs`, `src/styles/courses-calendar.css`, `package.json`, `README.md`)**:
-  - Ícono SVG/PNG programático unificado con `build/icon-dark.svg` (`#1E2023` + `#FF5F52`), copia de `icon.png` dentro de `Contents/Resources/`, corrección de sintaxis CSS en `.course-overview-card`, `npm run dev` unificado (Vite + Electron) y creación de `README.md`.
+- [x] **T1.4 — Empaquetado, CSS, `dev`, poda Git y documentación (`build/icon.svg`, `scripts/package-macos-app.mjs`, `scripts/dev-electron.mjs`, `src/styles/courses-calendar.css`, `package.json`, `README.md`)**:
+  - Ícono SVG/PNG programático unificado con `build/icon-dark.svg` (`#1E2023` + `#FF5F52`), copia de `icon.png` dentro de `Contents/Resources/`, corrección de sintaxis CSS en `.course-overview-card`, `npm run dev` unificado (Vite + Electron), creación de `README.md` y poda segura de los 10 worktrees externos y las 12 ramas ya mergeadas en `main`.
   - Tests nuevos de seguridad, integridad y empaquetado (`src/__tests__/phase1Security.test.ts`, `coursesRepo.test.ts`, `notesRepo.test.ts`, `exportService.test.ts`, `stage0-db-backups.test.ts`, `notificationsAndPackaging.test.ts`; suite total: **37 archivos / 178 tests en verde**).
 
 ## Qué sigue (Verificación Manual y Siguientes Fases)
@@ -203,5 +203,5 @@
 - [x] **Fase 13 (`v2.3.0`) — Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro Timer, Notas como Fuentes + Selector/Filtro `1°/2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia)**.
 - [x] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
 - [x] **Iteración Post-Fase 14 — Refinamiento UI Editorial Suizo, contraste de toggles/segmentados y centralización de Obsidian en Ajustes**.
-- [x] **Auditoría Fase 1 (Quick Wins T1.1–T1.4 — salvo poda git pendiente de confirmación)**.
-- [ ] **Pendientes post-Fase 1**: Confirmar eliminación de los 10 worktrees externos y 12 ramas Git huérfanas (`AUDITORIA.md`), ejecutar **Fase 2** (informes en SQLite, embeddings locales unificados, ajustes/CommandPalette, optimización de editor/bundle) y **Fase 3**, más verificación manual interactiva en Electron (`npm run dev` / `npm run package`).
+- [x] **Auditoría Fase 1 (Quick Wins T1.1–T1.4 completada al 100%)**.
+- [ ] **Pendientes post-Fase 1**: Ejecutar **Fase 2** (informes en SQLite, embeddings locales unificados, ajustes/CommandPalette, optimización de editor/bundle) y **Fase 3** (`AUDITORIA.md`), más verificación manual interactiva en Electron (`npm run dev` / `npm run package`).
