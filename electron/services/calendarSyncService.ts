@@ -1656,3 +1656,24 @@ export async function syncGoogleCalendarNowService(
     summary,
   };
 }
+
+/**
+ * Triggers a best-effort non-blocking Google Calendar push when the user
+ * enabled `autoSyncEnabled` and connected a Google account.
+ */
+export function triggerAutoGoogleCalendarSync(
+  db: DatabaseSync,
+  deps?: { fetchFn?: typeof fetch }
+): void {
+  try {
+    const config = getGoogleCalendarConfig(db);
+    if (!config.isConnected || !config.autoSyncEnabled) {
+      return;
+    }
+    void syncGoogleCalendarNowService(db, deps).catch(() => {
+      // Background auto-sync failures must never break local CRUD operations.
+    });
+  } catch {
+    // Ignore read errors if DB is already closing during tests/shutdown.
+  }
+}

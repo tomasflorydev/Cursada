@@ -10,6 +10,7 @@ import {
 } from '../db/coursesRepo.js';
 import { assertTrustedIpcEvent, assertValidIpcId } from '../security.js';
 import { createBackup } from '../services/backupService.js';
+import { triggerAutoGoogleCalendarSync } from '../services/calendarSyncService.js';
 import type { CourseStatus, CreateCourseInput, UpdateCourseInput } from '../types.js';
 
 export function registerCoursesHandlers(): void {
@@ -32,7 +33,9 @@ export function registerCoursesHandlers(): void {
   ipcMain.handle('courses:create', (event, input: CreateCourseInput) => {
     assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
-    return createCourse(ctx.db, input);
+    const created = createCourse(ctx.db, input);
+    triggerAutoGoogleCalendarSync(ctx.db);
+    return created;
   });
 
   ipcMain.handle(
@@ -41,7 +44,9 @@ export function registerCoursesHandlers(): void {
       assertTrustedIpcEvent(event);
       const validId = assertValidIpcId(id, 'ID de materia');
       const ctx = getAppDatabase();
-      return updateCourse(ctx.db, validId, input);
+      const updated = updateCourse(ctx.db, validId, input);
+      triggerAutoGoogleCalendarSync(ctx.db);
+      return updated;
     }
   );
 
@@ -61,5 +66,6 @@ export function registerCoursesHandlers(): void {
       createBackup(ctx.db, ctx.dataDir, 'pre-course-delete');
     }
     deleteCourse(ctx.db, validId, ctx.dataDir);
+    triggerAutoGoogleCalendarSync(ctx.db);
   });
 }

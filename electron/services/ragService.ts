@@ -264,19 +264,32 @@ function formatCitationHeader(citation: ChatCitation): string {
 function buildSystemPrompt(
   courseName: string,
   customInstructions: string,
-  examStage?: ExamStageTag | 'all'
+  examStage?: ExamStageTag | 'all',
+  reportLanguage: 'es' | 'en' | 'auto' = 'es',
+  citeSources = true
 ): string {
   const stageContext =
     examStage && examStage !== 'all'
       ? ` Enfoque de estudio actual: ${EXAM_STAGE_LABELS[examStage]}.`
       : '';
+  const languageRule =
+    reportLanguage === 'en'
+      ? '1. Answer clearly and concisely in academic English.'
+      : reportLanguage === 'auto'
+        ? '1. Respondé en el mismo idioma de la consulta y de los fragmentos recuperados.'
+        : '1. Respondé siempre en español académico claro, conciso y preciso.';
+  const citationRule =
+    citeSources === false
+      ? '3. No incluyas marcadores numéricos de cita ([1], [2]) en el texto.'
+      : '3. Citá las fuentes inline junto a cada afirmación relevante usando el formato exacto [1], [2], etc.';
+
   const sections = [
     `Sos un asistente académico universitario para la materia "${courseName}" dentro de la aplicación Cursada.${stageContext}`,
     [
       'REGLAS ESTRICTAS DE RESPUESTA:',
-      '1. Respondé siempre en español académico claro, conciso y preciso.',
+      languageRule,
       '2. Usá ÚNICA y EXCLUSIVAMENTE la información presente en los fragmentos recuperados ([1], [2], ...).',
-      '3. Citá las fuentes inline junto a cada afirmación relevante usando el formato exacto [1], [2], etc.',
+      citationRule,
       '4. NO inventes definiciones, fechas, fórmulas ni detalles que no figuren en los fragmentos.',
       '5. Si los fragmentos no alcanzan para responder total o parcialmente la pregunta, decilo explícitamente indicando qué falta.',
     ].join('\n'),
@@ -567,10 +580,20 @@ export async function sendChatMessageService(
 
   const settings = getAiSettings(db);
 
+  const citeSources = input.citeSources !== false;
+  const reportLanguage = input.reportLanguage ?? 'es';
+  const effectiveCitations = citeSources ? citations : [];
+
   const ollamaMessages: OllamaChatMessageInput[] = [
     {
       role: 'system',
-      content: buildSystemPrompt(course.name, customInstructions, input.examStage),
+      content: buildSystemPrompt(
+        course.name,
+        customInstructions,
+        input.examStage,
+        reportLanguage,
+        citeSources
+      ),
     },
     ...priorMessages.map<OllamaChatMessageInput>((msg) => ({
       role: msg.role === 'assistant' ? 'assistant' : 'user',
@@ -622,7 +645,7 @@ export async function sendChatMessageService(
     assistantContent = buildExtractiveFallbackResponse({
       courseName: course.name,
       query: content,
-      citations,
+      citations: effectiveCitations,
       customInstructions,
       ollamaBaseUrl: settings.baseUrl,
     });
@@ -633,7 +656,7 @@ export async function sendChatMessageService(
     threadId,
     role: 'assistant',
     content: assistantContent,
-    citations,
+    citations: effectiveCitations,
     modelUsed,
   });
 

@@ -3,6 +3,13 @@ import { ObsidianImportModal } from '../components/courses/ObsidianImportModal';
 import { CalendarSyncSettingsSection } from '../components/settings/CalendarSyncSettingsSection';
 import { EditorShortcutsSettingsSection } from '../components/settings/EditorShortcutsSettingsSection';
 import { cursadaClient } from '../lib/api/client';
+import {
+  readStoredCiteSources,
+  readStoredReportLanguage,
+  writeStoredCiteSources,
+  writeStoredReportLanguage,
+  type ReportLanguageOption,
+} from '../lib/ai/aiPreferences';
 import type {
   BackupInfo,
   ExportMarkdownResult,
@@ -33,10 +40,6 @@ export interface SettingsPageProps {
 }
 
 type SettingsCategoryId = 'general' | 'ai' | 'appearance' | 'data' | 'shortcuts';
-type ReportLanguageOption = 'es' | 'en' | 'auto';
-
-const REPORT_LANGUAGE_KEY = 'cursada-ai-report-language';
-const CITE_SOURCES_KEY = 'cursada-ai-cite-sources';
 
 const DEFAULT_NOTIFICATIONS: NotificationSettings = {
   enabled: true,
@@ -101,33 +104,6 @@ const KEYBOARD_SHORTCUTS: ReadonlyArray<{
     description: 'Abre las preferencias generales, de IA y de datos.',
   },
 ];
-
-function readStoredReportLanguage(): ReportLanguageOption {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const value = window.localStorage.getItem(REPORT_LANGUAGE_KEY);
-      if (value === 'es' || value === 'en' || value === 'auto') {
-        return value;
-      }
-    }
-  } catch {
-    // Ignore storage access errors.
-  }
-  return 'es';
-}
-
-function readStoredCiteSources(): boolean {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const value = window.localStorage.getItem(CITE_SOURCES_KEY);
-      if (value === 'false') return false;
-      if (value === 'true') return true;
-    }
-  } catch {
-    // Ignore storage access errors.
-  }
-  return true;
-}
 
 function formatBackupDate(iso: string): string {
   const date = new Date(iso);
@@ -415,24 +391,12 @@ export function SettingsPage({
 
   function handleChangeReportLanguage(next: ReportLanguageOption): void {
     setReportLanguage(next);
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(REPORT_LANGUAGE_KEY, next);
-      }
-    } catch {
-      // Ignore storage errors.
-    }
+    writeStoredReportLanguage(next);
   }
 
   function handleToggleCiteSources(next: boolean): void {
     setCiteSources(next);
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(CITE_SOURCES_KEY, String(next));
-      }
-    } catch {
-      // Ignore storage errors.
-    }
+    writeStoredCiteSources(next);
   }
 
   function handleChangeNoteFontSize(next: NoteFontSize): void {

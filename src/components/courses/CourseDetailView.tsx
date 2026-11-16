@@ -17,6 +17,7 @@ import {
   toIsoDateString,
 } from '../../lib/dates';
 import { renderTextWithMathAndCitations } from '../../lib/math/latexRenderer';
+import { readAiReportPreferences } from '../../lib/ai/aiPreferences';
 import {
   formatRelativeAgeEs,
   generateAndStoreReport,
@@ -35,6 +36,7 @@ import type {
   NoteWithCourse,
   Source,
   SourceType,
+  SourceWithChunks,
   StudyReportType,
 } from '../../types';
 import {
@@ -224,6 +226,10 @@ export function CourseDetailView({
   const [isPasteOpen, setIsPasteOpen] = useState(false);
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteText, setPasteText] = useState('');
+  const [previewSource, setPreviewSource] = useState<SourceWithChunks | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [reindexingSourceId, setReindexingSourceId] = useState<string | null>(null);
+  const sourcePreviewDialogRef = useRef<HTMLDialogElement | null>(null);
 
   // Report generation, simulator & latest report state
   const [latestReport, setLatestReport] = useState<StoredReport | null>(() =>
@@ -873,10 +879,75 @@ export function CourseDetailView({
     }
   }
 
+  useEffect(() => {
+    const dialog = sourcePreviewDialogRef.current;
+    if (!dialog) {
+      return;
+    }
+    if (previewSource) {
+      if (typeof dialog.showModal === 'function') {
+        if (!dialog.open) {
+          dialog.showModal();
+        }
+      } else {
+        dialog.setAttribute('open', '');
+      }
+    } else if (dialog.open || dialog.hasAttribute('open')) {
+      if (typeof dialog.close === 'function' && dialog.open) {
+        dialog.close();
+      } else {
+        dialog.removeAttribute('open');
+      }
+    }
+  }, [previewSource]);
+
+  async function handlePreviewSource(sourceId: string): Promise<void> {
+    setSourceError(null);
+    setIsLoadingPreview(true);
+    try {
+      const full = await cursadaClient.getSourceWithChunks(sourceId);
+      if (!full) {
+        setSourceError('No se encontró el contenido de la fuente.');
+        return;
+      }
+      setPreviewSource(full);
+    } catch (err) {
+      setSourceError(
+        err instanceof Error ? err.message : 'No se pudo cargar la vista previa.'
+      );
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }
+
+  async function handleReindexSource(sourceId: string): Promise<void> {
+    setSourceError(null);
+    setReindexingSourceId(sourceId);
+    try {
+      await cursadaClient.reindexSource(sourceId);
+      await loadData({ silent: true });
+      if (previewSource?.id === sourceId) {
+        const refreshed = await cursadaClient.getSourceWithChunks(sourceId);
+        if (refreshed) {
+          setPreviewSource(refreshed);
+        }
+      }
+    } catch (err) {
+      setSourceError(
+        err instanceof Error ? err.message : 'No se pudo reindexar la fuente.'
+      );
+    } finally {
+      setReindexingSourceId(null);
+    }
+  }
+
   async function handleDeleteSource(sourceId: string): Promise<void> {
     setSourceError(null);
     try {
       await cursadaClient.deleteSource(sourceId);
+      if (previewSource?.id === sourceId) {
+        setPreviewSource(null);
+      }
       await loadData({ silent: true });
     } catch (err) {
       setSourceError(
@@ -1053,6 +1124,7 @@ export function CourseDetailView({
     });
 
     try {
+      const aiPrefs = readAiReportPreferences();
       const result = await cursadaClient.sendChatMessage({
         requestId,
         courseId,
@@ -1062,6 +1134,8 @@ export function CourseDetailView({
         noteIds: effectiveIncludeNotes ? selectedNotesList.map((n) => n.id) : [],
         examStage: aiStageFilter,
         includeNotes: effectiveIncludeNotes,
+        reportLanguage: aiPrefs.reportLanguage,
+        citeSources: aiPrefs.citeSources,
       });
       if (reqState.aborted) {
         return;
@@ -1717,6 +1791,26 @@ export function CourseDetailView({
                           ))}
                         </select>
                         <span>{SOURCE_TYPE_SHORT[src.sourceType]}</span>
+                        {src.indexingStatus === 'error' ? (
+                          <SwissLinkButton
+                            className="swiss-link-sm"
+                            style={{ fontWeight: 600, color: 'var(--acc)' }}
+                            aria-label={`Reindexar ${src.title}`}
+                            disabled={reindexingSourceId === src.id}
+                            onClick={() => void handleReindexSource(src.id)}
+                          >
+                            {reindexingSourceId === src.id ? 'Reindexando…' : 'Reindexar'}
+                          </SwissLinkButton>
+                        ) : null}
+                        <SwissLinkButton
+                          className="swiss-link-sm"
+                          style={{ fontWeight: 400 }}
+                          aria-label={`Ver ${src.title}`}
+                          disabled={isLoadingPreview}
+                          onClick={() => void handlePreviewSource(src.id)}
+                        >
+                          Ver
+                        </SwissLinkButton>
                         <SwissLinkButton
                           className="swiss-link-sm"
                           style={{ fontWeight: 400 }}
@@ -1910,6 +2004,91 @@ export function CourseDetailView({
           void handleSelectNote(created.id);
         }}
       />
+
+      {previewSource ? (
+        <dialog
+          ref={sourcePreviewDialogRef}
+          open
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewSource.title}
+          className="cursada-modal-dialog"
+          onCancel={(event) => {
+            event.preventDefault();
+            setPreviewSource(null);
+          }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setPreviewSource(null);
+            }
+          }}
+        >
+          <div className="cursada-modal-content" style={{ maxWidth: '46rem', maxHeight: '82vh', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <header className="cursada-modal-header">
+              <div>
+                <h2 className="cursada-modal-title">{previewSource.title}</h2>
+                <p className="cursada-muted-text" style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                  Tipo: {previewSource.sourceType.toUpperCase()}
+                  {previewSource.pageCount != null ? ` · ${previewSource.pageCount} pág.` : ''}
+                  {` · ${previewSource.chunkCount} fragmentos · Estado: ${previewSource.indexingStatus}`}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {previewSource.indexingStatus === 'error' ? (
+                  <button
+                    type="button"
+                    className="cursada-secondary-button"
+                    disabled={reindexingSourceId === previewSource.id}
+                    onClick={() => {
+                      void handleReindexSource(previewSource.id);
+                    }}
+                  >
+                    {reindexingSourceId === previewSource.id ? 'Reindexando...' : 'Reindexar'}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="cursada-secondary-button"
+                  onClick={() => setPreviewSource(null)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </header>
+
+            {previewSource.indexingError ? (
+              <p className="cursada-inline-error" role="alert">
+                Error de indexación: {previewSource.indexingError}
+              </p>
+            ) : null}
+
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem' }}>
+              {previewSource.chunks.length > 0 ? (
+                previewSource.chunks.map((chunk) => (
+                  <article
+                    key={chunk.id}
+                    style={{
+                      border: '1px solid var(--border-subtle, rgba(255,255,255,0.12))',
+                      borderRadius: '0.5rem',
+                      padding: '0.65rem 0.75rem',
+                    }}
+                  >
+                    <div className="cursada-muted-text" style={{ fontSize: '0.78rem', marginBottom: '0.35rem' }}>
+                      Fragmento #{chunk.chunkIndex + 1}
+                      {chunk.pageNumber != null ? ` · Página ${chunk.pageNumber}` : ''}
+                    </div>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{chunk.content}</p>
+                  </article>
+                ))
+              ) : (
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit' }}>
+                  {previewSource.rawText || 'Sin texto extraído disponible.'}
+                </pre>
+              )}
+            </div>
+          </div>
+        </dialog>
+      ) : null}
     </section>
   );
 }

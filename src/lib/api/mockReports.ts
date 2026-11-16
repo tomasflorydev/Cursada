@@ -670,7 +670,14 @@ export async function mockGenerateStudyReport(
             role: 'system',
             content: [
               `Sos un docente y asistente de estudio universitario para la materia "${course.name}".`,
-              'Generá un documento en Markdown limpio, claro y bien estructurado en español.',
+              input.reportLanguage === 'en'
+                ? 'Generate a clean, well-structured Markdown study document in English.'
+                : input.reportLanguage === 'auto'
+                  ? 'Generate a clean Markdown study document in the predominant language of the sources.'
+                  : 'Generá un documento en Markdown limpio, claro y bien estructurado en español.',
+              input.citeSources === false
+                ? 'Do not include numeric citation markers ([1], [2]).'
+                : 'Preservá citas verificables cuando correspondan.',
               'Usá únicamente la información sintetizada de las fuentes provistas.',
               examConstraint,
             ]

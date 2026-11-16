@@ -344,6 +344,8 @@ function buildReducePrompts(params: {
   examFormat: PracticeExamFormat | null;
   customInstructions: string;
   mapOutputs: MapSourceOutput[];
+  reportLanguage?: 'es' | 'en' | 'auto';
+  citeSources?: boolean;
 }): Array<{ role: 'system' | 'user'; content: string }> {
   const {
     course,
@@ -355,8 +357,15 @@ function buildReducePrompts(params: {
   } = params;
 
   const systemLines = [
-    `Sos un asistente académico universitario redactando material de estudio en español para "${course.name}" (${course.term}).`,
+    params.reportLanguage === 'en'
+      ? `You are an academic study assistant writing clear study material in English for "${course.name}" (${course.term}).`
+      : params.reportLanguage === 'auto'
+        ? `Sos un asistente académico universitario redactando material de estudio para "${course.name}" (${course.term}) en el idioma predominante de las fuentes.`
+        : `Sos un asistente académico universitario redactando material de estudio en español para "${course.name}" (${course.term}).`,
     'Estás ejecutando la fase REDUCE de un flujo Map-Reduce: integrá los análisis parciales de todas las fuentes seleccionadas en un único documento coherente, sin repetir información ni inventar hechos ajenos a las fuentes.',
+    params.citeSources === false
+      ? 'IMPORTANTE: Redactá de manera fluida SIN incluir marcadores numéricos de cita ([1], [2], [Pág. X]).'
+      : 'Cuando correspondan afirmaciones concretas, preservá citas verificables a las fuentes ([1], [Pág. X]).',
     '',
     getReduceTypeInstructions(reportType, examFormat),
   ];
@@ -1067,6 +1076,8 @@ export async function generateStudyReportService(
         examFormat: resolvedExamFormat,
         customInstructions,
         mapOutputs,
+        reportLanguage: input.reportLanguage,
+        citeSources: input.citeSources,
       }),
       keepAlive: '0s',
       fetchImpl: options?.fetchFn,

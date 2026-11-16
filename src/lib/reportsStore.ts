@@ -8,6 +8,10 @@ import type {
   StudyReportType,
 } from '../types/domain';
 import { cursadaClient, notifyCursadaDataChanged } from './api/client';
+import {
+  readAiReportPreferences,
+  type ReportLanguageOption,
+} from './ai/aiPreferences';
 
 export type { ReportCitationSource, StoredReport } from '../types/domain';
 export type NoteFontSize = 'small' | 'normal' | 'large';
@@ -24,6 +28,8 @@ export interface GenerateStoredReportInput {
   customInstructions?: string;
   title?: string;
   autoSaveAsNote?: boolean;
+  reportLanguage?: ReportLanguageOption;
+  citeSources?: boolean;
 }
 
 let reportsMemoryStore: StoredReport[] = [];
@@ -329,6 +335,10 @@ export async function generateAndStoreReport(
 
   try {
     assertNotCancelled();
+    const aiPrefs = readAiReportPreferences();
+    const reportLanguage = input.reportLanguage ?? aiPrefs.reportLanguage;
+    const citeSources = input.citeSources ?? aiPrefs.citeSources;
+
     const includeNotes = input.includeNotes ?? true;
     const stageFilter =
       input.examStage && input.examStage !== 'all' ? input.examStage : undefined;
@@ -371,7 +381,9 @@ export async function generateAndStoreReport(
       );
     }
 
-    const citations = normalizeCitations(notes, sources, includeNotes, effectiveSourceIds);
+    const citations = citeSources
+      ? normalizeCitations(notes, sources, includeNotes, effectiveSourceIds)
+      : [];
     const usedNotesCount = includeNotes ? notes.length : 0;
     const usedPdfsCount = sources.filter(
       (s) => effectiveSourceIds.includes(s.id) && s.sourceType === 'pdf'
@@ -391,10 +403,14 @@ export async function generateAndStoreReport(
           customInstructions: input.customInstructions,
           title: input.title,
           autoSaveAsNote: input.autoSaveAsNote ?? false,
+          reportLanguage,
+          citeSources,
         });
         assertNotCancelled();
 
-        const finalContent = ensureBodyHasCitations(generated.content, citations);
+        const finalContent = citeSources
+          ? ensureBodyHasCitations(generated.content, citations)
+          : generated.content;
         const usedLocalModel =
           Boolean(generated.modelUsed) && generated.modelUsed !== 'offline-deterministic';
 

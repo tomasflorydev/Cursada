@@ -8,6 +8,7 @@ import {
   updateTask,
 } from '../db/tasksRepo.js';
 import { assertTrustedIpcEvent, assertValidIpcId } from '../security.js';
+import { triggerAutoGoogleCalendarSync } from '../services/calendarSyncService.js';
 import type { CreateTaskInput, TaskFilters, UpdateTaskInput } from '../types.js';
 
 export function registerTasksHandlers(): void {
@@ -20,7 +21,9 @@ export function registerTasksHandlers(): void {
   ipcMain.handle('tasks:create', (event, input: CreateTaskInput) => {
     assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
-    return createTask(ctx.db, input);
+    const created = createTask(ctx.db, input);
+    triggerAutoGoogleCalendarSync(ctx.db);
+    return created;
   });
 
   ipcMain.handle(
@@ -29,7 +32,9 @@ export function registerTasksHandlers(): void {
       assertTrustedIpcEvent(event);
       const validId = assertValidIpcId(id, 'ID de tarea');
       const ctx = getAppDatabase();
-      return updateTask(ctx.db, validId, input);
+      const updated = updateTask(ctx.db, validId, input);
+      triggerAutoGoogleCalendarSync(ctx.db);
+      return updated;
     }
   );
 
@@ -37,7 +42,9 @@ export function registerTasksHandlers(): void {
     assertTrustedIpcEvent(event);
     const validId = assertValidIpcId(id, 'ID de tarea');
     const ctx = getAppDatabase();
-    return toggleTaskStatus(ctx.db, validId);
+    const updated = toggleTaskStatus(ctx.db, validId);
+    triggerAutoGoogleCalendarSync(ctx.db);
+    return updated;
   });
 
   ipcMain.handle('tasks:delete', (event, id: string) => {
@@ -45,5 +52,6 @@ export function registerTasksHandlers(): void {
     const validId = assertValidIpcId(id, 'ID de tarea');
     const ctx = getAppDatabase();
     deleteTask(ctx.db, validId);
+    triggerAutoGoogleCalendarSync(ctx.db);
   });
 }

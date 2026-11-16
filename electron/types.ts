@@ -423,6 +423,8 @@ export interface SendChatMessageInput {
   noteIds?: string[];
   examStage?: ExamStageTag | 'all';
   includeNotes?: boolean;
+  reportLanguage?: 'es' | 'en' | 'auto';
+  citeSources?: boolean;
 }
 
 export interface SendChatMessageResult {
@@ -466,6 +468,8 @@ export interface GenerateStudyReportInput {
   customInstructions?: string;
   title?: string;
   autoSaveAsNote?: boolean;
+  reportLanguage?: 'es' | 'en' | 'auto';
+  citeSources?: boolean;
 }
 
 export interface AiStreamProgressEvent {

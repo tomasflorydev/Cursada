@@ -528,10 +528,21 @@ export async function mockSendChatMessage(
           .join('\n\n')
       : 'No se encontraron fragmentos relevantes en las fuentes subidas de esta materia.';
 
+  const citeSources = input.citeSources !== false;
+  const effectiveCitations = citeSources ? citations : [];
+  const languageDirective =
+    input.reportLanguage === 'en'
+      ? 'Respond clearly and concisely in academic English.'
+      : input.reportLanguage === 'auto'
+        ? 'Respond in the predominant language of the sources.'
+        : 'Respondé siempre en español claro y conciso.';
+
   const systemPrompt = [
     `Sos un asistente de estudio universitario para la materia "${course.name}".`,
-    'Respondé siempre en español claro y conciso.',
-    'Basate en los fragmentos de fuentes provistos cuando existan y citalos como [1], [2], etc. Si la información no está en las fuentes, aclaralo sin inventar datos.',
+    languageDirective,
+    citeSources
+      ? 'Basate en los fragmentos de fuentes provistos cuando existan y citalos como [1], [2], etc. Si la información no está en las fuentes, aclaralo sin inventar datos.'
+      : 'Basate en los fragmentos provistos sin incluir marcadores numéricos de cita ([1], [2]). Si la información no está en las fuentes, aclaralo sin inventar datos.',
     customInstructions ? `Instrucciones del estudiante: ${customInstructions}` : '',
   ]
     .filter(Boolean)
@@ -555,7 +566,7 @@ export async function mockSendChatMessage(
       courseName: course.name,
       question: content,
       customInstructions,
-      citations,
+      citations: effectiveCitations,
     });
   const modelUsed =
     liveReply?.modelUsed ?? (isVitest ? settings.chatModel : 'local-rag-extractive');
@@ -566,7 +577,7 @@ export async function mockSendChatMessage(
     threadId: thread.id,
     role: 'assistant',
     content: assistantContent,
-    citations,
+    citations: effectiveCitations,
     modelUsed,
     createdAt: assistantNow,
   };

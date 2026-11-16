@@ -81,21 +81,24 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
       expect(doneTaskItem).toMatchObject({
         kind: 'task',
         badge: 'Tarea completada',
-        target: { type: 'course', courseId: 'diseno-sistemas', tab: 'tareas' },
+        courseId: 'diseno-sistemas',
+        target: { type: 'section', section: 'tareas' },
       });
 
       const pendingTaskItem = items.find((i) => i.id === 'task:task-1');
       expect(pendingTaskItem).toMatchObject({
         kind: 'task',
         badge: 'Tarea pendiente',
-        target: { type: 'course', courseId: 'bd-2', tab: 'tareas' },
+        courseId: 'bd-2',
+        target: { type: 'section', section: 'tareas' },
       });
 
       const gradedExamItem = items.find((i) => i.id === 'exam:exam-past-3');
       expect(gradedExamItem).toMatchObject({
         kind: 'exam',
         badge: 'Examen',
-        target: { type: 'course', courseId: 'bd-2', tab: 'examenes' },
+        courseId: 'bd-2',
+        target: { type: 'section', section: 'examenes' },
       });
       expect(gradedExamItem?.subtitle).toContain('Nota 8');
 
@@ -729,6 +732,66 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
         screen.getByRole('button', { name: '← Todas las materias' })
       );
       expect(onSelectCourse).toHaveBeenCalledWith(null);
+    });
+
+    it('routes task and exam command palette targets to global Tareas/Exámenes views and displays updated palette labels', () => {
+      const items = buildCommandPaletteItems({
+        courses: [],
+        notes: [],
+        tasks: [
+          {
+            id: 't-nav',
+            courseId: 'c-1',
+            courseName: 'Algoritmos',
+            courseColor: 'blue',
+            title: 'Entregar TP1',
+            description: '',
+            dueDate: '2026-11-20',
+            priority: 'high',
+            status: 'pending',
+            completedAt: null,
+            createdAt: '2026-11-01T00:00:00Z',
+            updatedAt: '2026-11-01T00:00:00Z',
+          },
+        ],
+        exams: [
+          {
+            id: 'e-nav',
+            courseId: 'c-1',
+            courseName: 'Algoritmos',
+            courseColor: 'blue',
+            title: 'Parcial 1',
+            category: 'parcial',
+            examDate: '2026-11-25',
+            examTime: null,
+            location: 'Aula 101',
+            topics: 'Árboles',
+            grade: null,
+            createdAt: '2026-11-01T00:00:00Z',
+            updatedAt: '2026-11-01T00:00:00Z',
+          },
+        ],
+      });
+
+      const taskItem = items.find((i) => i.id === 'task:t-nav');
+      const examItem = items.find((i) => i.id === 'exam:e-nav');
+      expect(taskItem?.target).toEqual({ type: 'section', section: 'tareas' });
+      expect(examItem?.target).toEqual({ type: 'section', section: 'examenes' });
+
+      render(
+        <CommandPalette
+          isOpen={true}
+          onClose={vi.fn()}
+          onSelectTarget={vi.fn()}
+        />
+      );
+      const dialog = screen.getByTestId('command-palette-dialog');
+      expect(
+        within(dialog).getByPlaceholderText(
+          'Buscar materia, nota, tarea, examen o comando...'
+        )
+      ).toBeInTheDocument();
+      expect(within(dialog).getByText('⌘1–6')).toBeInTheDocument();
     });
   });
 });

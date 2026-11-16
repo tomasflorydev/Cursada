@@ -230,7 +230,7 @@ export function buildCommandPaletteItems(data: {
     courseName: task.courseName,
     courseColor: task.courseColor,
     keywords: task.description,
-    target: { type: 'course', courseId: task.courseId, tab: 'tareas' },
+    target: { type: 'section', section: 'tareas' },
   }));
 
   const examItems: CommandPaletteItem[] = data.exams.map((exam) => ({
@@ -245,7 +245,7 @@ export function buildCommandPaletteItems(data: {
     courseName: exam.courseName,
     courseColor: exam.courseColor,
     keywords: `${exam.topics} ${exam.category}`,
-    target: { type: 'course', courseId: exam.courseId, tab: 'examenes' },
+    target: { type: 'section', section: 'examenes' },
   }));
 
   return [

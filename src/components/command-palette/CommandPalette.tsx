@@ -236,8 +236,8 @@ export function CommandPalette({
             type="search"
             className="command-palette-input"
             data-testid="command-palette-input"
-            aria-label="Buscar anotador, nota, tarea, examen o comando..."
-            placeholder="Buscar anotador, nota, tarea, examen o comando..."
+            aria-label="Buscar materia, nota, tarea, examen o comando..."
+            placeholder="Buscar materia, nota, tarea, examen o comando..."
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -367,7 +367,7 @@ export function CommandPalette({
             <kbd>Esc</kbd> Cerrar
           </span>
           <span className="command-palette-hint">
-            <kbd>⌘1–5</kbd> Secciones
+            <kbd>⌘1–6</kbd> Secciones
           </span>
           <span className="command-palette-hint">
             <kbd>⌘N</kbd> Nuevo
