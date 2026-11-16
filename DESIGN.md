@@ -5,12 +5,13 @@
 Estilo tipográfico internacional ("Suizo"): rígido, claro y libre de ornamentos. La jerarquía visual se construye exclusivamente con tamaño tipográfico, peso, reglas (líneas horizontales y verticales) y espacio.
 
 1. **Cero ornamento**: `border-radius: 0` global, `box-shadow: none`, sin gradientes, sin emojis ni ilustraciones. Símbolos permitidos: `→`, `←`, `‹`, `›`, `+` y `▾`.
-2. **Reglas, no cajas**: líneas de `3px solid var(--ink)` en bloques principales (header, pie, encabezados de sección) y `1px solid var(--rule)` entre filas. Borde de `2px solid var(--ink)` únicamente en botones secundarios, inputs, controles segmentados, bloques del calendario y el campo de preguntas a fuentes.
-3. **Un solo acento por vista (`--acc`)**: reservado exclusivamente para el número del día en Inicio, el examen más próximo / entrega urgente (< 3 días), el subrayado de la pestaña activa (`3px`), la marca vertical de ítem seleccionado (`4px`), el bloque de la próxima clase en Calendario, la acción principal de cada zona (máximo 1), la barra bajo títulos de nota (`64×3px`), el cursor del editor (`2px`), las marcas de cita `[1]` en informes, el interruptor activo y el foco de teclado (`2px`).
-4. **Grilla de 12 columnas**: `gap: 28px` (`24px` en Inicio), márgenes de página `48px` a los lados, `30px` arriba (`36px` con clearance para traffic lights en macOS) y `28px` abajo.
-5. **Números tabulares**: `font-variant-numeric: tabular-nums` en fechas, horas, índices y contadores.
-6. **Alineación a la izquierda**: contenido alineado a la izquierda, salvo celdas numéricas/encabezados de calendario y segmentos de controles.
-7. **Idioma**: español rioplatense con voseo directo ("Tenés", "Agregá", "Preguntale").
+2. **Reglas y bloques delimitados**: líneas de `3px solid var(--ink)` en bloques principales (header, pie, encabezados de sección) y `1px solid var(--rule)` entre filas; bordes `1px solid var(--ink)` con `padding: 24px` y `gap: 32px` en los 3 paneles colapsables de la vista de Materia. Borde de `2px solid var(--ink)` en botones secundarios, inputs, controles segmentados, bloques del calendario y el campo de preguntas a fuentes.
+3. **Un solo acento por vista (`--acc`) y citas editoriales**: `--acc` se reserva para el número del día en Inicio, el examen más próximo / entrega urgente (< 3 días), el subrayado de la pestaña activa (`3px`), la marca vertical de ítem seleccionado (`4px`), el bloque de la próxima clase en Calendario, la acción principal de cada zona (máximo 1), la barra bajo títulos de nota (`64×3px`), el cursor del editor (`2px`), el interruptor activo y el foco de teclado (`2px`). Las citas `[1]` y enlaces en informes usan tinta neutra (`var(--ink)`) con subrayado fino (`text-underline-offset: 4px`) sin relleno de color.
+4. **Contraste estricto en toggles y segmentados**: inversión total blanco/negro mediante `--toggle-active-bg` / `--toggle-active-fg` (`#FFFFFF` / `#000000` en modo Oscuro; `#000000` / `#FFFFFF` en modo Claro) con `@layer reset, tokens, base, layout, components, utilities;` declarado en primer lugar.
+5. **Grilla de 12 columnas y transiciones**: `gap: 28px` (`24px` en Inicio), márgenes de página `48px` a los lados, `30px` arriba (`36px` con clearance para traffic lights en macOS) y `28px` abajo. Transiciones entre vistas exclusivamente de opacidad (`0.18s`, `easeOut`) vía `framer-motion` respetando `prefers-reduced-motion`.
+6. **Números tabulares**: `font-variant-numeric: tabular-nums` en fechas, horas, índices y contadores.
+7. **Alineación a la izquierda**: contenido alineado a la izquierda, salvo celdas numéricas/encabezados de calendario y segmentos de controles.
+8. **Idioma**: español rioplatense con voseo directo ("Tenés", "Agregá", "Preguntale").
 
 ## 2. Tokens de Color
 
@@ -48,7 +49,7 @@ El tema **Oscuro** es el predeterminado (`:root` y `:root[data-theme="dark"]`). 
 ## 4. Estructura y Vistas
 
 - **Shell común (`src/ui/SwissHeader.tsx`)**: Header horizontal con `border-bottom: 3px solid var(--ink)` y menú `Inicio · Materias · Calendario · Tareas · Exámenes · Informes` más el enlace `Ajustes` a la derecha.
-- **Vista de detalle de Materia (`CourseDetailView`)**: reemplaza el menú por `← Inicio`, nombre de materia en `22/800` y resumen derecho (`"N notas · N PDFs · parcial en N días"`).
+- **Vista de detalle de Materia (`CourseDetailView`)**: reemplaza el menú por `← Inicio`, nombre de materia en `22/800` y resumen derecho (`"N notas · N PDFs · parcial en N días"`). Panel izquierdo colapsable con listado de notas arriba y **Red de conocimiento** (enlaces/backlinks) + asistencia debajo; panel central de edición Markdown y panel derecho colapsable de fuentes/IA.
 - **Componentes compartidos (`src/ui/Primitives.tsx`)**: botones primarios y secundarios, casilla de `18px`, interruptor de `46×24px`, control segmentado con borde compartido, inputs con borde `2px`, barra de progreso de `8px`, marca de cita `[N]`, barra de carga horizontal `3px` sin spinners y estado de error con barra izquierda de `4px`.
 - **Las 8 vistas**:
   1. `Inicio` (`HomePage.tsx`)

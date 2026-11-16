@@ -171,11 +171,25 @@
   - Flujo OAuth2 PKCE loopback y mapeo local en `google_calendar_mappings` (`calendarSyncService.ts`, `calendarSyncRepo.ts`) + panel `<CalendarSyncSettingsSection />` (`src/components/settings/CalendarSyncSettingsSection.tsx`, `src/styles/calendar-sync.css`) integrado en `SettingsPage.tsx` (`#settings-data`).
   - Tests nuevos en `src/__tests__/Phase14GoogleCalendarSync.test.tsx` (6 tests).
 
+### Iteración Post-Fase 14: Refinamiento UI Editorial Suizo, Contraste y Simplificación de Flujos
+- [x] **Ajustes estructurales y visuales de interfaz (`src/styles/`, `src/ui/`, vistas principales)**:
+  - **Navbar y escala tipográfica**: Alineación horizontal centrada en `.swiss-header` (`SwissHeader.tsx`), `text-box: trim-both cap alphabetic` en el wordmark `Cursada.`, y escala raíz subida a `16px` con `line-height: 1.5` en `src/styles/index.css`.
+  - **Vista de Materia (`CourseDetailView.tsx`)**: Separación de 3 paneles con `gap: 32px`, bordes `1px solid var(--ink)` y `padding: 24px`; paneles laterales colapsables (`isLeftSidebarOpen`, `isRightSidebarOpen`) desde cabecera/topbar; reubicación de `<NoteBacklinksPanel />` ("Red de conocimiento": enlaces y backlinks) al panel izquierdo debajo del listado de notas.
+  - **Citas, transiciones y calendario**: Citas (`.swiss-citation`) y enlaces en informes/notas con tinta neutra y subrayado fino sin relleno naranja; transiciones mínimas de opacidad (`duration: 0.18`, `easeOut`) con `framer-motion` (`<MotionConfig reducedMotion="user">`) en `App.tsx`, `CalendarPage.tsx` y `CourseDetailView.tsx` preservando la instancia del editor; celdas mensuales del calendario (`CalendarPage.tsx`) estructuradas en columna vertical con el número de día arriba y badges apilados sin desbordes.
+- [x] **Corrección de contraste en switches/segmentados y orden `@layer`**:
+  - Tokens `--toggle-active-bg` / `--toggle-active-fg` con inversión estricta blanco/negro en ambos temas (`#FFFFFF`/`#000000` en oscuro, `#000000`/`#FFFFFF` en claro) aplicados a `<SwissSwitch>`, `<SwissSegmented>`, `.stage-pill` (`src/styles/active-study.css`), pestañas y filtros.
+  - Reordenamiento de `@layer reset, tokens, base, layout, components, utilities;` antes de los `@import` CSS (`src/styles/index.css`, `src/styles/knowledge.css`, `src/styles/calendar-sync.css`), importación prioritaria de `index.css` al inicio de `src/main.tsx` y `:where(input, button, textarea, select)` en `@layer reset` para evitar que el reset pise el color de botones activos (`Semana`/`Mes` en Calendario, `Tema` y `Tamaño de texto de notas` en Ajustes, y `Destino de los anotadores` en el modal de Obsidian).
+- [x] **Simplificación de accesos**:
+  - Remoción de los botones de **Vista de grafo** / **Grafo global** (`NotesGraphView`) de `CourseDetailView.tsx` y `CoursesPage.tsx` (conservando el panel de backlinks en la barra lateral izquierda).
+  - Centralización exclusiva del botón **Importar Vault de Obsidian** (`<ObsidianImportModal />`) en **Ajustes → Datos** (`SettingsPage.tsx`).
+  - Tests de regresión agregados en `src/__tests__/UIEditorialOverhaul.test.tsx` (10 tests; suite completa: 36 archivos, 165 tests en verde).
+
 ## Qué sigue (Verificación Manual y Cierre de Ciclo 2)
 - [x] **Fase 9 (`v1.1.0`) — Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base**.
 - [x] **Fase 10 (`v2.0.0`) — Overhaul Total de la Interfaz Gráfica (Estilo Tipográfico Suizo)**.
 - [x] **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview en tiempo real, Matemática KaTeX y Atajos Configurables)**.
-- [x] **Fase 12 (`v2.2.0`) — Red de Conocimiento (`[[WikiLinks]]`, Backlinks, Vista de Grafo e Importador de Vault de Obsidian)**.
+- [x] **Fase 12 (`v2.2.0`) — Red de Conocimiento (`[[WikiLinks]]`, Backlinks e Importador de Vault de Obsidian desde Ajustes)**.
 - [x] **Fase 13 (`v2.3.0`) — Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro Timer, Notas como Fuentes + Selector/Filtro `1°/2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia)**.
 - [x] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
+- [x] **Iteración Post-Fase 14 — Refinamiento UI Editorial Suizo, contraste de toggles/segmentados y centralización de Obsidian en Ajustes**.
 - [ ] **Pendientes post-implementación**: Checklist manual en Electron (`npm run dev` / `Cursada.app`), empaquetado `.app` actualizado (`npm run package`) y carga opcional de credenciales OAuth2 Desktop para Google Calendar.

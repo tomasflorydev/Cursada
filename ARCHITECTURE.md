@@ -6,7 +6,7 @@
 
 Toda la aplicación funciona **100% offline/local**:
 - **Shell nativo y Backend**: **Electron + Node.js (`node:sqlite`) + TypeScript** gestiona la ventana nativa de macOS (con barra de título integrada tipo `hiddenInset` para los semáforos de macOS), el acceso seguro al sistema de archivos, la base de datos SQLite local, los backups automáticos, la exportación a Markdown y la comunicación HTTP con Ollama (`http://localhost:11434`).
-- **Frontend (Renderer)**: **React 19 + Vite + TypeScript** con CSS nativo modular, `color-scheme: light dark` y variables CSS (`light-dark()`) para soporte automático de modo claro/oscuro según macOS.
+- **Frontend (Renderer)**: **React 19 + Vite + TypeScript + `framer-motion`** con CSS nativo modular en capas (`@layer reset, tokens, base, layout, components, utilities`), `color-scheme: light dark`, tokens `--toggle-active-*` y transiciones de opacidad respetando `prefers-reduced-motion`.
 - **Fuente de verdad**: Un único archivo **SQLite** en `~/Library/Application Support/com.cursada.app/cursada.sqlite` con **WAL mode** activado, **FTS5** para búsqueda de texto completo sin acentos y almacenamiento de embeddings para búsqueda semántica.
 
 ```
@@ -17,8 +17,8 @@ Toda la aplicación funciona **100% offline/local**:
 │  │            Renderer (React + Vite + TypeScript + CSS)             │  │
 │  │  • Vistas Suizas: Inicio, Materias, Calendario, Tareas, Exámenes, │  │
 │  │    Informes y Ajustes (DESIGN.md v2.0 + @fontsource/archivo)      │  │
-│  │  • Materia: Notas (3 paneles + Live Preview + KaTeX + Backlinks + │  │
-│  │    Grafo) | Fuentes | Asistente IA (Chat/Guía/Simulacro) | Resumen│  │
+│  │  • Materia: Notas (3 paneles colapsables + Live Preview + KaTeX + │  │
+│  │    Backlinks en lateral) | Fuentes | Asistente IA / Simulacro     │  │
 │  │  • Pomodoro global en cabecera + Extractor PDF puro (src/lib/pdf) │  │
 │  └───────────────────────────────┬───────────────────────────────────┘  │
 │                                  │ Electron IPC (contextBridge tipado)  │
