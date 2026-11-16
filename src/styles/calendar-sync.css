@@ -1,0 +1,193 @@
+/* Swiss Typographic Design v2.0 styles for Calendar Sync (Phase 14) */
+
+@layer components {
+  .calendar-sync-section {
+    margin-bottom: 32px;
+  }
+
+  .calendar-sync-subsection {
+    margin-top: 22px;
+  }
+
+  .calendar-sync-subhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--rule);
+    padding-top: 12px;
+    margin-bottom: 12px;
+  }
+
+  .calendar-sync-subhead-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .calendar-sync-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    background-color: var(--mut);
+    flex-shrink: 0;
+  }
+
+  .calendar-sync-dot.is-connected {
+    background-color: var(--acc);
+  }
+
+  .calendar-sync-notice {
+    border-left: 4px solid var(--acc);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .calendar-sync-notice.is-neutral {
+    border-left-color: var(--ink);
+  }
+
+  .calendar-sync-feed-form {
+    display: grid;
+    grid-template-columns: minmax(170px, 1fr) minmax(240px, 1.8fr) auto;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 14px;
+  }
+
+  .calendar-sync-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .calendar-sync-field-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mut);
+  }
+
+  .calendar-feed-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .calendar-feed-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .calendar-feed-row:last-child {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .calendar-feed-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .calendar-feed-row-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .calendar-feed-row-url {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--mut);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .calendar-feed-row-meta {
+    font-size: 12px;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .calendar-feed-row-error {
+    font-size: 12px;
+    color: var(--acc);
+    font-weight: 600;
+  }
+
+  .calendar-feed-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .calendar-sync-oauth-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* External event styling for CalendarPage integration */
+  .calendar-external-event {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px 8px;
+    border: 1px dashed var(--rule);
+    border-left: 3px dashed var(--acc);
+    background-color: var(--bg);
+    color: var(--ink);
+    text-align: left;
+    min-width: 0;
+  }
+
+  .calendar-external-event-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--acc);
+  }
+
+  .calendar-external-event-title {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .calendar-external-event-meta {
+    font-size: 11px;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 820px) {
+    .calendar-sync-feed-form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .calendar-feed-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+}
