@@ -415,6 +415,7 @@ export interface CreateChatThreadInput {
 }
 
 export interface SendChatMessageInput {
+  requestId?: string;
   courseId: string;
   threadId?: string;
   content: string;
@@ -455,6 +456,7 @@ export interface StudyReportStepInfo {
 }
 
 export interface GenerateStudyReportInput {
+  requestId?: string;
   courseId: string;
   reportType: StudyReportType;
   sourceIds?: string[];
@@ -465,6 +467,14 @@ export interface GenerateStudyReportInput {
   customInstructions?: string;
   title?: string;
   autoSaveAsNote?: boolean;
+}
+
+export interface AiStreamProgressEvent {
+  requestId: string;
+  kind: 'chat' | 'report';
+  delta?: string;
+  accumulated?: string;
+  stepLabel?: string;
 }
 
 export interface GenerateStudyReportResult {
@@ -944,9 +954,12 @@ export interface CursadaIpcApi {
   createChatThread: (input: CreateChatThreadInput) => Promise<ChatThread>;
   deleteChatThread: (threadId: string) => Promise<void>;
   sendChatMessage: (input: SendChatMessageInput) => Promise<SendChatMessageResult>;
+  cancelChatMessage: (requestId: string) => Promise<void>;
   saveChatMessageAsNote: (input: SaveChatMessageAsNoteInput) => Promise<NoteWithCourse>;
   // AI Study Reports & Material Generator (Phase 7 + SQLite V9)
   generateStudyReport: (input: GenerateStudyReportInput) => Promise<GenerateStudyReportResult>;
+  cancelStudyReport: (requestId: string) => Promise<void>;
+  onAiStreamProgress: (listener: (event: AiStreamProgressEvent) => void) => () => void;
   listStudyReports: (courseId?: string) => Promise<StoredReport[]>;
   getStudyReportById: (id: string) => Promise<StoredReport | null>;
   saveStudyReport: (input: SaveStudyReportInput) => Promise<StoredReport>;

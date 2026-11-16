@@ -23,7 +23,12 @@ import {
   extractDocumentPages,
   type ExtractedPage,
 } from './chunkingService.js';
-import { generateEmbeddings } from './ollamaClient.js';
+import {
+  computeDeterministicLocalEmbedding,
+  generateEmbeddings,
+} from './ollamaClient.js';
+
+export { computeDeterministicLocalEmbedding as computeFallbackEmbedding } from './ollamaClient.js';
 
 export const FALLBACK_EMBEDDING_MODEL = 'local-fnv1a-128';
 
@@ -44,74 +49,8 @@ export function registerDefaultSourceEmbedder(
   registeredEmbedder = fn;
 }
 
-function fnv1aHash(input: string, seed = 2166136261): number {
-  let hash = seed >>> 0;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-  return hash >>> 0;
-}
-
-function normalizeForEmbedding(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase();
-}
-
-/**
- * Computes a deterministic L2-normalized local vector using signed FNV-1a token, bigram, and char-3gram hashing.
- */
-export function computeFallbackEmbedding(text: string, dim = 128): Float32Array {
-  const vec = new Float32Array(dim);
-  const normalized = normalizeForEmbedding(text).trim();
-  if (!normalized || dim <= 0) {
-    return vec;
-  }
-
-  const tokens = normalized
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((token) => token.length > 0);
-
-  const addFeature = (feature: string, weight: number): void => {
-    const idx = fnv1aHash(feature, 2166136261) % dim;
-    const signBit = fnv1aHash(feature, 374761393) & 1;
-    vec[idx] += signBit === 0 ? weight : -weight;
-  };
-
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    addFeature(`w:${token}`, 1.0);
-
-    if (i + 1 < tokens.length) {
-      addFeature(`b:${token}_${tokens[i + 1]}`, 0.75);
-    }
-
-    if (token.length >= 4) {
-      for (let j = 0; j <= token.length - 3; j++) {
-        addFeature(`c3:${token.slice(j, j + 3)}`, 0.3);
-      }
-    }
-  }
-
-  let sumSq = 0;
-  for (let i = 0; i < vec.length; i++) {
-    sumSq += vec[i] * vec[i];
-  }
-
-  if (sumSq > 0) {
-    const norm = Math.sqrt(sumSq);
-    for (let i = 0; i < vec.length; i++) {
-      vec[i] /= norm;
-    }
-  }
-
-  return vec;
-}
-
 const defaultFallbackEmbedder: SourceEmbedder = async (texts: string[]) => ({
-  embeddings: texts.map((text) => computeFallbackEmbedding(text, 128)),
+  embeddings: texts.map((text) => computeDeterministicLocalEmbedding(text, 128)),
   modelUsed: FALLBACK_EMBEDDING_MODEL,
 });
 

@@ -25,7 +25,11 @@ import {
   searchCourseChunksHybrid,
 } from '../db/sourcesRepo.js';
 import { chunkDocumentPages } from './chunkingService.js';
-import { generateChatCompletion, type OllamaChatMessageInput } from './ollamaClient.js';
+import {
+  generateChatCompletion,
+  OllamaCancelledError,
+  type OllamaChatMessageInput,
+} from './ollamaClient.js';
 import {
   computeFallbackEmbedding,
   createOllamaSourceEmbedder,
@@ -37,6 +41,9 @@ export type SourceChunkEmbedder = SourceEmbedder;
 export interface RagServiceDeps {
   embedder?: SourceEmbedder;
   fetchFn?: typeof fetch;
+  signal?: AbortSignal;
+  stream?: boolean;
+  onToken?: (chunkText: string, accumulatedText: string) => void;
 }
 
 const DEFAULT_MAX_RETRIEVED_CHUNKS = 5;
@@ -583,12 +590,20 @@ export async function sendChatMessageService(
   let modelUsed: string;
 
   try {
+    if (deps?.signal?.aborted) {
+      throw new OllamaCancelledError(
+        'La consulta al asistente fue cancelada por el usuario.'
+      );
+    }
     const completion = await generateChatCompletion({
       baseUrl: settings.baseUrl,
       model: settings.chatModel,
       messages: ollamaMessages,
       keepAlive: '0s',
       fetchImpl: deps?.fetchFn,
+      signal: deps?.signal,
+      stream: deps?.stream,
+      onToken: deps?.onToken,
     });
     const trimmed = completion.content.trim();
     if (!trimmed) {
@@ -596,7 +611,14 @@ export async function sendChatMessageService(
     }
     assistantContent = trimmed;
     modelUsed = completion.modelUsed || settings.chatModel;
-  } catch {
+  } catch (err) {
+    if (err instanceof OllamaCancelledError || deps?.signal?.aborted) {
+      throw err instanceof OllamaCancelledError
+        ? err
+        : new OllamaCancelledError(
+            'La consulta al asistente fue cancelada por el usuario.'
+          );
+    }
     assistantContent = buildExtractiveFallbackResponse({
       courseName: course.name,
       query: content,

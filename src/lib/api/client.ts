@@ -1,5 +1,6 @@
 import type {
   AiSettings,
+  AiStreamProgressEvent,
   BackupInfo,
   CalendarFeed,
   ChatThread,
@@ -385,6 +386,15 @@ export const cursadaClient: CursadaIpcApi = {
     return result;
   },
 
+  async cancelChatMessage(requestId: string): Promise<void> {
+    const fn = getBridge()?.cancelChatMessage;
+    if (fn) {
+      await fn(requestId);
+    } else {
+      await mockClient.cancelChatMessage(requestId);
+    }
+  },
+
   async saveChatMessageAsNote(
     input: SaveChatMessageAsNoteInput
   ): Promise<NoteWithCourse> {
@@ -406,6 +416,22 @@ export const cursadaClient: CursadaIpcApi = {
       : await mockClient.generateStudyReport(input);
     notifyCursadaDataChanged();
     return result;
+  },
+
+  async cancelStudyReport(requestId: string): Promise<void> {
+    const fn = getBridge()?.cancelStudyReport;
+    if (fn) {
+      await fn(requestId);
+    } else {
+      await mockClient.cancelStudyReport?.(requestId);
+    }
+  },
+
+  onAiStreamProgress(
+    listener: (event: AiStreamProgressEvent) => void
+  ): () => void {
+    const fn = getBridge()?.onAiStreamProgress;
+    return fn ? fn(listener) : () => {};
   },
 
   async listStudyReports(courseId?: string): Promise<StoredReport[]> {

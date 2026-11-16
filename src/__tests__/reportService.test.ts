@@ -527,4 +527,68 @@ describe('reportService & reportHandlers (Phase 7 Map-Reduce)', () => {
     expect(sampled).toContain('[Pág. 1]');
     expect(sampled).toContain('[Pág. 20]');
   });
+
+  it('aborts Map-Reduce report generation via AbortSignal and reports:cancel without producing offline fallback', async () => {
+    const course = createCourse(db, {
+      name: 'Inteligencia Artificial',
+      color: 'violet',
+      term: '2026-2C',
+    });
+    createReadySource(db, course.id, 'Apunte IA.pdf', [
+      { pageNumber: 1, content: 'Redes neuronales y descenso por gradiente.' },
+    ]);
+
+    const controller = new AbortController();
+    const slowFetch = vi.fn<typeof fetch>((_url, init) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted.');
+          err.name = 'AbortError';
+          reject(err);
+        });
+        setTimeout(() => controller.abort(), 10);
+      });
+    });
+
+    await expect(
+      generateStudyReportService(
+        db,
+        { courseId: course.id, reportType: 'summary' },
+        { fetchFn: slowFetch, signal: controller.signal, stream: true }
+      )
+    ).rejects.toThrow(/cancelad/i);
+
+    // Also test IPC reports:cancel wiring
+    handleMock.mockReset();
+    let resolveFetchStarted!: () => void;
+    const fetchStartedPromise = new Promise<void>((resolve) => {
+      resolveFetchStarted = resolve;
+    });
+    const ipcSlowFetch = vi.fn<typeof fetch>((_url, init) => {
+      resolveFetchStarted();
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const err = new Error('Aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      });
+    });
+
+    registerReportHandlers({ db, fetchFn: ipcSlowFetch });
+    const generateHandler = handleMock.mock.calls.find(
+      ([ch]) => ch === 'reports:generate'
+    )?.[1] as (event: unknown, input: unknown) => Promise<unknown>;
+    const cancelHandler = handleMock.mock.calls.find(
+      ([ch]) => ch === 'reports:cancel'
+    )?.[1] as (event: unknown, requestId: string) => void;
+
+    const reqPromise = generateHandler(
+      {},
+      { requestId: 'req-ipc-cancel-1', courseId: course.id, reportType: 'summary' }
+    );
+    await fetchStartedPromise;
+    cancelHandler({}, 'req-ipc-cancel-1');
+    await expect(reqPromise).rejects.toThrow(/cancelad/i);
+  });
 });

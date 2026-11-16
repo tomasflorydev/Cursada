@@ -414,6 +414,7 @@ export interface CreateChatThreadInput {
 }
 
 export interface SendChatMessageInput {
+  requestId?: string;
   courseId: string;
   threadId?: string;
   content: string;
@@ -454,6 +455,7 @@ export interface StudyReportStepInfo {
 }
 
 export interface GenerateStudyReportInput {
+  requestId?: string;
   courseId: string;
   reportType: StudyReportType;
   sourceIds?: string[];
@@ -464,6 +466,14 @@ export interface GenerateStudyReportInput {
   customInstructions?: string;
   title?: string;
   autoSaveAsNote?: boolean;
+}
+
+export interface AiStreamProgressEvent {
+  requestId: string;
+  kind: 'chat' | 'report';
+  delta?: string;
+  accumulated?: string;
+  stepLabel?: string;
 }
 
 export interface GenerateStudyReportResult {

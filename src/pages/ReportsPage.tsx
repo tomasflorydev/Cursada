@@ -7,6 +7,7 @@ import {
   exportReportToPdf,
   formatRelativeAgeEs,
   generateAndStoreReport,
+  isReportCancelledError,
   listStoredReports,
   refreshStoredReports,
   regenerateStoredReport,
@@ -167,6 +168,7 @@ export function ReportsPage({
 
   const lastNavVersionRef = useRef<number>(reportNavigationVersion);
   const lastCreateVersionRef = useRef<number>(0);
+  const regenerateAbortRef = useRef<AbortController | null>(null);
 
   const loadCourses = useCallback(async () => {
     const loaded = await cursadaClient.listCourses({ status: 'active' });
@@ -320,16 +322,27 @@ export function ReportsPage({
     setActionError(null);
     setSavedNoteFeedback(null);
     setIsConfirmingDelete(false);
+    const controller = new AbortController();
+    regenerateAbortRef.current = controller;
     setIsRegenerating(true);
     try {
-      await regenerateStoredReport(selectedReport.id);
+      await regenerateStoredReport(selectedReport.id, {
+        signal: controller.signal,
+      });
     } catch (err) {
-      setActionError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo regenerar el informe. Verificá que existan fuentes indexadas en la materia.'
-      );
+      if (isReportCancelledError(err) || controller.signal.aborted) {
+        setActionError('Regeneración cancelada.');
+      } else {
+        setActionError(
+          err instanceof Error
+            ? err.message
+            : 'No se pudo regenerar el informe. Verificá que existan fuentes indexadas en la materia.'
+        );
+      }
     } finally {
+      if (regenerateAbortRef.current === controller) {
+        regenerateAbortRef.current = null;
+      }
       setIsRegenerating(false);
     }
   }
@@ -599,8 +612,23 @@ export function ReportsPage({
               </div>
 
               {isRegenerating ? (
-                <div style={{ marginTop: '14px' }}>
-                  <SwissLoadingBar text="Regenerando informe…" />
+                <div
+                  style={{
+                    marginTop: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <SwissLoadingBar text="Regenerando informe…" />
+                  </div>
+                  <SwissLinkButton
+                    className="swiss-link-sm"
+                    onClick={() => regenerateAbortRef.current?.abort()}
+                  >
+                    Cancelar
+                  </SwissLinkButton>
                 </div>
               ) : null}
 

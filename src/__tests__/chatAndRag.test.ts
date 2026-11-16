@@ -410,5 +410,48 @@ describe('Phase 6 — chatRepo, ragService, and chatHandlers', () => {
     await deleteHandler({}, createdThread.id);
     const afterDelete = await getHandler({}, createdThread.id);
     expect(afterDelete).toBeNull();
+
+    // Streaming NDJSON + cancellation via chat:cancel
+    expect(registeredHandlers.has('chat:cancel')).toBe(true);
+    let signalAborted = false;
+    let resolveStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      resolveStarted = resolve;
+    });
+    const abortableFetch = vi.fn<typeof fetch>((_url, init) => {
+      resolveStarted();
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          signalAborted = true;
+          const err = new Error('Aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      });
+    });
+
+    const cancelHandlersMap = new Map<string, (...args: unknown[]) => unknown>();
+    registerChatHandlers({
+      db,
+      embedder,
+      fetchFn: abortableFetch,
+    });
+    // Re-capture latest registered handlers
+    const latestSend = registeredHandlers.get('chat:sendMessage')!;
+    const latestCancel = registeredHandlers.get('chat:cancel')!;
+    void cancelHandlersMap;
+
+    const sendPromise = latestSend(
+      {},
+      {
+        requestId: 'chat-req-abort-1',
+        courseId,
+        content: 'Explicame capas de IPC',
+      }
+    );
+    await started;
+    latestCancel({}, 'chat-req-abort-1');
+    await expect(sendPromise).rejects.toThrow(/cancelad/i);
+    expect(signalAborted).toBe(true);
   });
 });

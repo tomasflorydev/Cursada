@@ -18,8 +18,11 @@ import { registerOllamaHandlers } from '../../electron/ipc/ollamaHandlers';
 import {
   checkOllamaHealth,
   computeDeterministicLocalEmbedding,
+  generateChatCompletion,
   generateEmbeddings,
+  OllamaCancelledError,
 } from '../../electron/services/ollamaClient';
+import { computeFallbackEmbedding } from '../../electron/services/sourcesService';
 
 const ipcHandleMap = new Map<string, (...args: unknown[]) => unknown>();
 
@@ -410,5 +413,57 @@ describe('Phase 5 Task 5.1 Backend: aiSettingsRepo and ollamaClient', () => {
     } finally {
       getAppDatabase().close();
     }
+  });
+
+  it('unifies fallback embeddings across ollamaClient and sourcesService and supports NDJSON streaming + cancellation', async () => {
+    const sample = 'Árboles Balanceados AVL y Rotaciones Dobles';
+    const vecA = computeDeterministicLocalEmbedding(sample, 128);
+    const vecB = computeFallbackEmbedding(sample, 128);
+    expect(Array.from(vecA)).toEqual(Array.from(vecB));
+
+    // NDJSON streaming split across chunk boundaries
+    const encoder = new TextEncoder();
+    const ndjsonParts = [
+      '{"model":"llama3.2","message":{"role":"assistant","content":"Hola "},"done":false}\n{"model":"llama3.2",',
+      '"message":{"role":"assistant","content":"Cursada!"},"done":false}\n{"model":"llama3.2","message":{"role":"assistant","content":""},"done":true}\n',
+    ];
+    let idx = 0;
+    const streamBody = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (idx < ndjsonParts.length) {
+          controller.enqueue(encoder.encode(ndjsonParts[idx++]));
+        } else {
+          controller.close();
+        }
+      },
+    });
+
+    const receivedTokens: string[] = [];
+    const streamed = await generateChatCompletion({
+      baseUrl: DEFAULT_OLLAMA_BASE_URL,
+      model: 'llama3.2',
+      messages: [{ role: 'user', content: 'Saludá' }],
+      stream: true,
+      onToken: (delta) => receivedTokens.push(delta),
+      fetchImpl: async () =>
+        new Response(streamBody, {
+          status: 200,
+          headers: { 'Content-Type': 'application/x-ndjson' },
+        }),
+    });
+    expect(receivedTokens).toEqual(['Hola ', 'Cursada!']);
+    expect(streamed.content).toBe('Hola Cursada!');
+
+    // Cancellation throws OllamaCancelledError
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      generateChatCompletion({
+        baseUrl: DEFAULT_OLLAMA_BASE_URL,
+        model: 'llama3.2',
+        messages: [{ role: 'user', content: 'Saludá' }],
+        signal: controller.signal,
+      })
+    ).rejects.toThrow(OllamaCancelledError);
   });
 });

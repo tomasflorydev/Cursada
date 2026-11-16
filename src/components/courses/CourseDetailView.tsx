@@ -21,6 +21,7 @@ import {
   formatRelativeAgeEs,
   generateAndStoreReport,
   getLatestStoredReport,
+  isReportCancelledError,
   refreshStoredReports,
   subscribeReports,
   type StoredReport,
@@ -229,6 +230,7 @@ export function CourseDetailView({
     getLatestStoredReport(courseId)
   );
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportProgressText, setReportProgressText] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
@@ -237,9 +239,12 @@ export function CourseDetailView({
   const [chatThreadId, setChatThreadId] = useState<string | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string | null>(null);
   const [lastAnswer, setLastAnswer] = useState<ChatMessage | null>(null);
+  const [streamingChatContent, setStreamingChatContent] = useState<string | null>(null);
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
 
+  const reportAbortRef = useRef<AbortController | null>(null);
+  const chatRequestRef = useRef<{ requestId: string; aborted: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const titleTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const editorPaneRef = useRef<HTMLDivElement | null>(null);
@@ -912,6 +917,20 @@ export function CourseDetailView({
     };
   }
 
+  function handleCancelReport(): void {
+    reportAbortRef.current?.abort();
+  }
+
+  function handleCancelAsk(): void {
+    if (chatRequestRef.current) {
+      chatRequestRef.current.aborted = true;
+      void cursadaClient.cancelChatMessage(chatRequestRef.current.requestId);
+      setIsAsking(false);
+      setStreamingChatContent(null);
+      setAskError('Consulta cancelada.');
+    }
+  }
+
   async function handleGenerateReport(reportType: StudyReportType): Promise<void> {
     if (!course) return;
     setReportError(null);
@@ -929,23 +948,45 @@ export function CourseDetailView({
       return;
     }
 
+    const requestId = `rep-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const controller = new AbortController();
+    reportAbortRef.current = controller;
+    setReportProgressText('Generando informe…');
     setIsGeneratingReport(true);
+    const unsubscribeProgress = cursadaClient.onAiStreamProgress((ev) => {
+      if (ev.requestId === requestId && ev.kind === 'report' && ev.stepLabel) {
+        setReportProgressText(ev.stepLabel);
+      }
+    });
+
     try {
-      const report = await generateAndStoreReport({
-        courseId: course.id,
-        courseName: course.name,
-        reportType,
-        sourceIds: readySelectedSourceIds,
-        noteIds: effectiveIncludeNotes ? noteIdsToUse : [],
-        examStage: aiStageFilter,
-        includeNotes: effectiveIncludeNotes,
-      });
+      const report = await generateAndStoreReport(
+        {
+          courseId: course.id,
+          courseName: course.name,
+          reportType,
+          sourceIds: readySelectedSourceIds,
+          noteIds: effectiveIncludeNotes ? noteIdsToUse : [],
+          examStage: aiStageFilter,
+          includeNotes: effectiveIncludeNotes,
+        },
+        { signal: controller.signal, requestId }
+      );
       setLatestReport(report);
     } catch (err) {
-      setReportError(
-        err instanceof Error ? err.message : 'No se pudo generar el informe.'
-      );
+      if (isReportCancelledError(err) || controller.signal.aborted) {
+        setReportError('Generación cancelada.');
+      } else {
+        setReportError(
+          err instanceof Error ? err.message : 'No se pudo generar el informe.'
+        );
+      }
     } finally {
+      unsubscribeProgress();
+      if (reportAbortRef.current === controller) {
+        reportAbortRef.current = null;
+      }
+      setReportProgressText(null);
       setIsGeneratingReport(false);
     }
   }
@@ -991,11 +1032,29 @@ export function CourseDetailView({
       selectedNotesList,
     } = resolveFilteredContext();
 
+    const requestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const reqState = { requestId, aborted: false };
+    chatRequestRef.current = reqState;
+
     setAskError(null);
+    setStreamingChatContent(null);
     setIsAsking(true);
     setLastQuestion(trimmed);
+
+    const unsubscribeStream = cursadaClient.onAiStreamProgress((ev) => {
+      if (
+        !reqState.aborted &&
+        ev.requestId === requestId &&
+        ev.kind === 'chat' &&
+        typeof ev.accumulated === 'string'
+      ) {
+        setStreamingChatContent(ev.accumulated);
+      }
+    });
+
     try {
       const result = await cursadaClient.sendChatMessage({
+        requestId,
         courseId,
         threadId: chatThreadId ?? undefined,
         content: trimmed,
@@ -1004,14 +1063,25 @@ export function CourseDetailView({
         examStage: aiStageFilter,
         includeNotes: effectiveIncludeNotes,
       });
+      if (reqState.aborted) {
+        return;
+      }
       setChatThreadId(result.thread.id);
       setLastAnswer(result.assistantMessage);
       setAskQuery('');
     } catch (err) {
+      if (reqState.aborted) {
+        return;
+      }
       setAskError(
         err instanceof Error ? err.message : 'No se pudo consultar tus fuentes.'
       );
     } finally {
+      unsubscribeStream();
+      if (chatRequestRef.current === reqState) {
+        chatRequestRef.current = null;
+      }
+      setStreamingChatContent(null);
       setIsAsking(false);
     }
   }
@@ -1696,7 +1766,20 @@ export function CourseDetailView({
           </SwissButton>
         </div>
 
-        {isGeneratingReport ? <SwissLoadingBar text="Generando informe…" /> : null}
+        {isGeneratingReport ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SwissLoadingBar text={reportProgressText ?? 'Generando informe…'} />
+            </div>
+            <SwissLinkButton
+              className="swiss-link-sm"
+              aria-label="Cancelar generación de informe"
+              onClick={handleCancelReport}
+            >
+              Cancelar
+            </SwissLinkButton>
+          </div>
+        ) : null}
         {reportError ? <SwissErrorAlert message={reportError} /> : null}
 
         {latestReport ? (
@@ -1750,7 +1833,25 @@ export function CourseDetailView({
           </SwissButton>
         </form>
 
-        {isAsking ? <SwissLoadingBar text="Consultando tus fuentes…" /> : null}
+        {isAsking ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SwissLoadingBar text="Consultando tus fuentes…" />
+            </div>
+            <SwissLinkButton
+              className="swiss-link-sm"
+              aria-label="Cancelar consulta"
+              onClick={handleCancelAsk}
+            >
+              Cancelar
+            </SwissLinkButton>
+          </div>
+        ) : null}
+        {streamingChatContent ? (
+          <p className="notebook-answer-copy" aria-live="polite">
+            {streamingChatContent}
+          </p>
+        ) : null}
         {askError ? <SwissErrorAlert message={askError} /> : null}
 
         {lastAnswer ? (

@@ -19,6 +19,25 @@ export interface RegisterReportHandlersContext {
   fetchFn?: typeof fetch;
 }
 
+const activeReportControllers = new Map<string, AbortController>();
+
+function sendReportStreamEvent(
+  event: unknown,
+  payload: {
+    requestId: string;
+    kind: 'report';
+    delta?: string;
+    accumulated?: string;
+    stepLabel?: string;
+  }
+): void {
+  const sender = (event as { sender?: { send?: (ch: string, p: unknown) => void } } | null)
+    ?.sender;
+  if (sender && typeof sender.send === 'function') {
+    sender.send('ai:streamProgress', payload);
+  }
+}
+
 /**
  * Registers IPC handlers for Map-Reduce study report generation and SQLite persistence.
  * Accepts an explicit `{ db, fetchFn }` context for testing or falls back to `getAppDatabase()`.
@@ -28,14 +47,58 @@ export function registerReportHandlers(
 ): void {
   ipcMain.handle(
     'reports:generate',
-    (event, input: GenerateStudyReportInput) => {
+    async (event, input: GenerateStudyReportInput) => {
       assertTrustedIpcEvent(event);
       const db = ctx?.db ?? getAppDatabase().db;
-      return generateStudyReportService(db, input, {
-        fetchFn: ctx?.fetchFn,
-      });
+      const requestId =
+        typeof input?.requestId === 'string' ? input.requestId.trim() : '';
+      const controller = requestId ? new AbortController() : undefined;
+      if (requestId && controller) {
+        activeReportControllers.set(requestId, controller);
+      }
+
+      try {
+        return await generateStudyReportService(db, input, {
+          fetchFn: ctx?.fetchFn,
+          signal: controller?.signal,
+          stream: Boolean(requestId),
+          onStep: requestId
+            ? (step) => {
+                sendReportStreamEvent(event, {
+                  requestId,
+                  kind: 'report',
+                  stepLabel: step.label,
+                });
+              }
+            : undefined,
+          onToken: requestId
+            ? (delta, accumulated) => {
+                sendReportStreamEvent(event, {
+                  requestId,
+                  kind: 'report',
+                  delta,
+                  accumulated,
+                });
+              }
+            : undefined,
+        });
+      } finally {
+        if (requestId) {
+          activeReportControllers.delete(requestId);
+        }
+      }
     }
   );
+
+  ipcMain.handle('reports:cancel', (event, requestId: string) => {
+    assertTrustedIpcEvent(event);
+    const validId = assertValidIpcId(requestId, 'ID de solicitud de informe');
+    const controller = activeReportControllers.get(validId);
+    if (controller) {
+      controller.abort();
+      activeReportControllers.delete(validId);
+    }
+  });
 
   ipcMain.handle('reports:list', (event, courseId?: string) => {
     assertTrustedIpcEvent(event);

@@ -298,165 +298,209 @@ function upsertInMemoryCache(saved: StoredReport): void {
   emitChange();
 }
 
-export async function generateAndStoreReport(
-  input: GenerateStoredReportInput,
-  options?: { persistId?: string }
-): Promise<StoredReport> {
-  const includeNotes = input.includeNotes ?? true;
-  const stageFilter =
-    input.examStage && input.examStage !== 'all' ? input.examStage : undefined;
-
-  const [allCourseNotes, allCourseSources, course] = await Promise.all([
-    cursadaClient.listNotes({
-      courseId: input.courseId,
-      ...(stageFilter ? { examStage: stageFilter } : {}),
-    }),
-    cursadaClient.listSources(input.courseId),
-    input.courseName
-      ? Promise.resolve(null)
-      : cursadaClient.getCourse(input.courseId),
-  ]);
-
-  const notes =
-    input.noteIds !== undefined
-      ? allCourseNotes.filter((n) => input.noteIds!.includes(n.id))
-      : allCourseNotes;
-
-  const sources = stageFilter
-    ? allCourseSources.filter((s) => (s.examStage ?? 'general') === stageFilter)
-    : allCourseSources;
-
-  const effectiveSourceIds =
-    input.sourceIds !== undefined
-      ? input.sourceIds.filter((id) => sources.some((s) => s.id === id))
-      : sources.map((s) => s.id);
-  const effectiveNoteIds = notes.map((n) => n.id);
-  const resolvedCourseName = input.courseName ?? course?.name ?? 'Materia';
-
-  const readySelectedSources = sources.filter(
-    (s) => effectiveSourceIds.includes(s.id) && s.indexingStatus === 'ready'
+export function isReportCancelledError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err.name === 'OllamaCancelledError' ||
+      /cancelad[ao]/i.test(err.message))
   );
-
-  if (readySelectedSources.length === 0 && (!includeNotes || notes.length === 0)) {
-    throw new Error(
-      'Seleccioná al menos una nota o subí una fuente indexada (PDF, Markdown o texto) para generar el informe.'
-    );
-  }
-
-  const citations = normalizeCitations(notes, sources, includeNotes, effectiveSourceIds);
-  const usedNotesCount = includeNotes ? notes.length : 0;
-  const usedPdfsCount = sources.filter(
-    (s) => effectiveSourceIds.includes(s.id) && s.sourceType === 'pdf'
-  ).length;
-
-  if (readySelectedSources.length > 0 || (includeNotes && notes.length > 0)) {
-    try {
-      const generated = await cursadaClient.generateStudyReport({
-        courseId: input.courseId,
-        reportType: input.reportType,
-        sourceIds: effectiveSourceIds,
-        noteIds: includeNotes ? effectiveNoteIds : [],
-        examStage: input.examStage,
-        includeNotes,
-        examFormat: input.examFormat,
-        customInstructions: input.customInstructions,
-        title: input.title,
-        autoSaveAsNote: input.autoSaveAsNote ?? false,
-      });
-
-      const finalContent = ensureBodyHasCitations(generated.content, citations);
-      const usedLocalModel =
-        Boolean(generated.modelUsed) && generated.modelUsed !== 'offline-deterministic';
-
-      const saved = await cursadaClient.saveStudyReport({
-        id: options?.persistId,
-        courseId: input.courseId,
-        courseName:
-          input.courseName ??
-          course?.name ??
-          generated.note?.courseName ??
-          resolvedCourseName,
-        title: generated.title,
-        reportType: generated.reportType,
-        summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
-        content: finalContent,
-        notesCount: usedNotesCount,
-        pdfsCount: usedPdfsCount,
-        usedLocalModel,
-        modelLabel: usedLocalModel ? 'modelo local' : 'síntesis offline',
-        noteId: generated.note?.id ?? null,
-        citations,
-        sourceIds: effectiveSourceIds,
-        noteIds: effectiveNoteIds,
-        examStage: input.examStage,
-        includeNotes,
-        examFormat: input.examFormat,
-        customInstructions: input.customInstructions,
-      });
-
-      upsertInMemoryCache(saved);
-      return saved;
-    } catch (err) {
-      if (readySelectedSources.length > 0) {
-        throw err;
-      }
-      // If notes-only generation failed upstream, fall back to local notes synthesis below
-    }
-  }
-
-  const notesFallback = buildNotesOnlyReportContent(
-    input.reportType,
-    resolvedCourseName,
-    notes,
-    citations,
-    input.examFormat
-  );
-  const finalTitle = input.title?.trim() || notesFallback.title;
-  let savedNoteId: string | null = null;
-  if (input.autoSaveAsNote) {
-    const origin =
-      input.reportType === 'study_guide'
-        ? 'ai_study_guide'
-        : input.reportType === 'practice_exam'
-          ? 'ai_practice_exam'
-          : 'ai_summary';
-    const created = await cursadaClient.createNote({
-      courseId: input.courseId,
-      title: finalTitle,
-      content: notesFallback.content,
-      origin,
-      ...(stageFilter ? { examStage: stageFilter } : {}),
-    });
-    savedNoteId = created.id;
-  }
-
-  const saved = await cursadaClient.saveStudyReport({
-    id: options?.persistId,
-    courseId: input.courseId,
-    courseName: resolvedCourseName,
-    title: finalTitle,
-    reportType: input.reportType,
-    summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
-    content: ensureBodyHasCitations(notesFallback.content, citations),
-    notesCount: usedNotesCount,
-    pdfsCount: usedPdfsCount,
-    usedLocalModel: false,
-    modelLabel: 'síntesis offline',
-    noteId: savedNoteId,
-    citations,
-    sourceIds: effectiveSourceIds,
-    noteIds: effectiveNoteIds,
-    examStage: input.examStage,
-    includeNotes,
-    examFormat: input.examFormat,
-    customInstructions: input.customInstructions,
-  });
-
-  upsertInMemoryCache(saved);
-  return saved;
 }
 
-export async function regenerateStoredReport(reportId: string): Promise<StoredReport> {
+export async function generateAndStoreReport(
+  input: GenerateStoredReportInput,
+  options?: { persistId?: string; signal?: AbortSignal; requestId?: string }
+): Promise<StoredReport> {
+  const requestId = options?.requestId ?? `rep-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const assertNotCancelled = (): void => {
+    if (options?.signal?.aborted) {
+      const err = new Error('Generación de informe cancelada por el usuario.');
+      err.name = 'OllamaCancelledError';
+      throw err;
+    }
+  };
+  const onAbortSignal = (): void => {
+    void cursadaClient.cancelStudyReport(requestId);
+  };
+
+  if (options?.signal) {
+    assertNotCancelled();
+    options.signal.addEventListener('abort', onAbortSignal, { once: true });
+  }
+
+  try {
+    assertNotCancelled();
+    const includeNotes = input.includeNotes ?? true;
+    const stageFilter =
+      input.examStage && input.examStage !== 'all' ? input.examStage : undefined;
+
+    const [allCourseNotes, allCourseSources, course] = await Promise.all([
+      cursadaClient.listNotes({
+        courseId: input.courseId,
+        ...(stageFilter ? { examStage: stageFilter } : {}),
+      }),
+      cursadaClient.listSources(input.courseId),
+      input.courseName
+        ? Promise.resolve(null)
+        : cursadaClient.getCourse(input.courseId),
+    ]);
+    assertNotCancelled();
+
+    const notes =
+      input.noteIds !== undefined
+        ? allCourseNotes.filter((n) => input.noteIds!.includes(n.id))
+        : allCourseNotes;
+
+    const sources = stageFilter
+      ? allCourseSources.filter((s) => (s.examStage ?? 'general') === stageFilter)
+      : allCourseSources;
+
+    const effectiveSourceIds =
+      input.sourceIds !== undefined
+        ? input.sourceIds.filter((id) => sources.some((s) => s.id === id))
+        : sources.map((s) => s.id);
+    const effectiveNoteIds = notes.map((n) => n.id);
+    const resolvedCourseName = input.courseName ?? course?.name ?? 'Materia';
+
+    const readySelectedSources = sources.filter(
+      (s) => effectiveSourceIds.includes(s.id) && s.indexingStatus === 'ready'
+    );
+
+    if (readySelectedSources.length === 0 && (!includeNotes || notes.length === 0)) {
+      throw new Error(
+        'Seleccioná al menos una nota o subí una fuente indexada (PDF, Markdown o texto) para generar el informe.'
+      );
+    }
+
+    const citations = normalizeCitations(notes, sources, includeNotes, effectiveSourceIds);
+    const usedNotesCount = includeNotes ? notes.length : 0;
+    const usedPdfsCount = sources.filter(
+      (s) => effectiveSourceIds.includes(s.id) && s.sourceType === 'pdf'
+    ).length;
+
+    if (readySelectedSources.length > 0 || (includeNotes && notes.length > 0)) {
+      try {
+        const generated = await cursadaClient.generateStudyReport({
+          requestId,
+          courseId: input.courseId,
+          reportType: input.reportType,
+          sourceIds: effectiveSourceIds,
+          noteIds: includeNotes ? effectiveNoteIds : [],
+          examStage: input.examStage,
+          includeNotes,
+          examFormat: input.examFormat,
+          customInstructions: input.customInstructions,
+          title: input.title,
+          autoSaveAsNote: input.autoSaveAsNote ?? false,
+        });
+        assertNotCancelled();
+
+        const finalContent = ensureBodyHasCitations(generated.content, citations);
+        const usedLocalModel =
+          Boolean(generated.modelUsed) && generated.modelUsed !== 'offline-deterministic';
+
+        const saved = await cursadaClient.saveStudyReport({
+          id: options?.persistId,
+          courseId: input.courseId,
+          courseName:
+            input.courseName ??
+            course?.name ??
+            generated.note?.courseName ??
+            resolvedCourseName,
+          title: generated.title,
+          reportType: generated.reportType,
+          summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
+          content: finalContent,
+          notesCount: usedNotesCount,
+          pdfsCount: usedPdfsCount,
+          usedLocalModel,
+          modelLabel: usedLocalModel ? 'modelo local' : 'síntesis offline',
+          noteId: generated.note?.id ?? null,
+          citations,
+          sourceIds: effectiveSourceIds,
+          noteIds: effectiveNoteIds,
+          examStage: input.examStage,
+          includeNotes,
+          examFormat: input.examFormat,
+          customInstructions: input.customInstructions,
+        });
+
+        upsertInMemoryCache(saved);
+        return saved;
+      } catch (err) {
+        if (isReportCancelledError(err) || options?.signal?.aborted) {
+          assertNotCancelled();
+          throw err;
+        }
+        if (readySelectedSources.length > 0) {
+          throw err;
+        }
+        // If notes-only generation failed upstream, fall back to local notes synthesis below
+      }
+    }
+
+    assertNotCancelled();
+
+    const notesFallback = buildNotesOnlyReportContent(
+      input.reportType,
+      resolvedCourseName,
+      notes,
+      citations,
+      input.examFormat
+    );
+    const finalTitle = input.title?.trim() || notesFallback.title;
+    let savedNoteId: string | null = null;
+    if (input.autoSaveAsNote) {
+      const origin =
+        input.reportType === 'study_guide'
+          ? 'ai_study_guide'
+          : input.reportType === 'practice_exam'
+            ? 'ai_practice_exam'
+            : 'ai_summary';
+      const created = await cursadaClient.createNote({
+        courseId: input.courseId,
+        title: finalTitle,
+        content: notesFallback.content,
+        origin,
+        ...(stageFilter ? { examStage: stageFilter } : {}),
+      });
+      savedNoteId = created.id;
+    }
+
+    const saved = await cursadaClient.saveStudyReport({
+      id: options?.persistId,
+      courseId: input.courseId,
+      courseName: resolvedCourseName,
+      title: finalTitle,
+      reportType: input.reportType,
+      summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
+      content: ensureBodyHasCitations(notesFallback.content, citations),
+      notesCount: usedNotesCount,
+      pdfsCount: usedPdfsCount,
+      usedLocalModel: false,
+      modelLabel: 'síntesis offline',
+      noteId: savedNoteId,
+      citations,
+      sourceIds: effectiveSourceIds,
+      noteIds: effectiveNoteIds,
+      examStage: input.examStage,
+      includeNotes,
+      examFormat: input.examFormat,
+      customInstructions: input.customInstructions,
+    });
+
+    upsertInMemoryCache(saved);
+    return saved;
+  } finally {
+    if (options?.signal) {
+      options.signal.removeEventListener('abort', onAbortSignal);
+    }
+  }
+}
+
+export async function regenerateStoredReport(
+  reportId: string,
+  options?: { signal?: AbortSignal; requestId?: string }
+): Promise<StoredReport> {
   const existing =
     getStoredReportById(reportId) ??
     (await cursadaClient.getStudyReportById(reportId));
@@ -478,7 +522,11 @@ export async function regenerateStoredReport(reportId: string): Promise<StoredRe
       title: existing.title,
       autoSaveAsNote: false,
     },
-    { persistId: existing.id }
+    {
+      persistId: existing.id,
+      signal: options?.signal,
+      requestId: options?.requestId,
+    }
   );
 }
 

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
+  AiStreamProgressEvent,
   CourseStatus,
   CreateCalendarFeedInput,
   CreateChatThreadInput,
@@ -104,11 +105,24 @@ contextBridge.exposeInMainWorld('cursadaApi', {
     ipcRenderer.invoke('chat:deleteThread', threadId),
   sendChatMessage: (input: SendChatMessageInput) =>
     ipcRenderer.invoke('chat:sendMessage', input),
+  cancelChatMessage: (requestId: string) =>
+    ipcRenderer.invoke('chat:cancel', requestId),
   saveChatMessageAsNote: (input: SaveChatMessageAsNoteInput) =>
     ipcRenderer.invoke('chat:saveMessageAsNote', input),
   // AI Study Reports & Material Generator (Phase 7 + SQLite V9)
   generateStudyReport: (input: GenerateStudyReportInput) =>
     ipcRenderer.invoke('reports:generate', input),
+  cancelStudyReport: (requestId: string) =>
+    ipcRenderer.invoke('reports:cancel', requestId),
+  onAiStreamProgress: (listener: (payload: AiStreamProgressEvent) => void) => {
+    const wrapped = (_event: unknown, payload: AiStreamProgressEvent) => {
+      listener(payload);
+    };
+    ipcRenderer.on('ai:streamProgress', wrapped);
+    return () => {
+      ipcRenderer.removeListener('ai:streamProgress', wrapped);
+    };
+  },
   listStudyReports: (courseId?: string) =>
     ipcRenderer.invoke('reports:list', courseId),
   getStudyReportById: (id: string) => ipcRenderer.invoke('reports:getById', id),

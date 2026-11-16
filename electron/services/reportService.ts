@@ -17,7 +17,10 @@ import type {
   StudyReportType,
 } from '../types.js';
 import { chunkDocumentPages } from './chunkingService.js';
-import { generateChatCompletion } from './ollamaClient.js';
+import {
+  generateChatCompletion,
+  OllamaCancelledError,
+} from './ollamaClient.js';
 
 export const LOCAL_REPORT_FALLBACK_MODEL = 'local-map-reduce-fallback';
 const MAX_MAP_SOURCE_CHARS = 4500;
@@ -900,11 +903,29 @@ function selectStudyMaterialUnits(
  * via an on-demand Map-Reduce pipeline over a course's ready sources and/or selected notes.
  * Passes `keep_alive: '0s'` to Ollama on every call and falls back cleanly when offline.
  */
+export interface GenerateStudyReportOptions {
+  fetchFn?: typeof fetch;
+  signal?: AbortSignal;
+  stream?: boolean;
+  onToken?: (chunkText: string, accumulatedText: string) => void;
+  onStep?: (step: StudyReportStepInfo) => void;
+}
+
+function assertNotAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new OllamaCancelledError(
+      'La generación del informe fue cancelada por el usuario.'
+    );
+  }
+}
+
 export async function generateStudyReportService(
   db: DatabaseSync,
   input: GenerateStudyReportInput,
-  options?: { fetchFn?: typeof fetch }
+  options?: GenerateStudyReportOptions
 ): Promise<GenerateStudyReportResult> {
+  assertNotAborted(options?.signal);
+
   const courseId = (input.courseId ?? '').trim();
   if (!courseId) {
     throw new Error('Seleccioná una materia válida para generar el material.');
@@ -952,15 +973,18 @@ export async function generateStudyReportService(
 
   // Map Phase: process each selected source or note individually
   for (let i = 0; i < selectedSources.length; i++) {
+    assertNotAborted(options?.signal);
     const source = selectedSources[i];
-    steps.push({
+    const mapStep: StudyReportStepInfo = {
       stepNumber: i + 1,
       totalSteps,
       stage: 'map',
       label: `Analizando ${source.sourceType === 'note' ? 'nota' : 'fuente'} ${i + 1}/${selectedSources.length}: ${source.title}`,
       sourceId: source.id,
       sourceTitle: source.title,
-    });
+    };
+    steps.push(mapStep);
+    options?.onStep?.(mapStep);
 
     const sampledContent = sampleSourceContentForMap(
       source,
@@ -984,9 +1008,18 @@ export async function generateStudyReportService(
         }),
         keepAlive: '0s',
         fetchImpl: options?.fetchFn,
+        signal: options?.signal,
+        stream: options?.stream,
       });
       summaryText = completion.content;
-    } catch {
+    } catch (err) {
+      if (err instanceof OllamaCancelledError || options?.signal?.aborted) {
+        throw err instanceof OllamaCancelledError
+          ? err
+          : new OllamaCancelledError(
+              'La generación del informe fue cancelada por el usuario.'
+            );
+      }
       usedFallback = true;
       summaryText = buildLocalMapSummary(
         source,
@@ -1004,17 +1037,21 @@ export async function generateStudyReportService(
     });
   }
 
+  assertNotAborted(options?.signal);
+
   const title =
     input.title?.trim() ||
     `${DEFAULT_TITLE_PREFIXES[input.reportType]} — ${course.name}`;
 
   // Reduce Phase: synthesize all Map outputs into final Markdown
-  steps.push({
+  const reduceStep: StudyReportStepInfo = {
     stepNumber: totalSteps,
     totalSteps,
     stage: 'reduce',
     label: `Sintetizando material final (${REPORT_TYPE_LABELS[input.reportType]})`,
-  });
+  };
+  steps.push(reduceStep);
+  options?.onStep?.(reduceStep);
 
   let content: string;
   let modelUsed: string;
@@ -1033,10 +1070,20 @@ export async function generateStudyReportService(
       }),
       keepAlive: '0s',
       fetchImpl: options?.fetchFn,
+      signal: options?.signal,
+      stream: options?.stream,
+      onToken: options?.onToken,
     });
     content = reduceCompletion.content;
     modelUsed = reduceCompletion.modelUsed || aiSettings.chatModel;
-  } catch {
+  } catch (err) {
+    if (err instanceof OllamaCancelledError || options?.signal?.aborted) {
+      throw err instanceof OllamaCancelledError
+        ? err
+        : new OllamaCancelledError(
+            'La generación del informe fue cancelada por el usuario.'
+          );
+    }
     modelUsed = LOCAL_REPORT_FALLBACK_MODEL;
     content = buildLocalReduceFallback({
       course,

@@ -75,11 +75,21 @@ export interface GenerateChatCompletionOptions {
   keepAlive?: string | number;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  signal?: AbortSignal;
+  stream?: boolean;
+  onToken?: (chunkText: string, accumulatedText: string) => void;
 }
 
 export interface GenerateChatCompletionResult {
   content: string;
   modelUsed: string;
+}
+
+export class OllamaCancelledError extends Error {
+  constructor(message = 'Operación de Ollama cancelada por el usuario.') {
+    super(message);
+    this.name = 'OllamaCancelledError';
+  }
 }
 
 function isAbortOrTimeoutError(err: unknown): boolean {
@@ -283,19 +293,9 @@ function fnv1a32(input: string, seed: number): number {
   return hash >>> 0;
 }
 
-function accumulateSignedFeature(
-  vec: Float32Array,
-  feature: string,
-  weight: number
-): void {
-  const index = fnv1a32(feature, 0x811c9dc5) % vec.length;
-  const sign = (fnv1a32(feature, 0x9e3779b9) & 1) === 0 ? 1 : -1;
-  vec[index] += sign * weight;
-}
-
 /**
  * Computes a deterministic L2-normalized local embedding vector using
- * accent-stripped words and character trigrams hashed with signed FNV-1a.
+ * accent-stripped words, adjacent bigrams, and character 3-grams hashed with signed FNV-1a.
  */
 export function computeDeterministicLocalEmbedding(
   text: string,
@@ -307,16 +307,35 @@ export function computeDeterministicLocalEmbedding(
 
   const vec = new Float32Array(dim);
   const normalized = text
-    .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+  if (!normalized) {
+    return vec;
+  }
 
-  const words = normalized.match(/[\p{L}\p{N}]+/gu) ?? [];
-  for (const word of words) {
-    accumulateSignedFeature(vec, `w:${word}`, 1.0);
-    if (word.length >= 3) {
-      for (let i = 0; i <= word.length - 3; i++) {
-        accumulateSignedFeature(vec, `t:${word.slice(i, i + 3)}`, 0.5);
+  const tokens = normalized
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length > 0);
+
+  const addFeature = (feature: string, weight: number): void => {
+    const index = fnv1a32(feature, 2166136261) % dim;
+    const sign = (fnv1a32(feature, 374761393) & 1) === 0 ? 1 : -1;
+    vec[index] += sign * weight;
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    addFeature(`w:${token}`, 1.0);
+
+    if (i + 1 < tokens.length) {
+      addFeature(`b:${token}_${tokens[i + 1]}`, 0.75);
+    }
+
+    if (token.length >= 4) {
+      for (let j = 0; j <= token.length - 3; j++) {
+        addFeature(`c3:${token.slice(j, j + 3)}`, 0.3);
       }
     }
   }
@@ -502,8 +521,80 @@ function parseChatResponsePayload(rawText: string): {
   };
 }
 
+async function readStreamingChatPayload(
+  body: ReadableStream<Uint8Array>,
+  onToken?: (chunkText: string, accumulatedText: string) => void,
+  isCancelled?: () => boolean
+): Promise<{ content: string; model: string | null }> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let combined = '';
+  let detectedModel: string | null = null;
+
+  const processLine = (rawLine: string): void => {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      return;
+    }
+    let chunk: OllamaChatApiResponse | null = null;
+    try {
+      chunk = JSON.parse(trimmed) as OllamaChatApiResponse | null;
+    } catch {
+      throw new Error('Ollama /api/chat devolvió un formato JSON inválido.');
+    }
+    if (typeof chunk?.model === 'string' && chunk.model.trim()) {
+      detectedModel = chunk.model.trim();
+    }
+    const piece =
+      typeof chunk?.message?.content === 'string'
+        ? chunk.message.content
+        : typeof chunk?.response === 'string'
+          ? chunk.response
+          : '';
+    if (piece) {
+      combined += piece;
+      onToken?.(piece, combined);
+    }
+  };
+
+  while (true) {
+    if (isCancelled?.()) {
+      await reader.cancel().catch(() => {});
+      throw new OllamaCancelledError();
+    }
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    let newlineIdx = buffer.indexOf('\n');
+    while (newlineIdx !== -1) {
+      const line = buffer.slice(0, newlineIdx);
+      buffer = buffer.slice(newlineIdx + 1);
+      processLine(line);
+      newlineIdx = buffer.indexOf('\n');
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    processLine(buffer);
+  }
+
+  if (!combined.trim()) {
+    throw new Error('Ollama /api/chat no devolvió contenido generado.');
+  }
+
+  return {
+    content: combined.trim(),
+    model: detectedModel,
+  };
+}
+
 /**
- * Generates a single non-streaming chat completion via Ollama's /api/chat endpoint.
+ * Generates a chat completion via Ollama's /api/chat endpoint with optional
+ * NDJSON streaming (`stream: true`, `onToken`) and caller cancellation (`signal`).
  * Defaults `keep_alive` to '0s' so Ollama unloads the model immediately after responding.
  */
 export async function generateChatCompletion(
@@ -518,11 +609,29 @@ export async function generateChatCompletion(
     throw new Error('Tenés que configurar un modelo de chat de Ollama.');
   }
 
+  if (options.signal?.aborted) {
+    throw new OllamaCancelledError();
+  }
+
   const baseUrl = normalizeOllamaBaseUrl(options.baseUrl);
   const fetchFn = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? 60000;
+  const wantStream = Boolean(options.stream ?? options.onToken);
   const controller = new AbortController();
+  let cancelledByCaller = false;
+  let timedOut = false;
+
+  const onExternalAbort = (): void => {
+    cancelledByCaller = true;
+    controller.abort();
+  };
+
+  if (options.signal) {
+    options.signal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+
   const timer = setTimeout(() => {
+    timedOut = true;
     controller.abort();
   }, timeoutMs);
 
@@ -532,12 +641,12 @@ export async function generateChatCompletion(
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        Accept: wantStream ? 'application/x-ndjson, application/json' : 'application/json',
       },
       body: JSON.stringify({
         model,
         messages: options.messages,
-        stream: false,
+        stream: wantStream,
         keep_alive: options.keepAlive ?? '0s',
       }),
     });
@@ -548,14 +657,39 @@ export async function generateChatCompletion(
       );
     }
 
+    if (
+      wantStream &&
+      response.body &&
+      typeof response.body.getReader === 'function'
+    ) {
+      const streamed = await readStreamingChatPayload(
+        response.body,
+        options.onToken,
+        () => cancelledByCaller || Boolean(options.signal?.aborted)
+      );
+      return {
+        content: streamed.content,
+        modelUsed: streamed.model ?? model,
+      };
+    }
+
     const rawBody = await response.text();
     const parsed = parseChatResponsePayload(rawBody);
+    if (wantStream && parsed.content) {
+      options.onToken?.(parsed.content, parsed.content);
+    }
     return {
       content: parsed.content,
       modelUsed: parsed.model ?? model,
     };
   } catch (err) {
-    if (isAbortOrTimeoutError(err)) {
+    if (err instanceof OllamaCancelledError) {
+      throw err;
+    }
+    if (cancelledByCaller || options.signal?.aborted) {
+      throw new OllamaCancelledError();
+    }
+    if (timedOut || isAbortOrTimeoutError(err)) {
       throw new Error(
         `Tiempo de espera agotado al consultar Ollama en ${baseUrl}.`
       );
@@ -565,5 +699,8 @@ export async function generateChatCompletion(
       : new Error('No se pudo obtener respuesta desde Ollama.');
   } finally {
     clearTimeout(timer);
+    if (options.signal) {
+      options.signal.removeEventListener('abort', onExternalAbort);
+    }
   }
 }
