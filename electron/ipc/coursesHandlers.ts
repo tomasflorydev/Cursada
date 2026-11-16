@@ -60,6 +60,6 @@ export function registerCoursesHandlers(): void {
     if (!ctx.isInMemory) {
       createBackup(ctx.db, ctx.dataDir, 'pre-course-delete');
     }
-    deleteCourse(ctx.db, validId);
+    deleteCourse(ctx.db, validId, ctx.dataDir);
   });
 }

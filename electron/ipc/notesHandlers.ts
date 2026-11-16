@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron';
 import { getAppDatabase } from '../db/database.js';
-import { syncNoteLinks } from '../db/knowledgeRepo.js';
 import {
   createNote,
   deleteNote,
@@ -29,9 +28,7 @@ export function registerNotesHandlers(): void {
   ipcMain.handle('notes:create', (event, input: CreateNoteInput) => {
     assertTrustedIpcEvent(event);
     const ctx = getAppDatabase();
-    const created = createNote(ctx.db, input);
-    syncNoteLinks(ctx.db, created.id);
-    return created;
+    return createNote(ctx.db, input);
   });
 
   ipcMain.handle(
@@ -40,9 +37,7 @@ export function registerNotesHandlers(): void {
       assertTrustedIpcEvent(event);
       const validId = assertValidIpcId(id, 'ID de nota');
       const ctx = getAppDatabase();
-      const updated = updateNote(ctx.db, validId, input);
-      syncNoteLinks(ctx.db, updated.id);
-      return updated;
+      return updateNote(ctx.db, validId, input);
     }
   );
 

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createCourse,
@@ -9,6 +10,7 @@ import {
   updateCourse,
 } from '../../electron/db/coursesRepo';
 import { createTestDatabase, type DatabaseContext } from '../../electron/db/database';
+import { createSourceRecord } from '../../electron/db/sourcesRepo';
 import { createTask, listTasks } from '../../electron/db/tasksRepo';
 import type { CourseColor, CourseStatus, DayOfWeek } from '../types/domain';
 
@@ -269,5 +271,48 @@ describe('Task 1.2: coursesRepo SQLite CRUD, schedule management, and input vali
       .prepare('SELECT COUNT(*) AS count FROM class_schedules WHERE course_id = ?')
       .get(course.id) as { count: number };
     expect(Number(remainingSchedules.count)).toBe(0);
+  });
+
+  it('persists attendanceEnabled/maxAbsences and deletes physical sources/ files when deleting a course', () => {
+    const ctx = setupDb();
+    const course = createCourse(ctx.db, {
+      name: 'Arquitectura de Computadoras',
+      color: 'amber',
+      term: '2026 - 2° Cuatrimestre',
+      attendanceEnabled: true,
+      maxAbsences: 6,
+      schedules: [],
+    });
+
+    expect(course.attendanceEnabled).toBe(true);
+    expect(course.maxAbsences).toBe(6);
+
+    const updated = updateCourse(ctx.db, course.id, {
+      attendanceEnabled: false,
+      maxAbsences: 3,
+    });
+    expect(updated.attendanceEnabled).toBe(false);
+    expect(updated.maxAbsences).toBe(3);
+
+    const sourcesDir = path.join(ctx.dataDir, 'sources');
+    fs.mkdirSync(sourcesDir, { recursive: true });
+    const storedFilename = 'apuntes-arqui.pdf';
+    const storedFilePath = path.join(sourcesDir, storedFilename);
+    fs.writeFileSync(storedFilePath, Buffer.from('%PDF-1.4 fake content'));
+
+    createSourceRecord(ctx.db, {
+      courseId: course.id,
+      title: 'Apuntes Arqui',
+      sourceType: 'pdf',
+      storedFilename,
+      rawText: 'Registros y pipeline.',
+      pageCount: 1,
+    });
+
+    expect(fs.existsSync(storedFilePath)).toBe(true);
+    deleteCourse(ctx.db, course.id, ctx.dataDir);
+
+    expect(getCourseById(ctx.db, course.id)).toBeNull();
+    expect(fs.existsSync(storedFilePath)).toBe(false);
   });
 });

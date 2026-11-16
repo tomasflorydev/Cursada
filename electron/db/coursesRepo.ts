@@ -11,6 +11,7 @@ import type {
   DayOfWeek,
   UpdateCourseInput,
 } from '../types.js';
+import { removeStoredSourceFile } from './sourcesRepo.js';
 
 export const VALID_COURSE_COLORS: readonly CourseColor[] = [
   'blue',
@@ -76,6 +77,8 @@ interface CourseRow {
   professor: string;
   term: string;
   status: CourseStatus;
+  attendance_enabled?: number;
+  max_absences?: number;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +92,21 @@ interface ScheduleRow {
   location: string;
 }
 
+function validateMaxAbsences(rawValue: unknown): number {
+  if (
+    typeof rawValue !== 'number' ||
+    !Number.isFinite(rawValue) ||
+    !Number.isInteger(rawValue) ||
+    rawValue < 1 ||
+    rawValue > 50
+  ) {
+    throw new Error(
+      `Invalid maxAbsences "${String(rawValue)}". Must be an integer between 1 and 50.`
+    );
+  }
+  return rawValue;
+}
+
 function mapScheduleRow(row: ScheduleRow): ClassSchedule {
   return {
     id: row.id,
@@ -97,6 +115,25 @@ function mapScheduleRow(row: ScheduleRow): ClassSchedule {
     startTime: row.start_time,
     endTime: row.end_time,
     location: row.location,
+  };
+}
+
+function mapCourseRow(
+  row: CourseRow,
+  schedules: ClassSchedule[]
+): CourseWithSchedules {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    professor: row.professor,
+    term: row.term,
+    status: row.status,
+    attendanceEnabled: Boolean(row.attendance_enabled),
+    maxAbsences: Number(row.max_absences ?? 4),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    schedules,
   };
 }
 
@@ -128,17 +165,7 @@ export function listCourses(
     schedulesByCourse.set(s.course_id, list);
   }
 
-  return courses.map((c) => ({
-    id: c.id,
-    name: c.name,
-    color: c.color,
-    professor: c.professor,
-    term: c.term,
-    status: c.status,
-    createdAt: c.created_at,
-    updatedAt: c.updated_at,
-    schedules: schedulesByCourse.get(c.id) ?? [],
-  }));
+  return courses.map((c) => mapCourseRow(c, schedulesByCourse.get(c.id) ?? []));
 }
 
 export function getCourseById(db: DatabaseSync, id: string): CourseWithSchedules | null {
@@ -155,17 +182,7 @@ export function getCourseById(db: DatabaseSync, id: string): CourseWithSchedules
     )
     .all(id) as unknown as ScheduleRow[];
 
-  return {
-    id: course.id,
-    name: course.name,
-    color: course.color,
-    professor: course.professor,
-    term: course.term,
-    status: course.status,
-    createdAt: course.created_at,
-    updatedAt: course.updated_at,
-    schedules: schedules.map(mapScheduleRow),
-  };
+  return mapCourseRow(course, schedules.map(mapScheduleRow));
 }
 
 export function createCourse(
@@ -177,6 +194,11 @@ export function createCourse(
   const name = (input.name ?? '').trim();
   const term = (input.term ?? '').trim();
   const status = input.status ?? 'active';
+  const attendanceEnabled = input.attendanceEnabled ? 1 : 0;
+  const maxAbsences =
+    input.maxAbsences !== undefined
+      ? validateMaxAbsences(input.maxAbsences)
+      : 4;
 
   if (!name) {
     throw new Error('Course name cannot be empty');
@@ -192,8 +214,8 @@ export function createCourse(
   db.exec('BEGIN IMMEDIATE;');
   try {
     db.prepare(
-      `INSERT INTO courses (id, name, color, professor, term, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO courses (id, name, color, professor, term, status, attendance_enabled, max_absences, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       name,
@@ -201,6 +223,8 @@ export function createCourse(
       (input.professor ?? '').trim(),
       term,
       status,
+      attendanceEnabled,
+      maxAbsences,
       now,
       now
     );
@@ -251,6 +275,18 @@ export function updateCourse(
   const professor =
     input.professor !== undefined ? input.professor.trim() : existing.professor;
   const status = input.status ?? existing.status;
+  const attendanceEnabled =
+    input.attendanceEnabled !== undefined
+      ? input.attendanceEnabled
+        ? 1
+        : 0
+      : existing.attendanceEnabled
+        ? 1
+        : 0;
+  const maxAbsences =
+    input.maxAbsences !== undefined
+      ? validateMaxAbsences(input.maxAbsences)
+      : existing.maxAbsences ?? 4;
 
   if (!name) {
     throw new Error('Course name cannot be empty');
@@ -268,9 +304,19 @@ export function updateCourse(
   try {
     db.prepare(
       `UPDATE courses
-       SET name = ?, color = ?, professor = ?, term = ?, status = ?, updated_at = ?
+       SET name = ?, color = ?, professor = ?, term = ?, status = ?, attendance_enabled = ?, max_absences = ?, updated_at = ?
        WHERE id = ?`
-    ).run(name, color, professor, term, status, now, id);
+    ).run(
+      name,
+      color,
+      professor,
+      term,
+      status,
+      attendanceEnabled,
+      maxAbsences,
+      now,
+      id
+    );
 
     if (input.schedules !== undefined) {
       db.prepare('DELETE FROM class_schedules WHERE course_id = ?').run(id);
@@ -344,6 +390,26 @@ export function getCourseDeleteImpact(
   };
 }
 
-export function deleteCourse(db: DatabaseSync, id: string): void {
+export function deleteCourse(
+  db: DatabaseSync,
+  id: string,
+  dataDir?: string
+): void {
+  const storedRows = dataDir
+    ? (db
+        .prepare(
+          'SELECT stored_filename FROM sources WHERE course_id = ? AND stored_filename IS NOT NULL'
+        )
+        .all(id) as unknown as Array<{ stored_filename: string | null }>)
+    : [];
+
   db.prepare('DELETE FROM courses WHERE id = ?').run(id);
+
+  if (dataDir) {
+    for (const row of storedRows) {
+      if (row.stored_filename) {
+        removeStoredSourceFile(dataDir, row.stored_filename);
+      }
+    }
+  }
 }

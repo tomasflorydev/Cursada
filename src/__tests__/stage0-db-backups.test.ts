@@ -126,4 +126,22 @@ describe('Stage 0: SQLite migrations, CURSADA_DATA_DIR isolation, and automatic 
     ctx.close();
     tempDirs.push(ctx.dataDir);
   });
+
+  it('names pre-migration backups using the source schema version (from-vX-to-vY)', () => {
+    const customDir = makeTempDir();
+    // Create an initial DB, rewind user_version to simulate an older schema with existing tables
+    const initialCtx = openDatabase({ dataDir: customDir, runStartupBackup: false });
+    initialCtx.db.exec('PRAGMA user_version = 7;');
+    initialCtx.close();
+
+    const migratedCtx = openDatabase({ dataDir: customDir, runStartupBackup: false });
+    expect(getSchemaVersion(migratedCtx.db)).toBe(LATEST_SCHEMA_VERSION);
+    const backups = listBackups(customDir);
+    expect(
+      backups.some((b) =>
+        b.filename.includes(`pre-migration-from-v7-to-v${LATEST_SCHEMA_VERSION}`)
+      )
+    ).toBe(true);
+    migratedCtx.close();
+  });
 });

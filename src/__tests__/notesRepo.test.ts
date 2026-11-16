@@ -6,6 +6,7 @@ import {
   getCourseDeleteImpact,
 } from '../../electron/db/coursesRepo';
 import { createTestDatabase } from '../../electron/db/database';
+import { getNoteLinksSummary } from '../../electron/db/knowledgeRepo';
 import {
   createNote,
   deleteNote,
@@ -216,6 +217,50 @@ describe('Phase 4 Task 4.1 Backend: SQLite notesRepo CRUD, pinning, FTS5 accent-
       .prepare('SELECT COUNT(*) AS count FROM notes_fts')
       .get() as { count: number };
     expect(Number(afterCount.count)).toBe(0);
+
+    ctx.close();
+  });
+
+  it('automatically synchronizes note_links on direct createNote and updateNote calls', () => {
+    const ctx = createTestDatabase();
+    tempDirs.push(ctx.dataDir);
+
+    const course = createCourse(ctx.db, {
+      name: 'Sistemas Distribuidos',
+      color: 'cyan',
+      term: '2026 - 2° Cuatrimestre',
+      schedules: [],
+    });
+
+    const sourceNote = createNote(ctx.db, {
+      courseId: course.id,
+      title: 'Consenso',
+      content: 'Ver algoritmo [[Paxos]] antes del parcial.',
+    });
+
+    const targetNote = createNote(ctx.db, {
+      courseId: course.id,
+      title: 'Paxos',
+      content: 'Explicación base.',
+    });
+
+    // Target creation back-resolved the pending link from Consenso -> Paxos
+    const initialSummary = getNoteLinksSummary(ctx.db, sourceNote.id);
+    expect(initialSummary.forwardLinks).toHaveLength(1);
+    expect(initialSummary.forwardLinks[0].targetNoteId).toBe(targetNote.id);
+
+    updateNote(ctx.db, sourceNote.id, {
+      content: 'Ver [[Paxos]] y también [[Raft]].',
+    });
+
+    const updatedTargetSummary = getNoteLinksSummary(ctx.db, targetNote.id);
+    expect(updatedTargetSummary.backlinks).toHaveLength(1);
+    expect(updatedTargetSummary.backlinks[0].sourceNoteId).toBe(sourceNote.id);
+
+    const updatedSourceSummary = getNoteLinksSummary(ctx.db, sourceNote.id);
+    expect(
+      updatedSourceSummary.forwardLinks.map((link) => link.targetTitle)
+    ).toEqual(['Paxos', 'Raft']);
 
     ctx.close();
   });

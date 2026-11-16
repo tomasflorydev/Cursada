@@ -270,7 +270,11 @@ export function runMigrations(
 
   // Always take a backup before migrating an existing database with tables
   if (!options?.isInMemory && options?.dataDir && hasExistingTables(db)) {
-    createBackup(db, options.dataDir, `pre-migration-v${LATEST_SCHEMA_VERSION}`);
+    createBackup(
+      db,
+      options.dataDir,
+      `pre-migration-from-v${currentVersion}-to-v${LATEST_SCHEMA_VERSION}`
+    );
   }
 
   if (currentVersion < 1) {

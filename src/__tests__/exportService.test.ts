@@ -348,4 +348,52 @@ describe('Phase 4 Task 4.2 Backend: exportService Markdown export', () => {
 
     ctx.close();
   });
+
+  it('formats ISO timestamps in README and notes using local calendar date instead of UTC shift', () => {
+    const ctx = createTestDatabase();
+    tempDirs.push(ctx.dataDir);
+    const outDir = makeTempExportDir();
+
+    const course = createCourse(ctx.db, {
+      name: 'Probabilidad',
+      color: 'cyan',
+      term: '2026 - 2° Cuatrimestre',
+      schedules: [],
+    });
+
+    const lateEveningLocal = new Date(2026, 4, 10, 23, 30, 0);
+    const expectedLocalYmd = `${lateEveningLocal.getFullYear()}-${String(lateEveningLocal.getMonth() + 1).padStart(2, '0')}-${String(lateEveningLocal.getDate()).padStart(2, '0')}`;
+
+    insertNoteSql(ctx.db, {
+      id: 'note-tz',
+      courseId: course.id,
+      title: 'Teorema de Bayes',
+      content: 'Contenido de prueba.',
+      updatedAt: lateEveningLocal.toISOString(),
+    });
+
+    const result = exportMarkdownFromDb(ctx.db, {
+      scope: 'all',
+      targetDir: outDir,
+    });
+
+    expect(result.targetDir).not.toBeNull();
+    const exportRoot = result.targetDir as string;
+
+    const noteContent = fs.readFileSync(
+      path.join(exportRoot, 'probabilidad', 'notas', 'teorema-de-bayes.md'),
+      'utf8'
+    );
+    expect(noteContent).toContain(`Última actualización:** ${expectedLocalYmd}`);
+
+    const todayLocal = new Date();
+    const expectedTodayYmd = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth() + 1).padStart(2, '0')}-${String(todayLocal.getDate()).padStart(2, '0')}`;
+    const readmeContent = fs.readFileSync(
+      path.join(exportRoot, 'README.md'),
+      'utf8'
+    );
+    expect(readmeContent).toContain(`Fecha de exportación:** ${expectedTodayYmd}`);
+
+    ctx.close();
+  });
 });

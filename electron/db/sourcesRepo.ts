@@ -496,7 +496,10 @@ export function markSourceIndexingStatus(
   ).run(validStatus, errorMessage ?? null, now, sourceId);
 }
 
-function removeStoredSourceFile(dataDir: string, storedFilename: string): void {
+export function removeStoredSourceFile(
+  dataDir: string,
+  storedFilename: string
+): void {
   const safeBaseName = path.basename(storedFilename);
   if (
     !storedFilename ||

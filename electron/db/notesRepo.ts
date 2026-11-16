@@ -9,6 +9,7 @@ import type {
   NoteWithCourse,
   UpdateNoteInput,
 } from '../types.js';
+import { syncNoteLinks } from './wikiLinks.js';
 
 interface NoteJoinedRow {
   id: string;
@@ -250,6 +251,8 @@ export function createNote(
     now
   );
 
+  syncNoteLinks(db, id);
+
   const created = getNoteById(db, id);
   if (!created) {
     throw new Error('Failed to load created note');
@@ -299,6 +302,8 @@ export function updateNote(
      SET course_id = ?, title = ?, content = ?, is_pinned = ?, exam_stage = ?, frontmatter_json = ?, updated_at = ?
      WHERE id = ?`
   ).run(courseId, title, content, isPinned, examStage, frontmatterJson, now, id);
+
+  syncNoteLinks(db, id);
 
   const updated = getNoteById(db, id);
   if (!updated) {

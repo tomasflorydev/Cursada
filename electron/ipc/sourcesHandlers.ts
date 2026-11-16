@@ -48,16 +48,9 @@ export function registerSourcesHandlers(): void {
     async (event, input: CreateSourceFromTextInput) => {
       assertTrustedIpcEvent(event);
       const ctx = getAppDatabase();
-      const created = await createSourceFromTextService(ctx.db, input, {
+      return createSourceFromTextService(ctx.db, input, {
         embedder: createOllamaSourceEmbedder(ctx.db),
       });
-      if (input.examStage) {
-        return updateSourceExamStage(ctx.db, {
-          sourceId: created.id,
-          examStage: input.examStage,
-        });
-      }
-      return created;
     }
   );
 
@@ -103,7 +96,7 @@ export function registerSourcesHandlers(): void {
       }
 
       const ctx = getAppDatabase();
-      const result = await importSourceFileService(
+      return importSourceFileService(
         ctx.db,
         { ...input, filePath: resolvedFilePath },
         {
@@ -111,16 +104,6 @@ export function registerSourcesHandlers(): void {
           embedder: createOllamaSourceEmbedder(ctx.db),
         }
       );
-      if (!result.canceled && result.source && input.examStage) {
-        return {
-          canceled: false,
-          source: updateSourceExamStage(ctx.db, {
-            sourceId: result.source.id,
-            examStage: input.examStage,
-          }),
-        };
-      }
-      return result;
     }
   );
 

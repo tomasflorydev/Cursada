@@ -130,6 +130,13 @@ function escapeMarkdownTableCell(value: string): string {
   return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
 }
 
+function formatLocalIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatDateLabel(isoOrDate: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(isoOrDate)) {
     const [year, month, day] = isoOrDate.split('-');
@@ -139,7 +146,7 @@ function formatDateLabel(isoOrDate: string): string {
   if (Number.isNaN(parsed.getTime())) {
     return isoOrDate;
   }
-  return parsed.toISOString().slice(0, 10);
+  return formatLocalIsoDate(parsed);
 }
 
 function claimUniqueSlug(baseSlug: string, usedSlugs: Set<string>): string {
@@ -503,7 +510,7 @@ export function exportMarkdownFromDb(
     const readmeLines: string[] = [
       '# Exportación completa de Cursada',
       '',
-      `- **Fecha de exportación:** ${new Date().toISOString().slice(0, 10)}`,
+      `- **Fecha de exportación:** ${formatLocalIsoDate(new Date())}`,
       `- **Total de materias:** ${courses.length} (${activeEntries.length} en curso, ${archivedEntries.length} archivadas)`,
       '',
       '## Estructura de carpetas',
