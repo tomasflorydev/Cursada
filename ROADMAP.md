@@ -10,11 +10,11 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 | :--- | :--- | :---: | :--- |
 | **`v1.0.0`** | **Fases 1 a 8 (MVP Base)** | Completada | Estructura base macOS, SQLite + Backups, Materias, Calendario, Tareas, Exámenes, Notas GFM, Exportación `.md`, Fuentes PDF + Ollama, Chat RAG con citas, Reportes Map-Reduce, `Cmd+K`, Notificaciones y `.app`. |
 | **`v1.1.0`** | **Fase 9: Limpieza de UI, Renombrado a Anotadores y Pulido Base** | Completada | Eliminación de subtítulos y textos sobre-explicativos de IA, cambio de `"Materias"` por `"Anotadores"` (apto uso general y universitario), fecha real en Inicio y restauración de backups en 1 clic. |
-| **`v2.0.0`** | **Fase 10: Overhaul Total de la Interfaz Gráfica** | Pendiente | Nueva dirección visual completa (tokens, tipografía, layout del shell, navegación y rediseño de todas las vistas existentes antes de sumar pantallas nuevas). |
-| **`v2.1.0`** | **Fase 11: Super-Editor Markdown (Live Preview, Matemática y Atajos)** | Pendiente | Formato en vivo mientras escribís (CodeMirror 6 Live Preview sin mostrar `#` o `**` salvo en la línea activa), soporte matemático $\LaTeX$ (KaTeX) y atajos configurables (tablas, callouts, bloques). |
-| **`v2.2.0`** | **Fase 12: Red de Conocimiento (WikiLinks, Grafo y Obsidian Vault)** | Pendiente | Enlaces entre notas `[[WikiLinks]]` (forward/backlinks), Vista de Grafo interactiva estilo Obsidian e importación de Vaults de Obsidian (activos o al Archivo). |
-| **`v2.3.0`** | **Fase 13: Estudio Activo e IA Contextual (Pomodoro, Notas/Fuentes por Parcial, Simulacro y Asistencia)** | Pendiente | Pomodoro Timer configurable, Notas como fuentes para la IA + selector de fuentes/notas con filtro `1° Parcial / 2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia. |
-| **`v2.4.0`** | **Fase 14: Sincronización con Google Calendar** | Pendiente | Suscripción/exportación iCal (`.ics`) y sincronización bidireccional OAuth2 con Google Calendar. |
+| **`v2.0.0`** | **Fase 10: Overhaul Total de la Interfaz Gráfica** | Completada | Nueva dirección visual completa (tokens, tipografía, layout del shell, navegación y rediseño de todas las vistas existentes antes de sumar pantallas nuevas). |
+| **`v2.1.0`** | **Fase 11: Super-Editor Markdown (Live Preview, Matemática y Atajos)** | Completada | Formato en vivo mientras escribís (CodeMirror 6 Live Preview sin mostrar `#` o `**` salvo en la línea activa), soporte matemático $\LaTeX$ (KaTeX) y atajos configurables (tablas, callouts, bloques). |
+| **`v2.2.0`** | **Fase 12: Red de Conocimiento (WikiLinks, Grafo y Obsidian Vault)** | Completada | Enlaces entre notas `[[WikiLinks]]` (forward/backlinks), Vista de Grafo interactiva estilo Obsidian e importación de Vaults de Obsidian (activos o al Archivo). |
+| **`v2.3.0`** | **Fase 13: Estudio Activo e IA Contextual (Pomodoro, Notas/Fuentes por Parcial, Simulacro y Asistencia)** | Completada | Pomodoro Timer configurable, Notas como fuentes para la IA + selector de fuentes/notas con filtro `1° Parcial / 2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia. |
+| **`v2.4.0`** | **Fase 14: Sincronización con Google Calendar** | Completada | Suscripción/exportación iCal (`.ics`) y sincronización bidireccional OAuth2 con Google Calendar. |
 
 ---
 
@@ -113,18 +113,18 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 
 ---
 
-## Fase 11 (`v2.1.0`): Super-Editor Markdown (Live Preview, Matemática y Atajos Configurables)
+## Fase 11 (`v2.1.0`): Super-Editor Markdown (Live Preview, Matemática y Atajos Configurables) — ✅ Completada
 
 > **Objetivo de la versión**: Lleva la experiencia de escritura de notas al nivel de un editor de conocimiento moderno (estilo Obsidian/Typora), con renderizado en vivo mientras se escribe, soporte matemático completo y atajos de teclado a medida.
 
-### Tarea 11.1: [ ] Soporte Matemático ($\LaTeX$ / KaTeX) offline en Notas, Chat y Reportes
+### Tarea 11.1: [x] Soporte Matemático ($\LaTeX$ / KaTeX) offline en Notas, Chat y Reportes
 - **Qué incluye**:
   - Integración 100% local (sin CDN externo) de renderizado matemático KaTeX para expresiones inline (`$...$`) y bloques de ecuaciones (`$$...$$`).
   - Disponible tanto en las Notas de cada anotador como en las respuestas del Chat RAG y en los Reportes generados por IA.
 - **Criterios de aceptación (como usuario)**:
   - Puedo escribir `$O(n \log n)$` o un bloque `$$ \sum_{i=1}^n x_i $$` en una nota o recibirlo del asistente IA y ver la fórmula matemática renderizada con tipografía científica nítida.
 
-### Tarea 11.2: [ ] Editor Markdown con Formato en Tiempo Real ("Live Preview" en CodeMirror 6)
+### Tarea 11.2: [x] Editor Markdown con Formato en Tiempo Real ("Live Preview" en CodeMirror 6)
 - **Qué incluye**:
   - Motor de decoraciones en vivo sobre CodeMirror 6 (`ViewPlugin` + árbol sintáctico Markdown) que formatea el documento en tiempo real a medida que escribís:
     - Los encabezados (`# Heading`) se ven directamente con su tamaño y peso de título sin mostrar los símbolos `#`.
@@ -133,7 +133,7 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 - **Criterios de aceptación (como usuario)**:
   - Mientras escribo una nota, veo los títulos, negritas, callouts, listas de tareas, fórmulas y tablas formateados directamente en tiempo real sin tener que cambiar a un modo de solo lectura, y cuando apoyo el cursor sobre un elemento puedo editar su sintaxis cómodamente.
 
-### Tarea 11.3: [ ] Atajos de Teclado Configurables para Edición Markdown
+### Tarea 11.3: [x] Atajos de Teclado Configurables para Edición Markdown
 - **Qué incluye**:
   - Sistema de comandos de edición en el editor de notas para insertar y envolver estructuras complejas al instante: **Insertar Tabla**, **Insertar Callout** (nota, alerta, tip), **Insertar Bloque Matemático (`$$`)**, **Insertar Bloque de Código**, **Alternar Tarea (`- [ ]`)**, **Encabezado 1/2/3**, **Negrita/Cursiva** y **Enlace a Nota (`[[`)**.
   - Sección en **Ajustes → Atajos del Editor** donde el usuario puede elegir y reasignar la combinación de teclas de cada acción (con detección de colisiones y botón de restaurar valores por defecto), persistida en `app_settings`.
@@ -142,11 +142,11 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 
 ---
 
-## Fase 12 (`v2.2.0`): Red de Conocimiento (WikiLinks, Vista de Grafo e Importador de Obsidian)
+## Fase 12 (`v2.2.0`): Red de Conocimiento (WikiLinks, Vista de Grafo e Importador de Obsidian) — ✅ Completada
 
 > **Objetivo de la versión**: Conectar las notas entre sí mediante enlaces bidireccionales, visualizar la red de conocimiento en un grafo interactivo y permitir traer Vaults enteros desde Obsidian.
 
-### Tarea 12.1: [ ] Enlaces Bidireccionales entre Notas (`[[WikiLinks]]`), Forward Links y Backlinks
+### Tarea 12.1: [x] Enlaces Bidireccionales entre Notas (`[[WikiLinks]]`), Forward Links y Backlinks
 - **Qué incluye**:
   - Migración SQLite `v6` creando la tabla `note_links` e índices de búsqueda rápida de enlaces salientes (*forward links*) y entrantes (*backlinks*).
   - Parser automático al guardar una nota que detecta enlaces `[[Título de Nota]]` y `[[Título de Nota|Texto visible]]`.
@@ -157,7 +157,7 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
   - Puedo escribir `[[` en cualquier nota, elegir otra nota del autocompletado y navegar hacia ella con un clic.
   - Al abrir una nota, puedo ver en su sección de **Backlinks** qué otras notas la están citando y saltar a cualquiera de ellas.
 
-### Tarea 12.2: [ ] Vista de Grafo Interactiva estilo Obsidian (`<NotesGraphView />`)
+### Tarea 12.2: [x] Vista de Grafo Interactiva estilo Obsidian (`<NotesGraphView />`)
 - **Qué incluye**:
   - Visualizador de grafo interactivo en 2D (`<canvas>`) con simulación física de fuerzas (nodos que se repelen suavemente y enlaces que actúan como resortes).
   - Dos alcances: **Grafo del Anotador** (dentro de la pestaña Notas de un anotador) y **Grafo Global** (todas las notas de todos los anotadores, con filtro para incluir o excluir archivados).
@@ -165,7 +165,7 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 - **Criterios de aceptación (como usuario)**:
   - Puedo abrir la **Vista de Grafo**, ver todas mis notas como nodos conectados por sus enlaces `[[...]]`, arrastrar nodos, hacer zoom, filtrar por texto y hacer clic en cualquier nodo para abrir esa nota.
 
-### Tarea 12.3: [ ] Importador de Vaults desde Obsidian
+### Tarea 12.3: [x] Importador de Vaults desde Obsidian
 - **Qué incluye**:
   - Herramienta en **Ajustes** y en **Anotadores** (`"Importar Vault de Obsidian"`) que abre el selector nativo de carpetas de macOS.
   - Escaneo recursivo de la carpeta seleccionada (ignorando carpetas ocultas como `.obsidian/` y `.trash/`), lectura de archivos `.md` y extracción de *frontmatter* YAML.
@@ -176,11 +176,11 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 
 ---
 
-## Fase 13 (`v2.3.0`): Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro, Notas como Fuentes, Simulacro y Asistencia)
+## Fase 13 (`v2.3.0`): Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro, Notas como Fuentes, Simulacro y Asistencia) — ✅ Completada
 
 > **Objetivo de la versión**: Permitir usar las propias Notas junto con las Fuentes en la IA filtrando por instancia (`1° Parcial` / `2° Parcial`), sumar el Modo Simulacro Interactivo, el Pomodoro Timer y el Control de Asistencia.
 
-### Tarea 13.1: [ ] Pomodoro Timer Configurable
+### Tarea 13.1: [x] Pomodoro Timer Configurable
 - **Qué incluye**:
   - Temporizador Pomodoro integrado en el shell de la app para que siga corriendo sin interrupciones al cambiar entre Notas, Fuentes, Chat IA, Tareas o Calendario.
   - Configuración persistida de duración de **Foco** (ej. 25 / 45 / 50 min), **Descanso corto** (ej. 5 / 10 min), **Descanso largo** (ej. 15 / 20 min) y cantidad de rondas antes del descanso largo.
@@ -188,7 +188,7 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 - **Criterios de aceptación (como usuario)**:
   - Puedo configurar los minutos de mi Pomodoro, iniciarlo mientras estudio o escribo apuntes, moverme libremente por toda la app viendo el tiempo restante y recibir una notificación en mi Mac cuando termina el bloque.
 
-### Tarea 13.2: [ ] Notas como Fuentes para la IA, Selector de Fuentes/Notas y Filtro por Parcial (`1° Parcial` / `2° Parcial`)
+### Tarea 13.2: [x] Notas como Fuentes para la IA, Selector de Fuentes/Notas y Filtro por Parcial (`1° Parcial` / `2° Parcial`)
 - **Qué incluye**:
   - **Etiquetado por etapa en Fuentes y Notas**: Posibilidad de clasificar cada Fuente y cada Nota dentro de **`1° Parcial`**, **`2° Parcial`**, **`Final`** o **`General`** (sin categoría específica).
   - **Notas tratadas como Fuentes para la IA**: Indexación y recuperación híbrida (embeddings + FTS5) sobre las Notas propias del anotador para que tanto el **Chat RAG con citas** como el **Generador Map-Reduce** puedan leer y citar tus apuntes de clase igual que un PDF o documento subido en Fuentes.
@@ -197,7 +197,7 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
   - Puedo marcar cualquier Fuente o Nota como material de **`1° Parcial`** o **`2° Parcial`**.
   - En el **Chat con IA** y en el **Generador de resúmenes/exámenes**, puedo elegir qué combinación exacta de Fuentes y Notas usar, o tocar el filtro **`1° Parcial`** / **`2° Parcial`** para que la IA responda y cite únicamente usando el material de ese parcial.
 
-### Tarea 13.3: [ ] Modo Simulacro Interactivo para Exámenes de Práctica
+### Tarea 13.3: [x] Modo Simulacro Interactivo para Exámenes de Práctica
 - **Qué incluye**:
   - Evolución del generador de **Exámenes de práctica** en la pestaña **Asistente IA** para abrir un **Modo Simulacro Interactivo** además del documento Markdown tradicional, operando sobre las Fuentes y Notas seleccionadas (ej. filtradas por `1° Parcial` o `2° Parcial`).
   - Presentación de consignas una por una (o en hoja de examen limpia) **ocultando las respuestas correctas**:
@@ -207,7 +207,7 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 - **Criterios de aceptación (como usuario)**:
   - Puedo generar un examen de práctica en modo **Simulacro Interactivo**, responder todas las preguntas sin ver las soluciones, entregar el examen y ver mi calificación automática junto con la explicación y las citas de las fuentes o notas para cada pregunta.
 
-### Tarea 13.4: [ ] Control de Asistencia por Anotador
+### Tarea 13.4: [x] Control de Asistencia por Anotador
 - **Qué incluye**:
   - Migración SQLite `v7` agregando soporte de asistencia por anotador (cantidad máxima de inasistencias permitidas `max_absences` y registro de asistencias/faltas con fecha y nota opcional).
   - Panel compacto en el Resumen del Anotador que muestra las faltas actuales frente al límite permitido (ej. `2 / 4 faltas · 50% del límite`), alerta de precaución cuando queda 1 sola falta disponible, botones rápidos para registrar falta/asistencia y opción para desactivar el módulo en anotadores que no requieren control de asistencia.
@@ -216,18 +216,18 @@ Este documento guía el desarrollo paso a paso de **Cursada**. Cada etapa está 
 
 ---
 
-## Fase 14 (`v2.4.0`): Sincronización con Google Calendar
+## Fase 14 (`v2.4.0`): Sincronización con Google Calendar — ✅ Completada
 
 > **Objetivo de la versión**: Conectar el calendario académico/personal de Cursada con Google Calendar manteniendo la filosofía local-first.
 
-### Tarea 14.1: [ ] Exportación `.ics` y Suscripción por URL iCal de Google Calendar (Sin credenciales Cloud)
+### Tarea 14.1: [x] Exportación `.ics` y Suscripción por URL iCal de Google Calendar (Sin credenciales Cloud)
 - **Qué incluye**:
   - Exportación en 1 clic de horarios semanales, entregas de tareas y fechas de exámenes a un archivo estándar `.ics` (iCalendar) compatible con Google Calendar y Apple Calendar.
   - Campo en **Ajustes → Calendario** para conectar una o más URLs privadas `.ics` de Google Calendar, parseando y superponiendo esos eventos externos dentro de la vista Mensual y Semanal de **Calendario** con actualización bajo demanda y al iniciar.
 - **Criterios de aceptación (como usuario)**:
   - Puedo pegar la dirección privada `.ics` de mi Google Calendar en Ajustes y ver mis eventos externos reflejados en el Calendario de Cursada, o exportar mis exámenes y horarios a un archivo `.ics`.
 
-### Tarea 14.2: [ ] Sincronización Bidireccional con Google Calendar API (OAuth2 Local)
+### Tarea 14.2: [x] Sincronización Bidireccional con Google Calendar API (OAuth2 Local)
 - **Qué incluye**:
   - Conector OAuth2 PKCE Desktop en el proceso principal de Electron (`127.0.0.1` loopback callback) configurable desde **Ajustes → Sincronización con Google Calendar**.
   - Publicación y actualización automática de exámenes, entregas con fecha y bloques de cursada hacia un calendario dedicado en la cuenta de Google del usuario, guardando el `sync_token` y mapeo de IDs de eventos localmente en SQLite.

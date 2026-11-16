@@ -5,6 +5,10 @@
 @import './sources.css';
 @import './assistant.css';
 @import './command-palette.css';
+@import './super-editor.css';
+@import './knowledge.css';
+@import './active-study.css';
+@import './calendar-sync.css';
 
 @layer reset, tokens, base, layout, components, utilities;
 

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ObsidianImportModal } from '../components/courses/ObsidianImportModal';
+import { CalendarSyncSettingsSection } from '../components/settings/CalendarSyncSettingsSection';
+import { EditorShortcutsSettingsSection } from '../components/settings/EditorShortcutsSettingsSection';
 import { cursadaClient } from '../lib/api/client';
 import type {
   BackupInfo,
   ExportMarkdownResult,
+  ImportObsidianVaultResult,
   NoteFontSize,
   NotificationDispatchResult,
   NotificationSettings,
@@ -223,6 +227,9 @@ export function SettingsPage({
     useState<RestoreBackupResult | null>(null);
   const [lastExportResult, setLastExportResult] =
     useState<ExportMarkdownResult | null>(null);
+  const [isObsidianModalOpen, setIsObsidianModalOpen] = useState(false);
+  const [lastObsidianImportResult, setLastObsidianImportResult] =
+    useState<ImportObsidianVaultResult | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
 
   const effectiveNoteFontSize = onChangeNoteFontSize
@@ -1103,6 +1110,26 @@ export function SettingsPage({
             </div>
           </div>
 
+          <div className="settings-row">
+            <div className="settings-row-info">
+              <div className="settings-row-title">Importar Vault de Obsidian</div>
+              <div className="settings-row-desc">
+                {lastObsidianImportResult && !lastObsidianImportResult.canceled
+                  ? `${lastObsidianImportResult.notesImportedCount} notas importadas · ${lastObsidianImportResult.linksResolvedCount} enlaces resueltos.`
+                  : 'Traé carpetas con archivos .md, frontmatter y [[WikiLinks]] hacia activos o al Archivo.'}
+              </div>
+            </div>
+            <div className="settings-row-control">
+              <SwissButton
+                variant="secondary"
+                data-testid="settings-import-obsidian-button"
+                onClick={() => setIsObsidianModalOpen(true)}
+              >
+                Importar Vault de Obsidian
+              </SwissButton>
+            </div>
+          </div>
+
           <div style={{ marginTop: '20px' }}>
             <SwissSectionHeader
               title={`Respaldos disponibles (${backups.length})`}
@@ -1175,6 +1202,10 @@ export function SettingsPage({
               </div>
             )}
           </div>
+
+          <div style={{ marginTop: '24px' }}>
+            <CalendarSyncSettingsSection />
+          </div>
         </section>
 
         {/* 5. ATAJOS DE TECLADO */}
@@ -1207,8 +1238,18 @@ export function SettingsPage({
               </div>
             ))}
           </div>
+
+          <div style={{ marginTop: '24px' }}>
+            <EditorShortcutsSettingsSection />
+          </div>
         </section>
       </div>
+
+      <ObsidianImportModal
+        isOpen={isObsidianModalOpen}
+        onClose={() => setIsObsidianModalOpen(false)}
+        onImported={(res) => setLastObsidianImportResult(res)}
+      />
     </section>
   );
 }

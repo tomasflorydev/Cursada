@@ -1,4 +1,5 @@
 import type {
+  ExamStageTag,
   NoteWithCourse,
   PracticeExamFormat,
   Source,
@@ -34,6 +35,8 @@ export interface StoredReport {
   noteId: string | null;
   citations: ReportCitationSource[];
   sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
   includeNotes?: boolean;
   examFormat?: PracticeExamFormat;
   customInstructions?: string;
@@ -44,6 +47,8 @@ export interface GenerateStoredReportInput {
   courseName?: string;
   reportType: StudyReportType;
   sourceIds?: string[];
+  noteIds?: string[];
+  examStage?: ExamStageTag | 'all';
   includeNotes?: boolean;
   examFormat?: PracticeExamFormat;
   customInstructions?: string;
@@ -312,12 +317,22 @@ function ensureBodyHasCitations(content: string, citations: ReportCitationSource
     .slice(0, 3)
     .map((c) => `[${c.index}]`)
     .join('');
-  const lines = content.split('\n\n');
-  if (lines.length === 0) {
+  const blocks = content.split('\n\n');
+  if (blocks.length === 0) {
     return `${content} ${markers}`;
   }
-  lines[0] = `${lines[0]} ${markers}`;
-  return lines.join('\n\n');
+  const targetIdx = blocks.findIndex((block) => {
+    const trimmed = block.trim();
+    if (!trimmed) {
+      return false;
+    }
+    return !trimmed
+      .split('\n')
+      .every((line) => /^(?:#{1,6}\s|>|$)/.test(line.trim()));
+  });
+  const idx = targetIdx >= 0 ? targetIdx : 0;
+  blocks[idx] = `${blocks[idx]} ${markers}`;
+  return blocks.join('\n\n');
 }
 
 function buildCourseCountsSummary(notesCount: number, pdfsCount: number): string {
@@ -399,16 +414,34 @@ export async function generateAndStoreReport(
   ensureInitialized();
 
   const includeNotes = input.includeNotes ?? true;
-  const [notes, sources, course] = await Promise.all([
-    cursadaClient.listNotes({ courseId: input.courseId }),
+  const stageFilter =
+    input.examStage && input.examStage !== 'all' ? input.examStage : undefined;
+
+  const [allCourseNotes, allCourseSources, course] = await Promise.all([
+    cursadaClient.listNotes({
+      courseId: input.courseId,
+      ...(stageFilter ? { examStage: stageFilter } : {}),
+    }),
     cursadaClient.listSources(input.courseId),
     input.courseName
       ? Promise.resolve(null)
       : cursadaClient.getCourse(input.courseId),
   ]);
 
+  const notes =
+    input.noteIds !== undefined
+      ? allCourseNotes.filter((n) => input.noteIds!.includes(n.id))
+      : allCourseNotes;
+
+  const sources = stageFilter
+    ? allCourseSources.filter((s) => (s.examStage ?? 'general') === stageFilter)
+    : allCourseSources;
+
   const effectiveSourceIds =
-    input.sourceIds !== undefined ? input.sourceIds : sources.map((s) => s.id);
+    input.sourceIds !== undefined
+      ? input.sourceIds.filter((id) => sources.some((s) => s.id === id))
+      : sources.map((s) => s.id);
+  const effectiveNoteIds = notes.map((n) => n.id);
   const resolvedCourseName = input.courseName ?? course?.name ?? 'Materia';
 
   const readySelectedSources = sources.filter(
@@ -428,47 +461,59 @@ export async function generateAndStoreReport(
   ).length;
   const nowIso = new Date().toISOString();
 
-  if (readySelectedSources.length > 0) {
-    const generated = await cursadaClient.generateStudyReport({
-      courseId: input.courseId,
-      reportType: input.reportType,
-      sourceIds: effectiveSourceIds,
-      examFormat: input.examFormat,
-      customInstructions: input.customInstructions,
-      title: input.title,
-      autoSaveAsNote: input.autoSaveAsNote ?? false,
-    });
+  if (readySelectedSources.length > 0 || (includeNotes && notes.length > 0)) {
+    try {
+      const generated = await cursadaClient.generateStudyReport({
+        courseId: input.courseId,
+        reportType: input.reportType,
+        sourceIds: effectiveSourceIds,
+        noteIds: includeNotes ? effectiveNoteIds : [],
+        examStage: input.examStage,
+        includeNotes,
+        examFormat: input.examFormat,
+        customInstructions: input.customInstructions,
+        title: input.title,
+        autoSaveAsNote: input.autoSaveAsNote ?? false,
+      });
 
-    const finalContent = ensureBodyHasCitations(generated.content, citations);
-    const usedLocalModel =
-      Boolean(generated.modelUsed) && generated.modelUsed !== 'offline-deterministic';
+      const finalContent = ensureBodyHasCitations(generated.content, citations);
+      const usedLocalModel =
+        Boolean(generated.modelUsed) && generated.modelUsed !== 'offline-deterministic';
 
-    const report: StoredReport = {
-      id: `report-${Date.now()}-${nextReportSeq++}`,
-      courseId: input.courseId,
-      courseName:
-        input.courseName ?? course?.name ?? generated.note?.courseName ?? resolvedCourseName,
-      title: generated.title,
-      reportType: generated.reportType,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
-      content: finalContent,
-      notesCount: usedNotesCount,
-      pdfsCount: usedPdfsCount,
-      usedLocalModel,
-      modelLabel: usedLocalModel ? 'modelo local' : 'síntesis offline',
-      noteId: generated.note?.id ?? null,
-      citations,
-      sourceIds: effectiveSourceIds,
-      includeNotes,
-      examFormat: input.examFormat,
-      customInstructions: input.customInstructions,
-    };
+      const report: StoredReport = {
+        id: `report-${Date.now()}-${nextReportSeq++}`,
+        courseId: input.courseId,
+        courseName:
+          input.courseName ?? course?.name ?? generated.note?.courseName ?? resolvedCourseName,
+        title: generated.title,
+        reportType: generated.reportType,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        summaryLine: buildCourseCountsSummary(usedNotesCount, usedPdfsCount),
+        content: finalContent,
+        notesCount: usedNotesCount,
+        pdfsCount: usedPdfsCount,
+        usedLocalModel,
+        modelLabel: usedLocalModel ? 'modelo local' : 'síntesis offline',
+        noteId: generated.note?.id ?? null,
+        citations,
+        sourceIds: effectiveSourceIds,
+        noteIds: effectiveNoteIds,
+        examStage: input.examStage,
+        includeNotes,
+        examFormat: input.examFormat,
+        customInstructions: input.customInstructions,
+      };
 
-    reportsMemoryStore = [report, ...reportsMemoryStore];
-    emitChange();
-    return report;
+      reportsMemoryStore = [report, ...reportsMemoryStore];
+      emitChange();
+      return report;
+    } catch (err) {
+      if (readySelectedSources.length > 0) {
+        throw err;
+      }
+      // If notes-only generation failed upstream, fall back to local notes synthesis below
+    }
   }
 
   const notesFallback = buildNotesOnlyReportContent(
@@ -492,6 +537,7 @@ export async function generateAndStoreReport(
       title: finalTitle,
       content: notesFallback.content,
       origin,
+      ...(stageFilter ? { examStage: stageFilter } : {}),
     });
     savedNoteId = created.id;
     notifyCursadaDataChanged();
@@ -514,6 +560,8 @@ export async function generateAndStoreReport(
     noteId: savedNoteId,
     citations,
     sourceIds: effectiveSourceIds,
+    noteIds: effectiveNoteIds,
+    examStage: input.examStage,
     includeNotes,
     examFormat: input.examFormat,
     customInstructions: input.customInstructions,
@@ -535,6 +583,8 @@ export async function regenerateStoredReport(reportId: string): Promise<StoredRe
     courseName: existing.courseName,
     reportType: existing.reportType,
     sourceIds: existing.sourceIds,
+    noteIds: existing.noteIds,
+    examStage: existing.examStage,
     includeNotes: existing.includeNotes ?? true,
     examFormat: existing.examFormat,
     customInstructions: existing.customInstructions,

@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { getAppDatabase } from '../db/database.js';
+import { syncNoteLinks } from '../db/knowledgeRepo.js';
 import {
   createNote,
   deleteNote,
@@ -23,14 +24,18 @@ export function registerNotesHandlers(): void {
 
   ipcMain.handle('notes:create', (_event, input: CreateNoteInput) => {
     const ctx = getAppDatabase();
-    return createNote(ctx.db, input);
+    const created = createNote(ctx.db, input);
+    syncNoteLinks(ctx.db, created.id);
+    return created;
   });
 
   ipcMain.handle(
     'notes:update',
     (_event, id: string, input: UpdateNoteInput) => {
       const ctx = getAppDatabase();
-      return updateNote(ctx.db, id, input);
+      const updated = updateNote(ctx.db, id, input);
+      syncNoteLinks(ctx.db, updated.id);
+      return updated;
     }
   );
 

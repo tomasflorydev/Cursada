@@ -1,24 +1,36 @@
 import type {
   BackupInfo,
-  CalendarFeed,
-  CourseAttendanceSummary,
   CourseWithSchedules,
   CursadaIpcApi,
   ExamWithCourse,
-  ExportIcsResult,
-  ExternalCalendarEvent,
-  GoogleCalendarSyncConfig,
-  GoogleCalendarSyncResult,
-  ImportObsidianVaultResult,
-  KnowledgeGraphData,
-  NoteLinksSummary,
   NoteWithCourse,
   OpenDataDirResult,
   RestoreBackupResult,
-  Source,
   TaskWithCourse,
 } from '../../types/domain';
+import { resetPomodoroStore } from '../pomodoro/pomodoroStore';
 import { resetStoredReports } from '../reportsStore';
+import {
+  mockDeleteAttendanceRecord,
+  mockGetCourseAttendance,
+  mockRecordAttendance,
+  mockUpdateCourseAttendanceConfig,
+  resetMockAttendance,
+} from './mockAttendance';
+import {
+  mockAddCalendarFeed,
+  mockConnectGoogleCalendar,
+  mockDisconnectGoogleCalendar,
+  mockExportCalendarIcs,
+  mockGetGoogleCalendarConfig,
+  mockListCalendarFeeds,
+  mockListExternalCalendarEvents,
+  mockRemoveCalendarFeed,
+  mockSyncCalendarFeeds,
+  mockSyncGoogleCalendarNow,
+  mockUpdateGoogleCalendarConfig,
+  resetMockCalendarSync,
+} from './mockCalendarSync';
 import {
   mockCreateCourse,
   mockDeleteCourse,
@@ -39,6 +51,13 @@ import {
   resetMockExams,
 } from './mockExams';
 import { mockExportMarkdown } from './mockExport';
+import {
+  mockGetKnowledgeGraph,
+  mockGetNoteLinks,
+  mockImportObsidianVault,
+  mockOpenOrCreateWikiLink,
+  resetMockKnowledge,
+} from './mockKnowledge';
 import {
   mockCountNotesByCourse,
   mockCreateNote,
@@ -83,6 +102,7 @@ import {
   mockListSources,
   mockReindexSource,
   mockSearchSourceChunks,
+  mockUpdateSourceStage,
   resetMockSources,
 } from './mockSources';
 import {
@@ -407,6 +427,10 @@ export function resetAllMocks(): void {
   resetMockSources();
   resetMockChat();
   resetMockNotifications();
+  resetMockKnowledge();
+  resetMockAttendance();
+  resetMockCalendarSync();
+  resetPomodoroStore();
   resetStoredReports();
   backupsStore = structuredClone(INITIAL_MOCK_BACKUPS);
   backupSeq = 1;
@@ -496,156 +520,27 @@ export const mockClient: CursadaIpcApi = {
   updateNotificationSettings: mockUpdateNotificationSettings,
   sendTestNotification: mockSendTestNotification,
   checkDueReminders: mockCheckDueReminders,
-  // Phase 12 stubs (wired in Step 3 integration)
-  getNoteLinks: async (noteId: string): Promise<NoteLinksSummary> => ({
-    noteId,
-    forwardLinks: [],
-    backlinks: [],
-  }),
-  openOrCreateWikiLink: async (input): Promise<NoteWithCourse> =>
-    mockCreateNote({
-      courseId: input.courseId,
-      title: input.targetTitle.trim() || 'Nueva nota',
-      content: '',
-      origin: 'manual',
-    }),
-  getKnowledgeGraph: async (): Promise<KnowledgeGraphData> => ({
-    nodes: [],
-    edges: [],
-  }),
-  importObsidianVault: async (): Promise<ImportObsidianVaultResult> => ({
-    canceled: true,
-    vaultPath: null,
-    coursesCreated: [],
-    notesImportedCount: 0,
-    linksResolvedCount: 0,
-  }),
-  // Phase 13 stubs (wired in Step 3 integration)
-  updateSourceStage: async (input): Promise<Source> => {
-    const existing = await mockGetSourceWithChunks(input.sourceId);
-    if (!existing) {
-      throw new Error(`Source not found: ${input.sourceId}`);
-    }
-    const { chunks: _chunks, ...rest } = existing;
-    return { ...rest, examStage: input.examStage };
-  },
-  getCourseAttendance: async (courseId: string): Promise<CourseAttendanceSummary> => ({
-    courseId,
-    attendanceEnabled: false,
-    maxAbsences: 4,
-    absencesCount: 0,
-    presentsCount: 0,
-    remainingAbsences: 4,
-    absenceRatio: 0,
-    isWarning: false,
-    isExceeded: false,
-    records: [],
-  }),
-  updateCourseAttendanceConfig: async (input): Promise<CourseAttendanceSummary> => ({
-    courseId: input.courseId,
-    attendanceEnabled: Boolean(input.attendanceEnabled),
-    maxAbsences: input.maxAbsences ?? 4,
-    absencesCount: 0,
-    presentsCount: 0,
-    remainingAbsences: input.maxAbsences ?? 4,
-    absenceRatio: 0,
-    isWarning: false,
-    isExceeded: false,
-    records: [],
-  }),
-  recordAttendance: async (input): Promise<CourseAttendanceSummary> => ({
-    courseId: input.courseId,
-    attendanceEnabled: true,
-    maxAbsences: 4,
-    absencesCount: input.status === 'absent' ? 1 : 0,
-    presentsCount: input.status === 'present' ? 1 : 0,
-    remainingAbsences: input.status === 'absent' ? 3 : 4,
-    absenceRatio: input.status === 'absent' ? 0.25 : 0,
-    isWarning: false,
-    isExceeded: false,
-    records: [],
-  }),
-  deleteAttendanceRecord: async (): Promise<CourseAttendanceSummary> => ({
-    courseId: '',
-    attendanceEnabled: true,
-    maxAbsences: 4,
-    absencesCount: 0,
-    presentsCount: 0,
-    remainingAbsences: 4,
-    absenceRatio: 0,
-    isWarning: false,
-    isExceeded: false,
-    records: [],
-  }),
-  // Phase 14 stubs (wired in Step 3 integration)
-  exportCalendarIcs: async (): Promise<ExportIcsResult> => ({
-    canceled: true,
-    filePath: null,
-    icsContent: '',
-    eventsCount: 0,
-    mode: 'download',
-  }),
-  listCalendarFeeds: async (): Promise<CalendarFeed[]> => [],
-  addCalendarFeed: async (input): Promise<CalendarFeed> => {
-    const now = new Date().toISOString();
-    return {
-      id: `feed-${Date.now()}`,
-      name: input.name,
-      url: input.url,
-      enabled: true,
-      lastSyncedAt: now,
-      lastError: null,
-      eventsCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-  },
-  removeCalendarFeed: async (): Promise<void> => {},
-  syncCalendarFeeds: async (): Promise<CalendarFeed[]> => [],
-  listExternalCalendarEvents: async (): Promise<ExternalCalendarEvent[]> => [],
-  getGoogleCalendarConfig: async (): Promise<GoogleCalendarSyncConfig> => ({
-    clientId: '',
-    connectedEmail: null,
-    isConnected: false,
-    targetCalendarId: 'primary',
-    autoSyncEnabled: false,
-    lastSyncedAt: null,
-    lastSyncSummary: null,
-  }),
-  updateGoogleCalendarConfig: async (input): Promise<GoogleCalendarSyncConfig> => ({
-    clientId: input.clientId ?? '',
-    connectedEmail: input.connectedEmail ?? null,
-    isConnected: Boolean(input.connectedEmail),
-    targetCalendarId: input.targetCalendarId ?? 'primary',
-    autoSyncEnabled: Boolean(input.autoSyncEnabled),
-    lastSyncedAt: null,
-    lastSyncSummary: null,
-  }),
-  connectGoogleCalendar: async (opts): Promise<GoogleCalendarSyncConfig> => ({
-    clientId: opts?.clientId ?? '',
-    connectedEmail: opts?.email ?? 'estudiante@uade.edu.ar',
-    isConnected: true,
-    targetCalendarId: 'primary',
-    autoSyncEnabled: false,
-    lastSyncedAt: null,
-    lastSyncSummary: null,
-  }),
-  disconnectGoogleCalendar: async (): Promise<GoogleCalendarSyncConfig> => ({
-    clientId: '',
-    connectedEmail: null,
-    isConnected: false,
-    targetCalendarId: 'primary',
-    autoSyncEnabled: false,
-    lastSyncedAt: null,
-    lastSyncSummary: null,
-  }),
-  syncGoogleCalendarNow: async (): Promise<GoogleCalendarSyncResult> => ({
-    syncedAt: new Date().toISOString(),
-    createdCount: 0,
-    updatedCount: 0,
-    totalMappedCount: 0,
-    calendarId: 'primary',
-    mode: 'local-loopback-simulated',
-    summary: 'Sin eventos sincronizados todavía.',
-  }),
+  // Knowledge Graph, WikiLinks & Obsidian (Phase 12)
+  getNoteLinks: mockGetNoteLinks,
+  openOrCreateWikiLink: mockOpenOrCreateWikiLink,
+  getKnowledgeGraph: mockGetKnowledgeGraph,
+  importObsidianVault: mockImportObsidianVault,
+  // Active Study, Exam Stage & Attendance (Phase 13)
+  updateSourceStage: mockUpdateSourceStage,
+  getCourseAttendance: mockGetCourseAttendance,
+  updateCourseAttendanceConfig: mockUpdateCourseAttendanceConfig,
+  recordAttendance: mockRecordAttendance,
+  deleteAttendanceRecord: mockDeleteAttendanceRecord,
+  // Google Calendar Sync & iCal (Phase 14)
+  exportCalendarIcs: mockExportCalendarIcs,
+  listCalendarFeeds: mockListCalendarFeeds,
+  addCalendarFeed: mockAddCalendarFeed,
+  removeCalendarFeed: mockRemoveCalendarFeed,
+  syncCalendarFeeds: mockSyncCalendarFeeds,
+  listExternalCalendarEvents: mockListExternalCalendarEvents,
+  getGoogleCalendarConfig: mockGetGoogleCalendarConfig,
+  updateGoogleCalendarConfig: mockUpdateGoogleCalendarConfig,
+  connectGoogleCalendar: mockConnectGoogleCalendar,
+  disconnectGoogleCalendar: mockDisconnectGoogleCalendar,
+  syncGoogleCalendarNow: mockSyncGoogleCalendarNow,
 };

@@ -325,6 +325,13 @@ export function App() {
           activeSection={activeSection}
           onSelectSection={(sec) => handleSelectSection(sec)}
           courseDetail={headerCourseDetail}
+          activeCourseId={selectedCourseId}
+          activeCourseName={
+            headerCourseDetail?.name ??
+            (selectedCourseId
+              ? (coursesCache.find((c) => c.id === selectedCourseId)?.name ?? null)
+              : null)
+          }
         />
 
         <main className="swiss-main">

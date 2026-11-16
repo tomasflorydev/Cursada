@@ -1,7 +1,10 @@
+import { registerAttendanceHandlers } from './attendanceHandlers.js';
+import { registerCalendarSyncHandlers } from './calendarSyncHandlers.js';
 import { registerChatHandlers } from './chatHandlers.js';
 import { registerCoursesHandlers } from './coursesHandlers.js';
 import { registerExamsHandlers } from './examsHandlers.js';
 import { registerExportHandlers } from './exportHandlers.js';
+import { registerKnowledgeHandlers } from './knowledgeHandlers.js';
 import { registerNotesHandlers } from './notesHandlers.js';
 import { registerNotificationHandlers } from './notificationHandlers.js';
 import { registerOllamaHandlers } from './ollamaHandlers.js';
@@ -27,5 +30,8 @@ export function registerAllIpcHandlers(): void {
   registerChatHandlers();
   registerReportHandlers();
   registerNotificationHandlers();
+  registerKnowledgeHandlers();
+  registerAttendanceHandlers();
+  registerCalendarSyncHandlers();
   handlersRegistered = true;
 }

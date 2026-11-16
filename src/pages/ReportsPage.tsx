@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
+import { PracticeExamSimulatorModal } from '../components/assistant/PracticeExamSimulatorModal';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
+import { renderTextWithMathAndCitations } from '../lib/math/latexRenderer';
 import {
   exportReportToPdf,
   formatRelativeAgeEs,
@@ -11,9 +13,13 @@ import {
   type ReportCitationSource,
   type StoredReport,
 } from '../lib/reportsStore';
-import type { CourseWithSchedules, StudyReportType } from '../types';
+import type {
+  CourseWithSchedules,
+  NoteWithCourse,
+  Source,
+  StudyReportType,
+} from '../types';
 import {
-  renderTextWithCitations,
   SwissButton,
   SwissCitationBadge,
   SwissEmptyState,
@@ -45,7 +51,7 @@ type ReportBlock =
   | { kind: 'ol'; items: string[] }
   | { kind: 'p'; text: string };
 
-function parseReportBlocks(markdown: string): ReportBlock[] {
+function parseReportBlocks(markdown: string, reportTitle?: string): ReportBlock[] {
   const lines = markdown.split(/\r?\n/);
   const blocks: ReportBlock[] = [];
   let paragraphLines: string[] = [];
@@ -85,7 +91,12 @@ function parseReportBlocks(markdown: string): ReportBlock[] {
       flushParagraph();
       flushUl();
       flushOl();
-      blocks.push({ kind: 'h2', text: hMatch[1].trim() });
+      const headingText = hMatch[1].trim();
+      const normalizedHeading = headingText.replace(/(?:\s*\[\d+\])+\s*$/, '').trim();
+      if (reportTitle && blocks.length === 0 && /^#\s+/.test(line) && normalizedHeading === reportTitle.trim()) {
+        continue;
+      }
+      blocks.push({ kind: 'h2', text: headingText });
       continue;
     }
 
@@ -146,6 +157,9 @@ export function ReportsPage({
     courseId: string;
     noteId: string;
   } | null>(null);
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+  const [simulatorSources, setSimulatorSources] = useState<Source[]>([]);
+  const [simulatorNotes, setSimulatorNotes] = useState<NoteWithCourse[]>([]);
 
   const lastNavVersionRef = useRef<number>(reportNavigationVersion);
   const lastCreateVersionRef = useRef<number>(0);
@@ -236,7 +250,7 @@ export function ReportsPage({
   }, [reports]);
 
   const reportBlocks = useMemo(
-    () => (selectedReport ? parseReportBlocks(selectedReport.content) : []),
+    () => (selectedReport ? parseReportBlocks(selectedReport.content, selectedReport.title) : []),
     [selectedReport]
   );
 
@@ -329,6 +343,26 @@ export function ReportsPage({
       return;
     }
     onSelectCourseNote(selectedReport.courseId);
+  }
+
+  async function handleOpenSimulator(): Promise<void> {
+    if (!selectedReport) return;
+    setActionError(null);
+    try {
+      const [loadedSources, loadedNotes] = await Promise.all([
+        cursadaClient.listSources(selectedReport.courseId),
+        cursadaClient.listNotes({ courseId: selectedReport.courseId }),
+      ]);
+      setSimulatorSources(loadedSources);
+      setSimulatorNotes(loadedNotes);
+      setIsSimulatorOpen(true);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo iniciar el simulacro interactivo.'
+      );
+    }
   }
 
   return (
@@ -478,6 +512,14 @@ export function ReportsPage({
                 </span>
 
                 <div className="reports-actions-bar">
+                  {selectedReport.reportType === 'practice_exam' ? (
+                    <SwissButton
+                      variant="secondary"
+                      onClick={() => void handleOpenSimulator()}
+                    >
+                      Iniciar simulacro
+                    </SwissButton>
+                  ) : null}
                   <SwissButton
                     variant="secondary"
                     disabled={isSavingNote}
@@ -545,7 +587,7 @@ export function ReportsPage({
                   if (block.kind === 'h2') {
                     return (
                       <h2 key={index}>
-                        {renderTextWithCitations(block.text, handleCitationClick)}
+                        {renderTextWithMathAndCitations(block.text, handleCitationClick)}
                       </h2>
                     );
                   }
@@ -557,7 +599,7 @@ export function ReportsPage({
                       >
                         {block.items.map((item, itemIdx) => (
                           <li key={itemIdx} style={{ marginBottom: '4px' }}>
-                            {renderTextWithCitations(item, handleCitationClick)}
+                            {renderTextWithMathAndCitations(item, handleCitationClick)}
                           </li>
                         ))}
                       </ul>
@@ -571,7 +613,7 @@ export function ReportsPage({
                       >
                         {block.items.map((item, itemIdx) => (
                           <li key={itemIdx} style={{ marginBottom: '4px' }}>
-                            {renderTextWithCitations(item, handleCitationClick)}
+                            {renderTextWithMathAndCitations(item, handleCitationClick)}
                           </li>
                         ))}
                       </ol>
@@ -579,7 +621,7 @@ export function ReportsPage({
                   }
                   return (
                     <p key={index}>
-                      {renderTextWithCitations(block.text, handleCitationClick)}
+                      {renderTextWithMathAndCitations(block.text, handleCitationClick)}
                     </p>
                   );
                 })}
@@ -620,6 +662,32 @@ export function ReportsPage({
           </div>
         )}
       </aside>
+
+      {selectedReport ? (
+        <PracticeExamSimulatorModal
+          isOpen={isSimulatorOpen}
+          courseId={selectedReport.courseId}
+          courseName={selectedReport.courseName}
+          examStage={selectedReport.examStage ?? 'all'}
+          sources={simulatorSources}
+          notes={simulatorNotes}
+          initialMarkdown={selectedReport.content}
+          onClose={() => setIsSimulatorOpen(false)}
+          onCitationClick={(target) => {
+            setIsSimulatorOpen(false);
+            if (onSelectCourseNote) {
+              onSelectCourseNote(
+                selectedReport.courseId,
+                target.kind === 'note' ? target.sourceId : undefined
+              );
+            }
+          }}
+          onSavedNote={(created) => {
+            setIsSimulatorOpen(false);
+            onSelectCourseNote?.(created.courseId, created.id);
+          }}
+        />
+      ) : null}
     </section>
   );
 }

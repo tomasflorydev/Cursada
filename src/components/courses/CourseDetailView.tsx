@@ -15,6 +15,7 @@ import {
   parseIsoDateLocal,
   toIsoDateString,
 } from '../../lib/dates';
+import { renderTextWithMathAndCitations } from '../../lib/math/latexRenderer';
 import {
   formatRelativeAgeEs,
   generateAndStoreReport,
@@ -26,6 +27,7 @@ import type {
   ChatMessage,
   CourseWithSchedules,
   ExamCategory,
+  ExamStageTag,
   ExamWithCourse,
   NoteWithCourse,
   Source,
@@ -33,7 +35,6 @@ import type {
   StudyReportType,
 } from '../../types';
 import {
-  renderTextWithCitations,
   SwissButton,
   SwissCheckbox,
   SwissEmptyState,
@@ -41,8 +42,14 @@ import {
   SwissLinkButton,
   SwissLoadingBar,
   SwissSectionHeader,
+  SwissSelect,
   SwissTitleUnderline,
 } from '../../ui';
+import { PracticeExamSimulatorModal } from '../assistant/PracticeExamSimulatorModal';
+import { NoteBacklinksPanel } from '../notes/NoteBacklinksPanel';
+import { NotesGraphView } from '../notes/NotesGraphView';
+import { SuperMarkdownEditor } from '../notes/SuperMarkdownEditor';
+import { CourseAttendancePanel } from './CourseAttendancePanel';
 
 export interface CourseDetailViewProps {
   courseId: string;
@@ -76,6 +83,13 @@ const SOURCE_TYPE_SHORT: Record<SourceType, string> = {
   pasted_text: 'Texto',
   note: 'Nota',
 };
+
+const EXAM_STAGE_OPTIONS: ReadonlyArray<{ value: ExamStageTag; label: string }> = [
+  { value: 'general', label: 'General' },
+  { value: 'parcial_1', label: '1° Parcial' },
+  { value: 'parcial_2', label: '2° Parcial' },
+  { value: 'final', label: 'Final' },
+];
 
 function countWords(text: string): number {
   const trimmed = text.trim();
@@ -159,47 +173,6 @@ async function readFileAsBytes(file: File): Promise<Uint8Array> {
   });
 }
 
-function wrapTextareaSelection(
-  textarea: HTMLTextAreaElement,
-  marker: string,
-  placeholderText: string
-): { nextValue: string; selStart: number; selEnd: number } {
-  const start = textarea.selectionStart ?? 0;
-  const end = textarea.selectionEnd ?? 0;
-  const value = textarea.value;
-  const selected = value.slice(start, end);
-
-  if (selected.length > 0) {
-    const beforeMarker = value.slice(Math.max(0, start - marker.length), start);
-    const afterMarker = value.slice(end, end + marker.length);
-    if (beforeMarker === marker && afterMarker === marker) {
-      const nextValue =
-        value.slice(0, start - marker.length) +
-        selected +
-        value.slice(end + marker.length);
-      return {
-        nextValue,
-        selStart: start - marker.length,
-        selEnd: end - marker.length,
-      };
-    }
-    const nextValue = value.slice(0, start) + marker + selected + marker + value.slice(end);
-    return {
-      nextValue,
-      selStart: start + marker.length,
-      selEnd: end + marker.length,
-    };
-  }
-
-  const inserted = `${marker}${placeholderText}${marker}`;
-  const nextValue = value.slice(0, start) + inserted + value.slice(end);
-  return {
-    nextValue,
-    selStart: start + marker.length,
-    selEnd: start + marker.length + placeholderText.length,
-  };
-}
-
 export function CourseDetailView({
   courseId,
   initialNoteId,
@@ -232,23 +205,30 @@ export function CourseDetailView({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmDeleteNoteId, setConfirmDeleteNoteId] = useState<string | null>(null);
   const [noteFeedback, setNoteFeedback] = useState<string | null>(null);
+  const [isGraphOpen, setIsGraphOpen] = useState(false);
 
-  // Sources checklist & upload state
+  // Sources, notes & stage checklist state
   const [includeNotes, setIncludeNotes] = useState(true);
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set());
   const knownSourceIdsRef = useRef<Set<string>>(new Set());
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(() => new Set());
+  const knownNoteIdsRef = useRef<Set<string>>(new Set());
+  const [isNotePickerExpanded, setIsNotePickerExpanded] = useState(false);
+  const [aiStageFilter, setAiStageFilter] = useState<ExamStageTag | 'all'>('all');
+  const [aiContextFilter, setAiContextFilter] = useState<'all' | 'sources_only' | 'notes_only'>('all');
   const [isImportingSource, setIsImportingSource] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [isPasteOpen, setIsPasteOpen] = useState(false);
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteText, setPasteText] = useState('');
 
-  // Report generation & latest report state
+  // Report generation, simulator & latest report state
   const [latestReport, setLatestReport] = useState<StoredReport | null>(() =>
     getLatestStoredReport(courseId)
   );
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
   // Ask sources chat state
   const [askQuery, setAskQuery] = useState('');
@@ -260,7 +240,7 @@ export function CourseDetailView({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const titleTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorPaneRef = useRef<HTMLDivElement | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
 
@@ -397,6 +377,22 @@ export function CourseDetailView({
           }
           for (const id of Array.from(next)) {
             if (!loadedSources.some((s) => s.id === id)) {
+              next.delete(id);
+            }
+          }
+          return next;
+        });
+
+        setSelectedNoteIds((prev) => {
+          const next = new Set(prev);
+          for (const n of sortedNotes) {
+            if (!knownNoteIdsRef.current.has(n.id)) {
+              knownNoteIdsRef.current.add(n.id);
+              next.add(n.id);
+            }
+          }
+          for (const id of Array.from(next)) {
+            if (!sortedNotes.some((n) => n.id === id)) {
               next.delete(id);
             }
           }
@@ -655,7 +651,10 @@ export function CourseDetailView({
   function handleTitleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void {
     if (e.key === 'Enter') {
       e.preventDefault();
-      bodyTextareaRef.current?.focus();
+      const target = editorPaneRef.current?.querySelector<HTMLElement>(
+        '[aria-label="Contenido de la nota"]'
+      );
+      target?.focus();
     }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
@@ -663,35 +662,65 @@ export function CourseDetailView({
     }
   }
 
-  function handleBodyKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void {
-    if (!(e.metaKey || e.ctrlKey)) {
-      return;
+  async function handleOpenOrCreateWikiLink(targetTitle: string): Promise<void> {
+    const trimmed = targetTitle.trim();
+    if (!trimmed) return;
+    await flushPendingSave();
+    const targetNote = await cursadaClient.openOrCreateWikiLink({
+      courseId,
+      targetTitle: trimmed,
+    });
+    if (targetNote.courseId === courseId) {
+      setIsGraphOpen(false);
+      await loadData({ silent: true });
+      setSelectedNoteId(targetNote.id);
+      showTransientNoteFeedback(`Enlace abierto: ${targetNote.title}`);
+    } else {
+      onSelectCourse(targetNote.courseId, { noteId: targetNote.id });
     }
-    const key = e.key.toLowerCase();
-    if (key === 's') {
-      e.preventDefault();
-      void flushPendingSave();
-      return;
-    }
-    if ((key === 'b' || key === 'i') && bodyTextareaRef.current && selectedNote) {
-      e.preventDefault();
-      const marker = key === 'b' ? '**' : '*';
-      const placeholderText = key === 'b' ? 'texto en negrita' : 'texto en cursiva';
-      const { nextValue, selStart, selEnd } = wrapTextareaSelection(
-        bodyTextareaRef.current,
-        marker,
-        placeholderText
-      );
-      setDraftContent(nextValue);
-      scheduleAutosave(selectedNote.id, draftTitle, nextValue);
-      window.requestAnimationFrame(() => {
-        const el = bodyTextareaRef.current;
-        if (el) {
-          el.focus();
-          el.setSelectionRange(selStart, selEnd);
-        }
+  }
+
+  async function handleNoteStageChange(nextStage: ExamStageTag): Promise<void> {
+    if (!selectedNote) return;
+    await flushPendingSave();
+    const updated = await cursadaClient.updateNote(selectedNote.id, {
+      examStage: nextStage,
+    });
+    setNotes((prev) =>
+      sortNotes(prev.map((n) => (n.id === updated.id ? updated : n)))
+    );
+  }
+
+  async function handleSourceStageChange(
+    sourceId: string,
+    nextStage: ExamStageTag
+  ): Promise<void> {
+    setSourceError(null);
+    try {
+      const updated = await cursadaClient.updateSourceStage({
+        sourceId,
+        examStage: nextStage,
       });
+      setSources((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    } catch (err) {
+      setSourceError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo actualizar la instancia de la fuente.'
+      );
     }
+  }
+
+  function toggleNoteSelection(noteId: string): void {
+    setSelectedNoteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(noteId)) {
+        next.delete(noteId);
+      } else {
+        next.add(noteId);
+      }
+      return next;
+    });
   }
 
   async function handleTogglePin(): Promise<void> {
@@ -847,23 +876,52 @@ export function CourseDetailView({
     }
   }
 
+  function resolveFilteredContext() {
+    const stageActive = aiStageFilter !== 'all' ? aiStageFilter : null;
+    const filteredSources = stageActive
+      ? sources.filter((s) => (s.examStage ?? 'general') === stageActive)
+      : sources;
+    const filteredNotes = stageActive
+      ? notes.filter((n) => (n.examStage ?? 'general') === stageActive)
+      : notes;
+
+    const effectiveIncludeSources = aiContextFilter !== 'notes_only';
+    const effectiveIncludeNotes = aiContextFilter !== 'sources_only' && includeNotes;
+
+    const readySelectedSourceIds = effectiveIncludeSources
+      ? filteredSources
+          .filter((s) => s.indexingStatus === 'ready' && selectedSourceIds.has(s.id))
+          .map((s) => s.id)
+      : [];
+
+    const selectedNotesList = effectiveIncludeNotes
+      ? filteredNotes.filter((n) => selectedNoteIds.has(n.id))
+      : [];
+
+    return {
+      filteredSources,
+      filteredNotes,
+      effectiveIncludeSources,
+      effectiveIncludeNotes,
+      readySelectedSourceIds,
+      selectedNotesList,
+    };
+  }
+
   async function handleGenerateReport(reportType: StudyReportType): Promise<void> {
     if (!course) return;
     setReportError(null);
 
-    const readySelectedIds = sources
-      .filter((s) => s.indexingStatus === 'ready' && selectedSourceIds.has(s.id))
-      .map((s) => s.id);
+    const {
+      effectiveIncludeNotes,
+      readySelectedSourceIds,
+      selectedNotesList,
+    } = resolveFilteredContext();
 
-    if (!includeNotes && readySelectedIds.length === 0) {
+    const noteIdsToUse = selectedNotesList.map((n) => n.id);
+
+    if (readySelectedSourceIds.length === 0 && (!effectiveIncludeNotes || noteIdsToUse.length === 0)) {
       setReportError('Seleccioná al menos una nota o una fuente para generar el informe.');
-      return;
-    }
-
-    if (readySelectedIds.length === 0) {
-      setReportError(
-        'Para generar un informe con IA, subí o pegá al menos una fuente (PDF, Markdown o texto) y marcala en la lista.'
-      );
       return;
     }
 
@@ -873,8 +931,10 @@ export function CourseDetailView({
         courseId: course.id,
         courseName: course.name,
         reportType,
-        sourceIds: readySelectedIds,
-        includeNotes,
+        sourceIds: readySelectedSourceIds,
+        noteIds: effectiveIncludeNotes ? noteIdsToUse : [],
+        examStage: aiStageFilter,
+        includeNotes: effectiveIncludeNotes,
       });
       setLatestReport(report);
     } catch (err) {
@@ -890,6 +950,7 @@ export function CourseDetailView({
     if (!latestReport) return;
     const citation = latestReport.citations.find((c) => c.index === citationIndex);
     if (citation?.kind === 'note' && notes.some((n) => n.id === citation.id)) {
+      setIsGraphOpen(false);
       void handleSelectNote(citation.id);
       return;
     }
@@ -900,10 +961,18 @@ export function CourseDetailView({
     if (!lastAnswer) return;
     const citation = lastAnswer.citations.find((c) => c.citationNumber === citationIndex);
     if (citation) {
+      if (citation.sourceType === 'note' && notes.some((n) => n.id === citation.sourceId)) {
+        setIsGraphOpen(false);
+        void handleSelectNote(citation.sourceId);
+        setNoteFeedback(`Fuente [${citationIndex}]: ${citation.sourceTitle}`);
+        return;
+      }
       const matchedSource = sources.find((s) => s.id === citation.sourceId);
       if (matchedSource) {
         setNoteFeedback(`Fuente [${citationIndex}]: ${matchedSource.title}`);
+        return;
       }
+      setNoteFeedback(`Fuente [${citationIndex}]: ${citation.sourceTitle}`);
     }
   }
 
@@ -914,6 +983,12 @@ export function CourseDetailView({
       return;
     }
 
+    const {
+      effectiveIncludeNotes,
+      readySelectedSourceIds,
+      selectedNotesList,
+    } = resolveFilteredContext();
+
     setAskError(null);
     setIsAsking(true);
     setLastQuestion(trimmed);
@@ -922,6 +997,10 @@ export function CourseDetailView({
         courseId,
         threadId: chatThreadId ?? undefined,
         content: trimmed,
+        sourceIds: readySelectedSourceIds,
+        noteIds: effectiveIncludeNotes ? selectedNotesList.map((n) => n.id) : [],
+        examStage: aiStageFilter,
+        includeNotes: effectiveIncludeNotes,
       });
       setChatThreadId(result.thread.id);
       setLastAnswer(result.assistantMessage);
@@ -960,10 +1039,20 @@ export function CourseDetailView({
     );
   }
 
-  const totalSources = 1 + sources.length;
+  const {
+    filteredSources,
+    filteredNotes,
+    effectiveIncludeSources,
+    effectiveIncludeNotes,
+    selectedNotesList,
+  } = resolveFilteredContext();
+
+  const totalSources = 1 + filteredSources.length;
   const checkedCount =
-    (includeNotes ? 1 : 0) +
-    sources.filter((s) => selectedSourceIds.has(s.id)).length;
+    (effectiveIncludeNotes ? 1 : 0) +
+    (effectiveIncludeSources
+      ? filteredSources.filter((s) => selectedSourceIds.has(s.id)).length
+      : 0);
 
   const saveStatusText =
     saveStatus === 'saving'
@@ -976,14 +1065,26 @@ export function CourseDetailView({
 
   return (
     <section className="notebook-grid" aria-labelledby="main-title">
-      {/* Panel izquierdo (3 cols): Notas + acciones discretas */}
+      {/* Panel izquierdo (3 cols): Notas + Asistencia + acciones */}
       <aside className="notebook-notes-pane" aria-label="Notas de la materia">
         <SwissSectionHeader
           title={`Notas · ${notes.length}`}
           right={
-            <SwissLinkButton onClick={() => void handleCreateNote()}>
-              + Nueva
-            </SwissLinkButton>
+            <span style={{ display: 'inline-flex', gap: '10px', alignItems: 'center' }}>
+              <SwissLinkButton
+                onClick={() => setIsGraphOpen((open) => !open)}
+              >
+                {isGraphOpen ? 'Volver al editor' : 'Vista de grafo'}
+              </SwissLinkButton>
+              <SwissLinkButton
+                onClick={() => {
+                  setIsGraphOpen(false);
+                  void handleCreateNote();
+                }}
+              >
+                + Nueva
+              </SwissLinkButton>
+            </span>
           }
         />
 
@@ -995,18 +1096,31 @@ export function CourseDetailView({
               const isSelected = selectedNote?.id === note.id;
               const words = countWords(note.content);
               const dateLabel = formatNoteDateShort(note.updatedAt, todayIso);
+              const stageTag = note.examStage ?? 'general';
+              const stageShort =
+                stageTag === 'parcial_1'
+                  ? '1°P'
+                  : stageTag === 'parcial_2'
+                    ? '2°P'
+                    : stageTag === 'final'
+                      ? 'Final'
+                      : null;
               return (
                 <button
                   key={note.id}
                   type="button"
                   className={`notebook-note-item ${isSelected ? 'is-selected' : ''}`}
-                  onClick={() => void handleSelectNote(note.id)}
+                  onClick={() => {
+                    setIsGraphOpen(false);
+                    void handleSelectNote(note.id);
+                  }}
                 >
                   <span className="notebook-note-title">
                     {note.title || 'Nota sin título'}
                   </span>
                   <span className="notebook-note-meta">
                     {dateLabel} · {words} {words === 1 ? 'palabra' : 'palabras'}
+                    {stageShort ? ` · ${stageShort}` : ''}
                     {note.isPinned ? ' · Fijada' : ''}
                   </span>
                 </button>
@@ -1114,16 +1228,33 @@ export function CourseDetailView({
             </SwissLinkButton>
           ) : null}
         </div>
+
+        <div style={{ marginTop: '20px' }}>
+          <CourseAttendancePanel courseId={course.id} />
+        </div>
       </aside>
 
-      {/* Panel central (6 cols): Editor de nota limpio */}
-      <div className="notebook-editor-pane">
+      {/* Panel central (6 cols): Super-Editor Markdown / Vista de Grafo */}
+      <div ref={editorPaneRef} className="notebook-editor-pane">
         <h1 id="main-title" tabIndex={-1} className="visually-hidden">
           {course.name}
         </h1>
 
         <div className="notebook-editor-wrap">
-          {!selectedNote ? (
+          {isGraphOpen ? (
+            <NotesGraphView
+              courseId={course.id}
+              onSelectNote={(noteId, targetCourseId) => {
+                if (targetCourseId === course.id) {
+                  setIsGraphOpen(false);
+                  void handleSelectNote(noteId);
+                } else {
+                  onSelectCourse(targetCourseId, { noteId });
+                }
+              }}
+              onClose={() => setIsGraphOpen(false)}
+            />
+          ) : !selectedNote ? (
             <SwissEmptyState
               title="Sin notas en esta materia"
               description="Creá tu primera nota para empezar a escribir apuntes, usar atajos Markdown y armar informes."
@@ -1136,8 +1267,29 @@ export function CourseDetailView({
                 <span className="swiss-meta-md">
                   {course.name} / {draftTitle.trim() || 'Sin título'}
                 </span>
-                <span className="swiss-meta" aria-live="polite">
-                  {saveStatusText}
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                  }}
+                >
+                  <SwissSelect
+                    aria-label="Instancia de la nota"
+                    value={selectedNote.examStage ?? 'general'}
+                    onChange={(e) =>
+                      void handleNoteStageChange(e.target.value as ExamStageTag)
+                    }
+                  >
+                    {EXAM_STAGE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </SwissSelect>
+                  <span className="swiss-meta" aria-live="polite">
+                    {saveStatusText}
+                  </span>
                 </span>
               </div>
 
@@ -1154,23 +1306,104 @@ export function CourseDetailView({
 
               <SwissTitleUnderline />
 
-              <textarea
-                ref={bodyTextareaRef}
-                className="notebook-body-textarea"
-                aria-label="Contenido de la nota"
-                placeholder="Escribí tus apuntes acá (⌘B negrita, ⌘I cursiva, ⌘S guardar)…"
-                value={draftContent}
-                onChange={(e) => handleContentChange(e.target.value)}
-                onKeyDown={handleBodyKeyDown}
+              <SuperMarkdownEditor
+                noteId={selectedNote.id}
+                courseId={course.id}
+                content={draftContent}
+                onChangeContent={handleContentChange}
+                onSaveShortcut={() => void flushPendingSave()}
+                availableNotes={notes.map((n) => ({
+                  id: n.id,
+                  title: n.title,
+                  courseId: n.courseId,
+                }))}
+                onOpenWikiLink={(targetTitle) =>
+                  void handleOpenOrCreateWikiLink(targetTitle)
+                }
+                onFocusTitle={() => titleTextareaRef.current?.focus()}
+                ariaLabel="Contenido de la nota"
+              />
+
+              <NoteBacklinksPanel
+                noteId={selectedNote.id}
+                courseId={course.id}
+                refreshKey={selectedNote.updatedAt}
+                onOpenNote={(noteId, targetCourseId) => {
+                  if (targetCourseId === course.id) {
+                    void handleSelectNote(noteId);
+                  } else {
+                    onSelectCourse(targetCourseId, { noteId });
+                  }
+                }}
+                onOpenOrCreateWikiLink={(targetTitle) =>
+                  void handleOpenOrCreateWikiLink(targetTitle)
+                }
               />
             </>
           )}
         </div>
       </div>
 
-      {/* Panel derecho (3 cols): Fuentes + Informe con IA + Preguntale a tus fuentes */}
+      {/* Panel derecho (3 cols): Fuentes + Notas + Etapa + Informe con IA + Chat */}
       <aside className="notebook-ai-pane" aria-label="Asistente e informes con IA">
         <SwissSectionHeader title="Informe con IA" />
+
+        <div
+          className="stage-filter-row"
+          role="group"
+          aria-label="Filtrar contexto de IA por instancia"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}
+        >
+          {(
+            [
+              { id: 'all', label: 'Todo' },
+              { id: 'parcial_1', label: '1° Parcial' },
+              { id: 'parcial_2', label: '2° Parcial' },
+              { id: 'final', label: 'Final' },
+            ] as const
+          ).map((stage) => {
+            const isActive =
+              aiStageFilter === stage.id && aiContextFilter === 'all';
+            return (
+              <button
+                key={stage.id}
+                type="button"
+                className={`stage-pill ${isActive ? 'is-active' : ''}`}
+                aria-pressed={isActive}
+                onClick={() => {
+                  setAiStageFilter(stage.id);
+                  setAiContextFilter('all');
+                }}
+              >
+                {stage.label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className={`stage-pill ${aiContextFilter === 'sources_only' ? 'is-active' : ''}`}
+            aria-pressed={aiContextFilter === 'sources_only'}
+            onClick={() =>
+              setAiContextFilter((prev) =>
+                prev === 'sources_only' ? 'all' : 'sources_only'
+              )
+            }
+          >
+            Solo Fuentes
+          </button>
+          <button
+            type="button"
+            className={`stage-pill ${aiContextFilter === 'notes_only' ? 'is-active' : ''}`}
+            aria-pressed={aiContextFilter === 'notes_only'}
+            onClick={() =>
+              setAiContextFilter((prev) =>
+                prev === 'notes_only' ? 'all' : 'notes_only'
+              )
+            }
+          >
+            Solo Notas
+          </button>
+        </div>
 
         <div>
           <SwissSectionHeader
@@ -1255,48 +1488,116 @@ export function CourseDetailView({
           ) : null}
 
           <div className="notebook-sources-list">
-            <div className="notebook-source-row">
-              <div className="notebook-source-left">
-                <SwissCheckbox
-                  checked={includeNotes}
-                  ariaLabel="Incluir todas las notas"
-                  onChange={() => setIncludeNotes((v) => !v)}
-                />
-                <span className="notebook-source-name">Todas las notas</span>
-              </div>
-              <span className="swiss-meta">{notes.length}</span>
-            </div>
-
-            {sources.map((src) => {
-              const isChecked = selectedSourceIds.has(src.id);
-              return (
-                <div key={src.id} className="notebook-source-row">
-                  <div className="notebook-source-left">
-                    <SwissCheckbox
-                      checked={isChecked}
-                      ariaLabel={`Incluir ${src.title}`}
-                      onChange={() => toggleSourceSelection(src.id)}
-                    />
-                    <span className="notebook-source-name" title={src.title}>
-                      {src.title}
-                    </span>
-                  </div>
-                  <span
-                    className="swiss-meta"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <span>{SOURCE_TYPE_SHORT[src.sourceType]}</span>
-                    <SwissLinkButton
-                      style={{ fontSize: '12px', fontWeight: 400 }}
-                      aria-label={`Quitar ${src.title}`}
-                      onClick={() => void handleDeleteSource(src.id)}
-                    >
-                      Quitar
-                    </SwissLinkButton>
-                  </span>
+            {aiContextFilter !== 'sources_only' ? (
+              <div className="notebook-source-row">
+                <div className="notebook-source-left">
+                  <SwissCheckbox
+                    checked={includeNotes}
+                    ariaLabel="Incluir todas las notas"
+                    onChange={() => setIncludeNotes((v) => !v)}
+                  />
+                  <span className="notebook-source-name">Todas las notas</span>
                 </div>
-              );
-            })}
+                <span
+                  className="swiss-meta"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <span>{filteredNotes.length}</span>
+                  {filteredNotes.length > 0 ? (
+                    <SwissLinkButton
+                      style={{ fontSize: '11px', fontWeight: 500 }}
+                      onClick={() => setIsNotePickerExpanded((v) => !v)}
+                    >
+                      {isNotePickerExpanded ? 'Ocultar' : 'Elegir'}
+                    </SwissLinkButton>
+                  ) : null}
+                </span>
+              </div>
+            ) : null}
+
+            {aiContextFilter !== 'sources_only' &&
+            includeNotes &&
+            isNotePickerExpanded
+              ? filteredNotes.map((n) => (
+                  <div
+                    key={n.id}
+                    className="notebook-source-row"
+                    style={{ paddingLeft: '14px' }}
+                  >
+                    <div className="notebook-source-left">
+                      <SwissCheckbox
+                        checked={selectedNoteIds.has(n.id)}
+                        ariaLabel={`Incluir nota ${n.title}`}
+                        onChange={() => toggleNoteSelection(n.id)}
+                      />
+                      <span className="notebook-source-name" title={n.title}>
+                        {n.title}
+                      </span>
+                    </div>
+                    <span className="swiss-meta">Nota</span>
+                  </div>
+                ))
+              : null}
+
+            {aiContextFilter !== 'notes_only'
+              ? filteredSources.map((src) => {
+                  const isChecked = selectedSourceIds.has(src.id);
+                  return (
+                    <div key={src.id} className="notebook-source-row">
+                      <div className="notebook-source-left">
+                        <SwissCheckbox
+                          checked={isChecked}
+                          ariaLabel={`Incluir ${src.title}`}
+                          onChange={() => toggleSourceSelection(src.id)}
+                        />
+                        <span className="notebook-source-name" title={src.title}>
+                          {src.title}
+                        </span>
+                      </div>
+                      <span
+                        className="swiss-meta"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <select
+                          aria-label={`Instancia de ${src.title}`}
+                          value={src.examStage ?? 'general'}
+                          onChange={(e) =>
+                            void handleSourceStageChange(
+                              src.id,
+                              e.target.value as ExamStageTag
+                            )
+                          }
+                          style={{
+                            fontSize: '11px',
+                            background: 'transparent',
+                            border: '1px solid var(--rule)',
+                            color: 'var(--mut)',
+                            padding: '1px 4px',
+                          }}
+                        >
+                          {EXAM_STAGE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span>{SOURCE_TYPE_SHORT[src.sourceType]}</span>
+                        <SwissLinkButton
+                          style={{ fontSize: '12px', fontWeight: 400 }}
+                          aria-label={`Quitar ${src.title}`}
+                          onClick={() => void handleDeleteSource(src.id)}
+                        >
+                          Quitar
+                        </SwissLinkButton>
+                      </span>
+                    </div>
+                  );
+                })
+              : null}
           </div>
 
           {isImportingSource ? <SwissLoadingBar text="Indexando fuente…" /> : null}
@@ -1325,6 +1626,12 @@ export function CourseDetailView({
           >
             Preguntas
           </SwissButton>
+          <SwissButton
+            variant="secondary"
+            onClick={() => setIsSimulatorOpen(true)}
+          >
+            Simulacro interactivo
+          </SwissButton>
         </div>
 
         {isGeneratingReport ? <SwissLoadingBar text="Generando informe…" /> : null}
@@ -1337,7 +1644,7 @@ export function CourseDetailView({
             </span>
             <h3 className="notebook-last-report-title">{latestReport.title}</h3>
             <p className="notebook-last-report-excerpt">
-              {renderTextWithCitations(
+              {renderTextWithMathAndCitations(
                 extractReportExcerpt(latestReport.content),
                 handleReportCitationClick
               )}
@@ -1398,7 +1705,10 @@ export function CourseDetailView({
               <div className="swiss-meta">{lastQuestion}</div>
             ) : null}
             <p style={{ fontSize: '14px', lineHeight: 1.55, color: 'var(--soft)' }}>
-              {renderTextWithCitations(lastAnswer.content, handleChatCitationClick)}
+              {renderTextWithMathAndCitations(
+                lastAnswer.content,
+                handleChatCitationClick
+              )}
             </p>
             {lastAnswer.citations.length > 0 ? (
               <div className="swiss-meta">
@@ -1413,6 +1723,31 @@ export function CourseDetailView({
           </div>
         ) : null}
       </aside>
+
+      <PracticeExamSimulatorModal
+        isOpen={isSimulatorOpen}
+        courseId={course.id}
+        courseName={course.name}
+        examStage={aiStageFilter}
+        sources={effectiveIncludeSources ? filteredSources : []}
+        notes={effectiveIncludeNotes ? selectedNotesList : []}
+        onClose={() => setIsSimulatorOpen(false)}
+        onCitationClick={(target) => {
+          if (target.kind === 'note' && notes.some((n) => n.id === target.sourceId)) {
+            setIsSimulatorOpen(false);
+            setIsGraphOpen(false);
+            void handleSelectNote(target.sourceId);
+          } else {
+            setNoteFeedback(`Fuente [${target.index}]: ${target.title}`);
+          }
+        }}
+        onSavedNote={(created) => {
+          void loadData({ silent: true });
+          setIsSimulatorOpen(false);
+          setIsGraphOpen(false);
+          void handleSelectNote(created.id);
+        }}
+      />
     </section>
   );
 }

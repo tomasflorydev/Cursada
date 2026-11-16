@@ -15,18 +15,19 @@ Toda la aplicación funciona **100% offline/local**:
 │                                                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
 │  │            Renderer (React + Vite + TypeScript + CSS)             │  │
-│  │  • Vistas: Inicio, Calendario, Tareas, Exámenes, Notas, Materias  │  │
-│  │  • Materia: Resumen | Tareas | Exámenes | Notas | Fuentes | IA    │  │
-│  │  • Editor Markdown (CodeMirror 6 + Preview GFM en vivo)           │  │
-│  │  • Extractor puro de páginas PDF (src/lib/pdf/index.ts)           │  │
+│  │  • Vistas Suizas: Inicio, Materias, Calendario, Tareas, Exámenes, │  │
+│  │    Informes y Ajustes (DESIGN.md v2.0 + @fontsource/archivo)      │  │
+│  │  • Materia: Notas (3 paneles + Live Preview + KaTeX + Backlinks + │  │
+│  │    Grafo) | Fuentes | Asistente IA (Chat/Guía/Simulacro) | Resumen│  │
+│  │  • Pomodoro global en cabecera + Extractor PDF puro (src/lib/pdf) │  │
 │  └───────────────────────────────┬───────────────────────────────────┘  │
 │                                  │ Electron IPC (contextBridge tipado)  │
 │  ┌───────────────────────────────▼───────────────────────────────────┐  │
 │  │          Main Process Local (Electron + Node.js + node:sqlite)    │  │
-│  │  • Servicios de Dominio (Courses, Tasks, Exams, Notes, Sources)   │  │
-│  │  • Motor RAG Híbrido (FTS5 BM25 + Cosine Similarity por materia)  │  │
-│  │  • Generador Map-Reduce de Reportes para ventanas chicas          │  │
-│  │  • Gestor de Backups Automáticos + Exportador a Markdown          │  │
+│  │  • Dominios: Courses, Tasks, Exams, Notes, Knowledge, Attendance  │  │
+│  │  • Motor RAG Híbrido (Fuentes + Notas filtradas por etapa)        │  │
+│  │  • Generador Map-Reduce + Importador Obsidian Vault (.md)         │  │
+│  │  • Backups Automáticos, Exportación .md/.ics y OAuth2 Google Cal  │  │
 │  └───────────────┬───────────────────────────────────┬───────────────┘  │
 └──────────────────┼───────────────────────────────────┼──────────────────┘
                    │                                   │ HTTP (localhost:11434)
@@ -105,6 +106,8 @@ CREATE TABLE courses (
     professor TEXT NOT NULL DEFAULT '',
     term TEXT NOT NULL,               -- Ej: '2026 - 2° Cuatrimestre'
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    attendance_enabled INTEGER NOT NULL DEFAULT 0, -- Control de asistencia (v7)
+    max_absences INTEGER NOT NULL DEFAULT 4,       -- Límite de faltas (v7)
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -163,6 +166,8 @@ CREATE TABLE notes (
     content TEXT NOT NULL DEFAULT '',
     origin TEXT NOT NULL DEFAULT 'manual' CHECK (origin IN ('manual', 'ai_summary', 'ai_study_guide', 'ai_practice_exam')),
     is_pinned INTEGER NOT NULL DEFAULT 0,
+    frontmatter_json TEXT NOT NULL DEFAULT '{}', -- Metadatos YAML (v6)
+    exam_stage TEXT NOT NULL DEFAULT 'general' CHECK (exam_stage IN ('parcial_1', 'parcial_2', 'final', 'general')), -- v7
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -206,6 +211,7 @@ CREATE TABLE sources (
     indexing_status TEXT NOT NULL DEFAULT 'pending' CHECK (indexing_status IN ('pending', 'indexing', 'ready', 'error')),
     indexing_error TEXT,
     embedding_model TEXT,
+    exam_stage TEXT NOT NULL DEFAULT 'general' CHECK (exam_stage IN ('parcial_1', 'parcial_2', 'final', 'general')), -- v7
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -260,6 +266,59 @@ CREATE TABLE app_settings (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+-- 10. Enlaces bidireccionales entre notas [[WikiLinks]] (v6)
+CREATE TABLE note_links (
+    id TEXT PRIMARY KEY,
+    source_note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    target_note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
+    target_title TEXT NOT NULL,
+    display_text TEXT NOT NULL DEFAULT '',
+    context_snippet TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_note_links_source ON note_links(source_note_id);
+CREATE INDEX idx_note_links_target ON note_links(target_note_id);
+CREATE INDEX idx_note_links_title ON note_links(target_title);
+
+-- 11. Registro de asistencia y faltas por materia/anotador (v7)
+CREATE TABLE attendance_records (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    session_date TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('present', 'absent')),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_attendance_course ON attendance_records(course_id);
+CREATE INDEX idx_attendance_date ON attendance_records(session_date);
+
+-- 12. Suscripciones iCal (.ics) y caché local (v8)
+CREATE TABLE calendar_feeds (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    raw_ics_cache TEXT NOT NULL DEFAULT '',
+    last_synced_at TEXT,
+    last_error TEXT,
+    events_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- 13. Mapeo local de eventos sincronizados con Google Calendar (v8)
+CREATE TABLE google_calendar_mappings (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('schedule', 'task', 'exam')),
+    entity_id TEXT NOT NULL,
+    google_calendar_id TEXT NOT NULL,
+    google_event_id TEXT NOT NULL,
+    etag TEXT NOT NULL DEFAULT '',
+    last_synced_at TEXT NOT NULL,
+    UNIQUE(entity_type, entity_id, google_calendar_id)
+);
+CREATE INDEX idx_gcal_mappings_entity ON google_calendar_mappings(entity_type, entity_id);
 ```
 
 ---
@@ -284,22 +343,27 @@ Cursada/
 │   ├── preload.ts                   # Puente contextBridge seguro (window.cursadaApi)
 │   ├── db/
 │   │   ├── database.ts              # Conexión node:sqlite, WAL mode y aislamiento en tests
-│   │   ├── migrations.ts            # Migraciones versionadas (PRAGMA user_version)
-│   │   ├── coursesRepo.ts           # Persistencia de materias y horarios semanales
+│   │   ├── migrations.ts            # Migraciones versionadas (PRAGMA user_version v1..v8)
+│   │   ├── coursesRepo.ts           # Persistencia de materias, horarios semanales y configuración de asistencia
 │   │   ├── tasksRepo.ts             # Persistencia de tareas
 │   │   ├── examsRepo.ts             # Persistencia de exámenes y cálculo de promedios
-│   │   ├── notesRepo.ts             # Persistencia de notas y sincronización FTS5
-│   │   ├── sourcesRepo.ts           # Persistencia de fuentes, chunks y búsqueda híbrida
+│   │   ├── notesRepo.ts             # Persistencia de notas (frontmatter/etapa) y sincronización FTS5
+│   │   ├── knowledgeRepo.ts         # Persistencia de enlaces [[WikiLinks]] y construcción del grafo
+│   │   ├── attendanceRepo.ts        # Registro de asistencias, inasistencias y estado del límite por materia
+│   │   ├── sourcesRepo.ts           # Persistencia de fuentes (etapa), chunks y búsqueda híbrida
+│   │   ├── calendarSyncRepo.ts      # Suscripciones .ics y mapeos/tokens de Google Calendar
 │   │   ├── aiSettingsRepo.ts        # Configuración local de Ollama (host y modelos activos)
 │   │   ├── notificationSettingsRepo.ts # Preferencias locales de recordatorios en app_settings
 │   │   └── chatRepo.ts              # Persistencia de conversaciones y mensajes con citas
 │   ├── services/
 │   │   ├── backupService.ts         # Backups automáticos (VACUUM INTO) y rotación de los últimos 15
 │   │   ├── exportService.ts         # Exportación completa o por materia/nota a carpetas Markdown (.md)
+│   │   ├── obsidianImportService.ts # Escaneo de Vaults de Obsidian, frontmatter YAML y resolución de [[WikiLinks]]
 │   │   ├── chunkingService.ts       # División de fuentes en fragmentos con solapamiento y página
 │   │   ├── sourcesService.ts        # Carga/extracción de fuentes (.pdf/.md/.txt/texto), embeddings y reindexado
-│   │   ├── ragService.ts            # Búsqueda híbrida (Coseno + FTS5), prompt citado, keep_alive '0s' y guardado como nota
-│   │   ├── reportService.ts         # Generación Map-Reduce de resúmenes, informes, guías y exámenes (keep_alive '0s')
+│   │   ├── ragService.ts            # Búsqueda híbrida (Fuentes + Notas filtradas por etapa), keep_alive '0s' y citas
+│   │   ├── reportService.ts         # Generación Map-Reduce sobre Fuentes y Notas (resúmenes, guías y simulacros)
+│   │   ├── calendarSyncService.ts   # Exportación/parseo iCal (.ics) y flujo OAuth2 PKCE con Google Calendar
 │   │   ├── notificationService.ts   # Evaluación de recordatorios (clases, entregas, exámenes) y despacho nativo
 │   │   └── ollamaClient.ts          # Cliente HTTP hacia localhost:11434 (/api/tags, /api/embed, /api/chat)
 │   └── ipc/
@@ -308,26 +372,35 @@ Cursada/
 │       ├── coursesHandlers.ts       # Canales IPC de materias y horarios (con backup pre-borrado)
 │       ├── tasksHandlers.ts         # Canales IPC de tareas
 │       ├── examsHandlers.ts         # Canales IPC de exámenes y calificaciones
-│       ├── notesHandlers.ts         # Canales IPC de notas y búsqueda FTS5
+│       ├── notesHandlers.ts         # Canales IPC de notas, FTS5 y sincronización de WikiLinks
+│       ├── knowledgeHandlers.ts     # Canales IPC de backlinks, grafo e importación de Obsidian Vault
+│       ├── attendanceHandlers.ts    # Canales IPC de registro y resumen de asistencia
+│       ├── calendarSyncHandlers.ts  # Canales IPC de feeds .ics y OAuth2/sync con Google Calendar
 │       ├── exportHandlers.ts        # Canales IPC de exportación a Markdown con selector nativo de carpeta
 │       ├── ollamaHandlers.ts        # Canales IPC de estado, modelos y ajustes de Ollama
-│       ├── sourcesHandlers.ts       # Canales IPC de importación, reindexado y búsqueda de fuentes
+│       ├── sourcesHandlers.ts       # Canales IPC de importación, etapa, reindexado y búsqueda de fuentes
 │       ├── chatHandlers.ts          # Canales IPC de hilos y mensajes RAG con citas (chat:*)
 │       ├── reportHandlers.ts        # Canal IPC de generación Map-Reduce de material (reports:generate)
 │       └── notificationHandlers.ts  # Canales IPC de preferencias, prueba y verificación de recordatorios
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React y fuentes offline @fontsource/archivo
-    ├── App.tsx                      # Shell Suizo, tema dark/light/system, tamaño de notas, atajos globales (Cmd+K, Cmd+N, Cmd+1..6, Cmd+,)
+    ├── App.tsx                      # Shell Suizo, tema dark/light/system, Pomodoro global, atajos (Cmd+K, Cmd+N, Cmd+1..6, Cmd+,)
     ├── ui/                          # Primitivos Suizos inmutables (SwissHeader, Primitives: botones, casillas, interruptores, segmentados, progreso)
-    ├── styles/                      # Sistema de diseño Tipográfico Suizo (8 tokens en Claro/Oscuro/Sistema, grilla de 12 col, cero radio/sombra)
+    ├── styles/                      # Sistema de diseño Suizo + módulos (super-editor.css, knowledge.css, active-study.css, calendar-sync.css)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (incl. mockNotifications.ts)
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (Knowledge, Attendance, CalendarSync, etc.)
+    │   ├── calendar/                # Generador y parser puro de iCalendar (.ics) (icsParserAndBuilder.ts)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
+    │   ├── editor/                  # Motor Live Preview CM6 (livePreviewExtension.ts) y atajos configurables (editorShortcuts.ts)
+    │   ├── knowledge/               # Parser de [[WikiLinks]] y extracción de contexto (wikiLinksParser.ts)
+    │   ├── math/                    # Motor offline LaTeX/KaTeX para notas, chat y reportes (latexRenderer.tsx)
     │   ├── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
+    │   ├── pomodoro/                # Estado reactivo persistente y temporizador Pomodoro (pomodoroStore.ts)
+    │   ├── simulator/               # Parser y evaluador del Modo Simulacro Interactivo (practiceExamSimulator.ts)
     │   ├── reportsStore.ts          # Almacén reactivo de informes y citas [N] conectado a cursadaClient + exportación PDF
     │   └── shortcuts/               # Búsqueda normalizada y resolución de atajos macOS (commandPaletteSearch.ts)
-    ├── components/                  # Componentes por dominio (courses/ con vista de 3 paneles, tasks/, exams/, notes/, settings/, command-palette/)
+    ├── components/                  # Componentes por dominio (SuperMarkdownEditor, NoteBacklinksPanel, NotesGraphView, ObsidianImportModal, PomodoroHeaderWidget, CourseAttendancePanel, PracticeExamSimulatorModal, CalendarSyncSettingsSection, EditorShortcutsSettingsSection, etc.)
     ├── pages/                       # Vistas principales (Inicio, Materias, Calendario, Tareas, Exámenes, Informes, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```

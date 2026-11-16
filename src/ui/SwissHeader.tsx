@@ -1,3 +1,4 @@
+import { PomodoroHeaderWidget } from '../components/pomodoro/PomodoroHeaderWidget';
 import type { NavSectionId } from '../types/design';
 
 export interface SwissHeaderNavItem {
@@ -24,12 +25,16 @@ export interface SwissHeaderProps {
   activeSection: NavSectionId;
   onSelectSection: (section: NavSectionId) => void;
   courseDetail?: SwissCourseDetailHeader | null;
+  activeCourseId?: string | null;
+  activeCourseName?: string | null;
 }
 
 export function SwissHeader({
   activeSection,
   onSelectSection,
   courseDetail,
+  activeCourseId = null,
+  activeCourseName = null,
 }: SwissHeaderProps) {
   if (courseDetail) {
     return (
@@ -44,7 +49,20 @@ export function SwissHeader({
           </button>
           <span className="swiss-header-detail-course">{courseDetail.name}</span>
         </div>
-        <div className="swiss-header-detail-meta">{courseDetail.summary}</div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            flexShrink: 0,
+          }}
+        >
+          <div className="swiss-header-detail-meta">{courseDetail.summary}</div>
+          <PomodoroHeaderWidget
+            activeCourseId={activeCourseId}
+            activeCourseName={activeCourseName ?? courseDetail.name}
+          />
+        </div>
       </header>
     );
   }
@@ -79,14 +97,27 @@ export function SwissHeader({
         </ul>
       </nav>
 
-      <button
-        type="button"
-        className={`swiss-header-settings-btn ${activeSection === 'ajustes' ? 'is-active' : ''}`}
-        aria-current={activeSection === 'ajustes' ? 'page' : undefined}
-        onClick={() => onSelectSection('ajustes')}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          flexShrink: 0,
+        }}
       >
-        Ajustes
-      </button>
+        <PomodoroHeaderWidget
+          activeCourseId={activeCourseId}
+          activeCourseName={activeCourseName}
+        />
+        <button
+          type="button"
+          className={`swiss-header-settings-btn ${activeSection === 'ajustes' ? 'is-active' : ''}`}
+          aria-current={activeSection === 'ajustes' ? 'page' : undefined}
+          onClick={() => onSelectSection('ajustes')}
+        >
+          Ajustes
+        </button>
+      </div>
     </header>
   );
 }

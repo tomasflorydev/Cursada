@@ -285,6 +285,7 @@ export async function createSourceFromTextService(
     rawText: extracted.rawText,
     pageCount: extracted.pageCount,
     indexingStatus: 'indexing',
+    examStage: input.examStage,
   });
 
   const embedder = resolveEmbedder(options?.embedder);
@@ -363,6 +364,7 @@ export async function importSourceFileService(
     rawText: extracted.rawText,
     pageCount: extracted.pageCount,
     indexingStatus: 'indexing',
+    examStage: input.examStage,
   });
 
   const embedder = resolveEmbedder(options?.embedder);

@@ -1,14 +1,14 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Versión actual**: **`v2.0.0` (Ciclo 2 — Fase 10 completada: Overhaul Tipográfico Suizo)**.
-- **Próximo hito planificado**: **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview, Matemática KaTeX y Atajos Configurables)** definido en `ROADMAP.md`.
-- **Última actualización**: 2026-11-15
+- **Versión actual**: **`v2.4.0` (Ciclo 2 — Fases 11 a 14 completadas e integradas en `main`)**.
+- **Próximo hito planificado**: **Validación manual en macOS (checklists Fases 11–14)**, reconstrucción opcional del paquete `release/Cursada.app` (`npm run package`) y configuración opcional de credenciales OAuth2 Desktop de Google Calendar si se usa sincronización bidireccional en la nube.
+- **Última actualización**: 2026-11-16
 - **Métricas de verificación automatizada en `main`**:
-  - **31 archivos de test** y **119 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v5`).
+  - **35 archivos de test** y **155 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v8`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción y smoke test de arranque en Electron verificados** (`npm run build`, `CURSADA_SMOKE_TEST=1`).
-- **Alineación documental**: Sincronizado con `ROADMAP.md` (Fase 10 marcada como completada) y `DESIGN.md` (`v2.0`).
+  - **Build de producción compilado sin errores** (`npm run build`).
+- **Alineación documental**: Sincronizado con `ROADMAP.md` (`v2.4.0`, Fases 10–14 marcadas como completadas), `ARCHITECTURE.md` (esquema `v8` y módulos Ciclo 2) y `DESIGN.md` (`v2.0`).
 
 ## Avances Completados
 
@@ -135,10 +135,47 @@
   - Migración completa de `HomePage.tsx` (Inicio), `CoursesPage.tsx` (Materias), `CourseDetailView.tsx` (cuaderno de 3 paneles con Notas / Editor / Informe con IA), `CourseFormModal.tsx`, `DeleteCourseDialog.tsx`, `ReportsPage.tsx` (Informes + citas cruzadas), `CalendarPage.tsx` (Semana / Mes con próxima clase en `--acc`), `TasksPage.tsx` (alta rápida + `Ver` / `Por materia`), `ExamsPage.tsx` (countdown + progreso de temas + guía) y `SettingsPage.tsx` (General, IA local, Apariencia, Datos y Atajos).
   - Actualización de los 13 tests de UI afectados y creación de `src/__tests__/Phase10SwissDesignOverhaul.test.tsx` (31 archivos / 119 tests en verde).
 
-## Qué sigue (Ciclo 2 — Hoja de Ruta Versionada en `ROADMAP.md`)
+### Fase 11 (`v2.1.0`): Super-Editor Markdown (Live Preview, Matemática y Atajos Configurables)
+- [x] **Tarea 11.1 — Soporte Matemático ($\LaTeX$ / KaTeX) offline en Notas, Chat y Reportes**:
+  - Motor offline propio sin dependencias externas ni CDN en `src/lib/math/latexRenderer.tsx` (`renderTextWithMathAndCitations`), integrado en el editor/lectura de notas, respuestas de chat y informes de estudio (`CourseDetailView.tsx`, `ReportsPage.tsx`).
+- [x] **Tarea 11.2 — Editor Markdown con Formato en Tiempo Real ("Live Preview" en CodeMirror 6)**:
+  - Extensión de vista en vivo (`src/lib/editor/livePreviewExtension.ts`) y componente `<SuperMarkdownEditor />` (`src/components/notes/SuperMarkdownEditor.tsx`, `src/styles/super-editor.css`) con ocultamiento de marcadores Markdown fuera de la línea del cursor, callouts, tablas, fórmulas y autocompletado `[[`.
+- [x] **Tarea 11.3 — Atajos de Teclado Configurables para Edición Markdown**:
+  - Registro de acciones y detección de colisiones (`src/lib/editor/editorShortcuts.ts`) + panel `<EditorShortcutsSettingsSection />` (`src/components/settings/EditorShortcutsSettingsSection.tsx`) montado en `src/pages/SettingsPage.tsx` (`#settings-shortcuts`).
+  - Tests nuevos en `src/__tests__/Phase11SuperEditorAndMath.test.tsx` (14 tests).
+
+### Fase 12 (`v2.2.0`): Red de Conocimiento (WikiLinks, Grafo y Obsidian Vault)
+- [x] **Tarea 12.1 — Enlaces Bidireccionales entre Notas (`[[WikiLinks]]`), Forward Links y Backlinks**:
+  - Migración SQLite `v6` (`electron/db/migrations.ts`: columna `notes.frontmatter_json` y tabla `note_links`), parser puro (`src/lib/knowledge/wikiLinksParser.ts`), repositorio (`electron/db/knowledgeRepo.ts`), IPC (`electron/ipc/knowledgeHandlers.ts`), sincronización al crear/actualizar notas (`electron/ipc/notesHandlers.ts`), mock (`src/lib/api/mockKnowledge.ts`) y panel `<NoteBacklinksPanel />` (`src/components/notes/NoteBacklinksPanel.tsx`).
+- [x] **Tarea 12.2 — Vista de Grafo Interactiva estilo Obsidian (`<NotesGraphView />`)**:
+  - Grafo 2D basado en simulación de fuerzas en `<canvas>` (`src/components/notes/NotesGraphView.tsx`, `src/styles/knowledge.css`), con alcance por materia en `CourseDetailView.tsx` y **Grafo global** (incluyendo filtro de archivados) en `CoursesPage.tsx`.
+- [x] **Tarea 12.3 — Importador de Vaults desde Obsidian**:
+  - Servicio backend (`electron/services/obsidianImportService.ts`) con escaneo recursivo, parsing YAML frontmatter, exclusión de `.obsidian`/`.trash`, importación como activos o archivados y resolución automática de `[[WikiLinks]]`, junto al modal `<ObsidianImportModal />` (`src/components/courses/ObsidianImportModal.tsx`) accesible desde `CoursesPage.tsx` y `SettingsPage.tsx`.
+  - Tests nuevos en `src/__tests__/Phase12KnowledgeAndObsidian.test.tsx` (8 tests).
+
+### Fase 13 (`v2.3.0`): Estudio Activo, Contexto IA por Parcial y Seguimiento
+- [x] **Tarea 13.1 — Pomodoro Timer Configurable**:
+  - Store persistente (`src/lib/pomodoro/pomodoroStore.ts`) y widget `<PomodoroHeaderWidget />` (`src/components/pomodoro/PomodoroHeaderWidget.tsx`) integrado en `SwissHeader.tsx` y `App.tsx` manteniendo estado entre vistas.
+- [x] **Tarea 13.2 — Notas como Fuentes para la IA, Selector de Fuentes/Notas y Filtro por Parcial**:
+  - Migración SQLite `v7` añadiendo `exam_stage` (`parcial_1 | parcial_2 | final | general`) en `notes` y `sources`; actualización de `notesRepo.ts`, `sourcesRepo.ts`, `sourcesHandlers.ts`, `sourcesService.ts`, `ragService.ts`, `reportService.ts` y mocks (`mockNotes.ts`, `mockSources.ts`, `mockChat.ts`, `mockReports.ts`) más selector unificado y filtros rápidos (`Todo`, `1° Parcial`, `2° Parcial`, `Final`, `Solo Fuentes`, `Solo Notas`, `Elegir`) en `CourseDetailView.tsx`.
+- [x] **Tarea 13.3 — Modo Simulacro Interactivo para Exámenes de Práctica**:
+  - Parser/evaluador (`src/lib/simulator/practiceExamSimulator.ts`) y modal `<PracticeExamSimulatorModal />` (`src/components/assistant/PracticeExamSimulatorModal.tsx`, `src/styles/active-study.css`) accesible desde `CourseDetailView.tsx` y `ReportsPage.tsx` (`Iniciar simulacro`).
+- [x] **Tarea 13.4 — Control de Asistencia por Anotador**:
+  - Columnas `attendance_enabled` y `max_absences` en `courses` + tabla `attendance_records` (`v7`), `electron/db/attendanceRepo.ts`, `electron/ipc/attendanceHandlers.ts`, `src/lib/api/mockAttendance.ts` y panel `<CourseAttendancePanel />` (`src/components/courses/CourseAttendancePanel.tsx`) integrado en `CourseDetailView.tsx`.
+  - Tests nuevos en `src/__tests__/Phase13ActiveStudyAndSimulator.test.tsx` (8 tests).
+
+### Fase 14 (`v2.4.0`): Sincronización con Google Calendar
+- [x] **Tarea 14.1 — Exportación `.ics` y Suscripción por URL iCal**:
+  - Generador y parser puro `.ics` (`src/lib/calendar/icsParserAndBuilder.ts`), persistencia en SQLite `v8` (`calendar_feeds`, `electron/db/calendarSyncRepo.ts`), servicio/IPC (`electron/services/calendarSyncService.ts`, `electron/ipc/calendarSyncHandlers.ts`), mock (`src/lib/api/mockCalendarSync.ts`), exportación `.ics` y superposición de eventos externos en `CalendarPage.tsx`.
+- [x] **Tarea 14.2 — Sincronización Bidireccional con Google Calendar API (OAuth2 PKCE Local)**:
+  - Flujo OAuth2 PKCE loopback y mapeo local en `google_calendar_mappings` (`calendarSyncService.ts`, `calendarSyncRepo.ts`) + panel `<CalendarSyncSettingsSection />` (`src/components/settings/CalendarSyncSettingsSection.tsx`, `src/styles/calendar-sync.css`) integrado en `SettingsPage.tsx` (`#settings-data`).
+  - Tests nuevos en `src/__tests__/Phase14GoogleCalendarSync.test.tsx` (6 tests).
+
+## Qué sigue (Verificación Manual y Cierre de Ciclo 2)
 - [x] **Fase 9 (`v1.1.0`) — Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base**.
 - [x] **Fase 10 (`v2.0.0`) — Overhaul Total de la Interfaz Gráfica (Estilo Tipográfico Suizo)**.
-- [ ] **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview en tiempo real, Matemática KaTeX y Atajos Configurables)**.
-- [ ] **Fase 12 (`v2.2.0`) — Red de Conocimiento (`[[WikiLinks]]`, Backlinks, Vista de Grafo e Importador de Vault de Obsidian)**.
-- [ ] **Fase 13 (`v2.3.0`) — Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro Timer, Notas como Fuentes + Selector/Filtro `1°/2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia)**.
-- [ ] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
+- [x] **Fase 11 (`v2.1.0`) — Super-Editor Markdown (Live Preview en tiempo real, Matemática KaTeX y Atajos Configurables)**.
+- [x] **Fase 12 (`v2.2.0`) — Red de Conocimiento (`[[WikiLinks]]`, Backlinks, Vista de Grafo e Importador de Vault de Obsidian)**.
+- [x] **Fase 13 (`v2.3.0`) — Estudio Activo, Contexto IA por Parcial y Seguimiento (Pomodoro Timer, Notas como Fuentes + Selector/Filtro `1°/2° Parcial`, Modo Simulacro Interactivo y Control de Asistencia)**.
+- [x] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
+- [ ] **Pendientes post-implementación**: Checklist manual en Electron (`npm run dev` / `Cursada.app`), empaquetado `.app` actualizado (`npm run package`) y carga opcional de credenciales OAuth2 Desktop para Google Calendar.

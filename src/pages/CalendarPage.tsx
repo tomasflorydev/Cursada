@@ -22,6 +22,7 @@ import type {
   DayOfWeek,
   ExamCategory,
   ExamWithCourse,
+  ExternalCalendarEvent,
   TaskWithCourse,
 } from '../types/domain';
 import {
@@ -193,6 +194,11 @@ export function CalendarPage({
   const [activeCourses, setActiveCourses] = useState<CourseWithSchedules[]>([]);
   const [periodTasks, setPeriodTasks] = useState<TaskWithCourse[]>([]);
   const [periodExams, setPeriodExams] = useState<ExamWithCourse[]>([]);
+  const [periodExternalEvents, setPeriodExternalEvents] = useState<
+    ExternalCalendarEvent[]
+  >([]);
+  const [isExportingIcs, setIsExportingIcs] = useState(false);
+  const [icsFeedback, setIcsFeedback] = useState<string | null>(null);
   const [selectedMonthDateIso, setSelectedMonthDateIso] = useState<string>(() =>
     toIsoDateString(initialDate ?? new Date())
   );
@@ -215,14 +221,20 @@ export function CalendarPage({
   const loadCalendarData = useCallback(async () => {
     try {
       setErrorMsg(null);
-      const [loadedCourses, loadedTasks, loadedExams] = await Promise.all([
-        cursadaClient.listCourses({ status: 'active' }),
-        cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
-        cursadaClient.listExams({ dateFrom: periodStartIso, dateTo: periodEndIso }),
-      ]);
+      const [loadedCourses, loadedTasks, loadedExams, loadedExternal] =
+        await Promise.all([
+          cursadaClient.listCourses({ status: 'active' }),
+          cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
+          cursadaClient.listExams({ dateFrom: periodStartIso, dateTo: periodEndIso }),
+          cursadaClient.listExternalCalendarEvents({
+            dateFrom: periodStartIso,
+            dateTo: periodEndIso,
+          }),
+        ]);
       setActiveCourses(loadedCourses);
       setPeriodTasks(loadedTasks);
       setPeriodExams(loadedExams);
+      setPeriodExternalEvents(loadedExternal);
     } catch (err: unknown) {
       setErrorMsg(
         err instanceof Error ? err.message : 'No se pudo cargar la agenda de cursada.'
@@ -236,13 +248,18 @@ export function CalendarPage({
       cursadaClient.listCourses({ status: 'active' }),
       cursadaClient.listTasks({ dueFrom: periodStartIso, dueTo: periodEndIso }),
       cursadaClient.listExams({ dateFrom: periodStartIso, dateTo: periodEndIso }),
+      cursadaClient.listExternalCalendarEvents({
+        dateFrom: periodStartIso,
+        dateTo: periodEndIso,
+      }),
     ])
-      .then(([loadedCourses, loadedTasks, loadedExams]) => {
+      .then(([loadedCourses, loadedTasks, loadedExams, loadedExternal]) => {
         if (!active) return;
         setErrorMsg(null);
         setActiveCourses(loadedCourses);
         setPeriodTasks(loadedTasks);
         setPeriodExams(loadedExams);
+        setPeriodExternalEvents(loadedExternal);
       })
       .catch((err: unknown) => {
         if (!active) return;
@@ -306,6 +323,20 @@ export function CalendarPage({
     }
     return map;
   }, [visibleDays, periodExams]);
+
+  const externalEventsByDate = useMemo(() => {
+    const map = new Map<string, ExternalCalendarEvent[]>();
+    for (const day of visibleDays) {
+      map.set(day.dateIso, []);
+    }
+    for (const evt of periodExternalEvents) {
+      const list = map.get(evt.dateIso);
+      if (list) {
+        list.push(evt);
+      }
+    }
+    return map;
+  }, [visibleDays, periodExternalEvents]);
 
   const blocksByDay = useMemo(() => {
     const map = new Map<DayOfWeek, CalendarClassBlock[]>([
@@ -445,6 +476,35 @@ export function CalendarPage({
     return examsByDate.get(selectedMonthDayInfo.dateIso) ?? [];
   }, [selectedMonthDayInfo, examsByDate]);
 
+  const selectedMonthExternalEvents = useMemo(() => {
+    if (!selectedMonthDayInfo) return [];
+    return externalEventsByDate.get(selectedMonthDayInfo.dateIso) ?? [];
+  }, [selectedMonthDayInfo, externalEventsByDate]);
+
+  async function handleExportIcs(): Promise<void> {
+    setIsExportingIcs(true);
+    setIcsFeedback(null);
+    setErrorMsg(null);
+    try {
+      const result = await cursadaClient.exportCalendarIcs();
+      if (!result.canceled) {
+        setIcsFeedback(
+          `Calendario exportado (${result.eventsCount} ${
+            result.eventsCount === 1 ? 'evento' : 'eventos'
+          }).`
+        );
+      }
+    } catch (err: unknown) {
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo exportar el calendario a .ics.'
+      );
+    } finally {
+      setIsExportingIcs(false);
+    }
+  }
+
   return (
     <section aria-labelledby="main-title">
       <header className="calendar-header">
@@ -494,8 +554,32 @@ export function CalendarPage({
               { value: 'month', label: 'Mes' },
             ]}
           />
+
+          <SwissButton
+            variant="secondary"
+            disabled={isExportingIcs}
+            onClick={() => void handleExportIcs()}
+          >
+            {isExportingIcs ? 'Exportando…' : 'Exportar .ics'}
+          </SwissButton>
         </div>
       </header>
+
+      {icsFeedback ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="swiss-meta-md"
+          style={{
+            borderLeft: '4px solid var(--acc)',
+            padding: '6px 12px',
+            marginBottom: '12px',
+            color: 'var(--ink)',
+          }}
+        >
+          {icsFeedback}
+        </div>
+      ) : null}
 
       {errorMsg ? (
         <div style={{ marginBottom: '16px' }}>
@@ -534,6 +618,7 @@ export function CalendarPage({
             {weekDays.map((day) => {
               const dayExams = examsByDate.get(day.dateIso) ?? [];
               const dayTasks = tasksByDate.get(day.dateIso) ?? [];
+              const dayExternal = externalEventsByDate.get(day.dateIso) ?? [];
               return (
                 <div
                   key={day.dateIso}
@@ -570,6 +655,18 @@ export function CalendarPage({
                       {task.title}
                       {task.status === 'done' ? ' (hecha)' : ''}
                     </button>
+                  ))}
+                  {dayExternal.map((evt) => (
+                    <div
+                      key={evt.id}
+                      className="calendar-deliverable-item calendar-external-event"
+                      title={`${evt.feedName}: ${evt.title}${
+                        evt.startTime ? ` (${evt.startTime})` : ''
+                      }`}
+                    >
+                      {evt.startTime ? `${evt.startTime} · ` : ''}
+                      {evt.title}
+                    </div>
                   ))}
                 </div>
               );
@@ -663,6 +760,7 @@ export function CalendarPage({
             {monthDays.map((day) => {
               const dayExams = examsByDate.get(day.dateIso) ?? [];
               const dayTasks = tasksByDate.get(day.dateIso) ?? [];
+              const dayExternal = externalEventsByDate.get(day.dateIso) ?? [];
               const dayClasses = day.isCurrentMonth
                 ? (blocksByDay.get(day.dayOfWeek) ?? [])
                 : [];
@@ -674,7 +772,9 @@ export function CalendarPage({
                   role="button"
                   tabIndex={0}
                   aria-pressed={isSelected}
-                  aria-label={`${formatFullDayLabel(day.dateIso)}: ${dayClasses.length} clases, ${dayTasks.length} entregas, ${dayExams.length} exámenes`}
+                  aria-label={`${formatFullDayLabel(day.dateIso)}: ${dayClasses.length} clases, ${dayTasks.length} entregas, ${dayExams.length} exámenes${
+                    dayExternal.length > 0 ? `, ${dayExternal.length} externos` : ''
+                  }`}
                   className={`calendar-month-cell ${
                     !day.isCurrentMonth ? 'is-outside' : ''
                   } ${day.isToday ? 'is-today' : ''}`.trim()}
@@ -718,6 +818,13 @@ export function CalendarPage({
                         title={`Clase: ${block.courseName}`}
                       />
                     ))}
+                    {dayExternal.map((evt) => (
+                      <span
+                        key={evt.id}
+                        className="calendar-event-rect"
+                        title={`Externo (${evt.feedName}): ${evt.title}`}
+                      />
+                    ))}
                   </div>
                 </div>
               );
@@ -731,13 +838,15 @@ export function CalendarPage({
                 right={`${selectedMonthClassesCountLabel(
                   selectedMonthBlocks.length,
                   selectedMonthTasks.length,
-                  selectedMonthExams.length
+                  selectedMonthExams.length,
+                  selectedMonthExternalEvents.length
                 )}`}
               />
 
               {selectedMonthBlocks.length === 0 &&
               selectedMonthTasks.length === 0 &&
-              selectedMonthExams.length === 0 ? (
+              selectedMonthExams.length === 0 &&
+              selectedMonthExternalEvents.length === 0 ? (
                 <SwissEmptyState
                   title="Sin actividad programada"
                   description="No tenés clases, entregas ni exámenes registrados para este día."
@@ -807,6 +916,24 @@ export function CalendarPage({
                       </span>
                     </button>
                   ))}
+
+                  {selectedMonthExternalEvents.map((evt) => (
+                    <div key={evt.id} className="home-row calendar-external-event">
+                      <span className="home-row-day">Externo</span>
+                      <span className="home-row-title">{evt.title}</span>
+                      <span className="home-row-course swiss-meta">
+                        {evt.feedName}
+                        {evt.location ? ` · ${evt.location}` : ''}
+                      </span>
+                      <span className="home-row-right">
+                        {evt.startTime
+                          ? evt.endTime
+                            ? `${evt.startTime}–${evt.endTime}`
+                            : evt.startTime
+                          : 'Todo el día'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -826,7 +953,8 @@ export function CalendarPage({
 function selectedMonthClassesCountLabel(
   classesCount: number,
   tasksCount: number,
-  examsCount: number
+  examsCount: number,
+  externalCount = 0
 ): string {
   const parts: string[] = [];
   if (examsCount > 0) {
@@ -837,6 +965,9 @@ function selectedMonthClassesCountLabel(
   }
   if (classesCount > 0) {
     parts.push(classesCount === 1 ? '1 clase' : `${classesCount} clases`);
+  }
+  if (externalCount > 0) {
+    parts.push(externalCount === 1 ? '1 externo' : `${externalCount} externos`);
   }
   return parts.length > 0 ? parts.join(' · ') : 'Día libre';
 }

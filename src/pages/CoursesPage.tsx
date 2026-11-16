@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
+import { ObsidianImportModal } from '../components/courses/ObsidianImportModal';
+import { NotesGraphView } from '../components/notes/NotesGraphView';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../lib/api/client';
 import {
   DAY_SHORT_NAMES_ES,
@@ -132,6 +134,8 @@ export function CoursesPage({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
+  const [isGlobalGraphOpen, setIsGlobalGraphOpen] = useState(false);
+  const [isObsidianModalOpen, setIsObsidianModalOpen] = useState(false);
 
   const lastCreateRequestVersionRef = useRef<number>(0);
 
@@ -324,13 +328,33 @@ export function CoursesPage({
             </div>
 
             <div className="swiss-page-actions">
+              <SwissButton
+                variant="secondary"
+                onClick={() => setIsGlobalGraphOpen((v) => !v)}
+              >
+                {isGlobalGraphOpen ? 'Ver listado' : 'Grafo global'}
+              </SwissButton>
+              <SwissButton
+                variant="secondary"
+                onClick={() => setIsObsidianModalOpen(true)}
+              >
+                Importar Vault de Obsidian
+              </SwissButton>
               <SwissButton variant="secondary" onClick={handleOpenCreate}>
                 + Nueva materia
               </SwissButton>
             </div>
           </header>
 
-          {activeCourses.length === 0 ? (
+          {isGlobalGraphOpen ? (
+            <NotesGraphView
+              onSelectNote={(noteId, targetCourseId) => {
+                setIsGlobalGraphOpen(false);
+                onSelectCourse(targetCourseId, { noteId });
+              }}
+              onClose={() => setIsGlobalGraphOpen(false)}
+            />
+          ) : activeCourses.length === 0 ? (
             <SwissEmptyState
               title="No tenés materias activas"
               description="Creá una materia para organizar tus notas, fuentes, tareas y próximos exámenes."
@@ -545,6 +569,15 @@ export function CoursesPage({
         impact={deleteImpact}
         onCancel={() => setDeleteImpact(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      <ObsidianImportModal
+        isOpen={isObsidianModalOpen}
+        onClose={() => setIsObsidianModalOpen(false)}
+        onImported={() => {
+          void loadCourses();
+          onCoursesChanged?.();
+        }}
       />
     </>
   );

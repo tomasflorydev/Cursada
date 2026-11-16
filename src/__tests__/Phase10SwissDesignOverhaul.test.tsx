@@ -511,7 +511,7 @@ describe('Phase 10 (v2.0.0): Swiss Typographic System & 8-View Overhaul', () => 
       version: string;
       dependencies?: Record<string, string>;
     };
-    expect(pkgJson.version).toBe('2.0.0');
+    expect(pkgJson.version).toBe('2.4.0');
     expect(pkgJson.dependencies?.['@fontsource/archivo']).toBeDefined();
 
     const mainTsx = fs.readFileSync(path.join(rootDir, 'src/main.tsx'), 'utf8');
