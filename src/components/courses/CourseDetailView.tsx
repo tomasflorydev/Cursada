@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   useCallback,
   useEffect,
   useId,
@@ -52,7 +54,16 @@ import {
 } from '../../ui';
 import { PracticeExamSimulatorModal } from '../assistant/PracticeExamSimulatorModal';
 import { NoteBacklinksPanel } from '../notes/NoteBacklinksPanel';
-import { SuperMarkdownEditor } from '../notes/SuperMarkdownEditor';
+import {
+  isNoteDraftDirty,
+  resolvePersistedNoteTitle,
+} from '../../lib/notes/noteDraftUtils';
+
+const SuperMarkdownEditor = lazy(() =>
+  import('../notes/SuperMarkdownEditor').then((mod) => ({
+    default: mod.SuperMarkdownEditor,
+  }))
+);
 import { CourseAttendancePanel } from './CourseAttendancePanel';
 
 export interface CourseDetailViewProps {
@@ -281,14 +292,7 @@ export function CourseDetailView({
 
   const persistSnapshot = useCallback(
     async (target: { noteId: string; title: string; content: string }) => {
-      const trimmedTitle = target.title.trim();
-      if (!trimmedTitle) {
-        if (latestDraftRef.current?.noteId === target.noteId) {
-          setSaveStatus('error');
-          setSaveError('El título no puede estar vacío.');
-        }
-        return;
-      }
+      const resolvedTitle = resolvePersistedNoteTitle(target.title);
 
       if (latestDraftRef.current?.noteId === target.noteId) {
         setSaveStatus('saving');
@@ -297,7 +301,7 @@ export function CourseDetailView({
 
       try {
         const updated = await cursadaClient.updateNote(target.noteId, {
-          title: trimmedTitle,
+          title: resolvedTitle,
           content: target.content,
         });
         if (savedSnapshotRef.current?.noteId === target.noteId) {
@@ -312,7 +316,8 @@ export function CourseDetailView({
         );
         if (latestDraftRef.current?.noteId === target.noteId) {
           const matchesLatest =
-            latestDraftRef.current.title.trim() === updated.title &&
+            resolvePersistedNoteTitle(latestDraftRef.current.title) ===
+              updated.title &&
             latestDraftRef.current.content === updated.content;
           setSaveStatus(matchesLatest ? 'saved' : 'dirty');
         }
@@ -332,14 +337,10 @@ export function CourseDetailView({
     clearAutosaveTimer();
     const draft = latestDraftRef.current;
     const saved = savedSnapshotRef.current;
-    if (!draft || !saved || draft.noteId !== saved.noteId) {
+    if (!draft || !saved || !isNoteDraftDirty(draft, saved)) {
       return;
     }
-    const isDirty =
-      draft.title.trim() !== saved.title || draft.content !== saved.content;
-    if (isDirty && draft.title.trim()) {
-      await persistSnapshot(draft);
-    }
+    await persistSnapshot(draft);
   }, [clearAutosaveTimer, persistSnapshot]);
 
   const showTransientNoteFeedback = useCallback((msg: string) => {
@@ -456,24 +457,27 @@ export function CourseDetailView({
     };
   }, [courseId, loadData]);
 
-  // Clear header meta on unmount & flush unsaved note edits
+  // Clear header meta on unmount & flush unsaved note edits (including window close)
   useEffect(() => {
-    return () => {
+    const flushDirtyDraftSynchronously = () => {
       clearAutosaveTimer();
       const draft = latestDraftRef.current;
       const saved = savedSnapshotRef.current;
-      if (
-        draft &&
-        saved &&
-        draft.noteId === saved.noteId &&
-        draft.title.trim() &&
-        (draft.title.trim() !== saved.title || draft.content !== saved.content)
-      ) {
+      if (draft && saved && isNoteDraftDirty(draft, saved)) {
         void cursadaClient.updateNote(draft.noteId, {
-          title: draft.title.trim(),
+          title: resolvePersistedNoteTitle(draft.title),
           content: draft.content,
         });
       }
+    };
+
+    window.addEventListener('beforeunload', flushDirtyDraftSynchronously);
+    window.addEventListener('pagehide', flushDirtyDraftSynchronously);
+
+    return () => {
+      window.removeEventListener('beforeunload', flushDirtyDraftSynchronously);
+      window.removeEventListener('pagehide', flushDirtyDraftSynchronously);
+      flushDirtyDraftSynchronously();
       if (feedbackTimerRef.current !== null) {
         window.clearTimeout(feedbackTimerRef.current);
       }
@@ -619,22 +623,14 @@ export function CourseDetailView({
   }
 
   function scheduleAutosave(noteId: string, nextTitle: string, nextContent: string): void {
-    latestDraftRef.current = { noteId, title: nextTitle, content: nextContent };
+    const nextDraft = { noteId, title: nextTitle, content: nextContent };
+    latestDraftRef.current = nextDraft;
     const saved = savedSnapshotRef.current;
     if (!saved || saved.noteId !== noteId) {
       return;
     }
 
-    const trimmedTitle = nextTitle.trim();
-    if (!trimmedTitle) {
-      clearAutosaveTimer();
-      setSaveStatus('error');
-      setSaveError('El título no puede estar vacío.');
-      return;
-    }
-
-    const isDirty = trimmedTitle !== saved.title || nextContent !== saved.content;
-    if (!isDirty) {
+    if (!isNoteDraftDirty(nextDraft, saved)) {
       clearAutosaveTimer();
       setSaveStatus('saved');
       setSaveError(null);
@@ -646,7 +642,7 @@ export function CourseDetailView({
     clearAutosaveTimer();
     debounceTimerRef.current = window.setTimeout(() => {
       debounceTimerRef.current = null;
-      void persistSnapshot({ noteId, title: nextTitle, content: nextContent });
+      void persistSnapshot(nextDraft);
     }, NOTE_AUTOSAVE_DELAY_MS);
   }
 
@@ -1515,23 +1511,39 @@ export function CourseDetailView({
 
               <SwissTitleUnderline />
 
-              <SuperMarkdownEditor
-                noteId={selectedNote.id}
-                courseId={course.id}
-                content={draftContent}
-                onChangeContent={handleContentChange}
-                onSaveShortcut={() => void flushPendingSave()}
-                availableNotes={notes.map((n) => ({
-                  id: n.id,
-                  title: n.title,
-                  courseId: n.courseId,
-                }))}
-                onOpenWikiLink={(targetTitle) =>
-                  void handleOpenOrCreateWikiLink(targetTitle)
+              <Suspense
+                fallback={
+                  <div className="super-editor-shell">
+                    <div className="super-editor-stage">
+                      <textarea
+                        className="super-editor-fallback-textarea"
+                        aria-label="Contenido de la nota"
+                        placeholder="Cargando editor…"
+                        value={draftContent}
+                        onChange={(event) => handleContentChange(event.target.value)}
+                      />
+                    </div>
+                  </div>
                 }
-                onFocusTitle={() => titleTextareaRef.current?.focus()}
-                ariaLabel="Contenido de la nota"
-              />
+              >
+                <SuperMarkdownEditor
+                  noteId={selectedNote.id}
+                  courseId={course.id}
+                  content={draftContent}
+                  onChangeContent={handleContentChange}
+                  onSaveShortcut={() => void flushPendingSave()}
+                  availableNotes={notes.map((n) => ({
+                    id: n.id,
+                    title: n.title,
+                    courseId: n.courseId,
+                  }))}
+                  onOpenWikiLink={(targetTitle) =>
+                    void handleOpenOrCreateWikiLink(targetTitle)
+                  }
+                  onFocusTitle={() => titleTextareaRef.current?.focus()}
+                  ariaLabel="Contenido de la nota"
+                />
+              </Suspense>
             </>
           )}
         </motion.div>

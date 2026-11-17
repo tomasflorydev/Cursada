@@ -319,6 +319,27 @@ CREATE TABLE google_calendar_mappings (
     UNIQUE(entity_type, entity_id, google_calendar_id)
 );
 CREATE INDEX idx_gcal_mappings_entity ON google_calendar_mappings(entity_type, entity_id);
+
+-- 14. Informes y guías de estudio persistidos en SQLite (v9)
+CREATE TABLE study_reports (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    course_name TEXT NOT NULL DEFAULT '',
+    type TEXT NOT NULL CHECK (type IN ('summary', 'report', 'study_guide', 'practice_exam')),
+    exam_stage TEXT NOT NULL DEFAULT 'general',
+    title TEXT NOT NULL,
+    markdown TEXT NOT NULL,
+    saved_note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
+    source_ids_json TEXT NOT NULL DEFAULT '[]',
+    note_ids_json TEXT NOT NULL DEFAULT '[]',
+    source_titles_json TEXT NOT NULL DEFAULT '[]',
+    model_used TEXT NOT NULL DEFAULT '',
+    used_fallback INTEGER NOT NULL DEFAULT 0,
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_study_reports_course ON study_reports(course_id);
+CREATE INDEX idx_study_reports_created ON study_reports(created_at DESC);
 ```
 
 ---
@@ -349,7 +370,7 @@ Cursada/
 │   ├── preload.ts                   # Fuente TS del puente contextBridge seguro (window.cursadaApi)
 │   ├── db/
 │   │   ├── database.ts              # Conexión node:sqlite, WAL mode y aislamiento en tests
-│   │   ├── migrations.ts            # Migraciones versionadas (PRAGMA user_version v1..v8)
+│   │   ├── migrations.ts            # Migraciones versionadas (PRAGMA user_version v1..v9)
 │   │   ├── coursesRepo.ts           # Materias, horarios, asistencia y borrado físico de fuentes
 │   │   ├── tasksRepo.ts             # Persistencia de tareas
 │   │   ├── examsRepo.ts             # Persistencia de exámenes y cálculo de promedios
@@ -361,6 +382,7 @@ Cursada/
 │   │   ├── calendarSyncRepo.ts      # Feeds .ics, mapeos y tokens Google Calendar cifrados vía safeStorage
 │   │   ├── aiSettingsRepo.ts        # Configuración local de Ollama (hosts locales/.local por defecto)
 │   │   ├── notificationSettingsRepo.ts # Preferencias locales de recordatorios en app_settings
+│   │   ├── reportsRepo.ts           # Persistencia SQLite de informes y guías de estudio (v9)
 │   │   └── chatRepo.ts              # Persistencia de conversaciones y mensajes con citas
 │   ├── services/
 │   │   ├── backupService.ts         # Backups automáticos (VACUUM INTO) y rotación de los últimos 15
@@ -387,7 +409,7 @@ Cursada/
 │       ├── ollamaHandlers.ts        # Canales IPC de estado, modelos y ajustes de Ollama
 │       ├── sourcesHandlers.ts       # Canales IPC de importación, etapa, reindexado y búsqueda de fuentes
 │       ├── chatHandlers.ts          # Canales IPC de hilos y mensajes RAG con citas (chat:*)
-│       ├── reportHandlers.ts        # Canal IPC de generación Map-Reduce de material (reports:generate)
+│       ├── reportHandlers.ts        # Canales IPC de informes persistidos y streaming Map-Reduce (reports:*)
 │       └── notificationHandlers.ts  # Canales IPC de preferencias, prueba y verificación de recordatorios
 └── src/                             # Frontend (React + TypeScript)
     ├── main.tsx                     # Punto de montaje de React y fuentes offline @fontsource/archivo
@@ -396,12 +418,14 @@ Cursada/
     ├── styles/                      # Sistema de diseño Suizo + módulos (super-editor.css, knowledge.css, active-study.css, calendar-sync.css)
     ├── types/                       # Tipos compartidos entre Renderer y Main (domain.ts + design.ts)
     ├── lib/
-    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (Knowledge, Attendance, CalendarSync, etc.)
+    │   ├── api/                     # Cliente tipado (client.ts) + mocks por dominio (Knowledge, Attendance, CalendarSync, Reports, etc.)
+    │   ├── ai/                      # Lectura y sincronización de preferencias de IA (aiPreferences.ts)
     │   ├── calendar/                # Generador y parser puro de iCalendar (.ics) (icsParserAndBuilder.ts)
     │   ├── dates/                   # Utilidades de calendario mensual y semanal (Lunes a Domingo) en español
-    │   ├── editor/                  # Motor Live Preview CM6 (livePreviewExtension.ts) y atajos configurables (editorShortcuts.ts)
+    │   ├── editor/                  # Live Preview CM6 (livePreviewExtension.ts), lenguajes curados y diff mínimo (codeMirrorLanguages.ts), atajos (editorShortcuts.ts)
     │   ├── knowledge/               # Parser de [[WikiLinks]] y extracción de contexto (wikiLinksParser.ts)
     │   ├── math/                    # Motor offline LaTeX/KaTeX para notas, chat y reportes (latexRenderer.tsx)
+    │   ├── notes/                   # Normalización de borradores y guardado seguro de notas (noteDraftUtils.ts)
     │   ├── pdf/                     # Extracción pura de texto de PDFs página por página (src/lib/pdf/index.ts)
     │   ├── pomodoro/                # Estado reactivo persistente y temporizador Pomodoro (pomodoroStore.ts)
     │   ├── simulator/               # Parser y evaluador del Modo Simulacro Interactivo (practiceExamSimulator.ts)

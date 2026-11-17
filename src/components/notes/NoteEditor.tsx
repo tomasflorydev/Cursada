@@ -1,13 +1,20 @@
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { languages } from '@codemirror/language-data';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, placeholder } from '@codemirror/view';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cursadaClient } from '../../lib/api/client';
+import {
+  CURSADA_CODE_LANGUAGES,
+  computeMinimalTextDiff,
+} from '../../lib/editor/codeMirrorLanguages';
+import {
+  isNoteDraftDirty,
+  resolvePersistedNoteTitle,
+} from '../../lib/notes/noteDraftUtils';
 import type { NoteWithCourse } from '../../types/domain';
 
 export type NoteEditorViewMode = 'edit' | 'preview';
@@ -125,14 +132,7 @@ export function NoteEditor({
 
   const persistDraft = useCallback(
     async (target: { noteId: string; title: string; content: string }) => {
-      const trimmedTitle = target.title.trim();
-      if (!trimmedTitle) {
-        if (latestDraftRef.current.noteId === target.noteId) {
-          setSaveStatus('error');
-          setSaveError('El título no puede estar vacío.');
-        }
-        return;
-      }
+      const resolvedTitle = resolvePersistedNoteTitle(target.title);
 
       if (latestDraftRef.current.noteId === target.noteId) {
         setSaveStatus('saving');
@@ -141,7 +141,7 @@ export function NoteEditor({
 
       try {
         const updated = await cursadaClient.updateNote(target.noteId, {
-          title: trimmedTitle,
+          title: resolvedTitle,
           content: target.content,
         });
 
@@ -155,7 +155,8 @@ export function NoteEditor({
 
         if (latestDraftRef.current.noteId === target.noteId) {
           const stillMatchesLatest =
-            latestDraftRef.current.title.trim() === updated.title &&
+            resolvePersistedNoteTitle(latestDraftRef.current.title) ===
+              updated.title &&
             latestDraftRef.current.content === updated.content;
           setSaveStatus(stillMatchesLatest ? 'saved' : 'dirty');
         }
@@ -178,13 +179,10 @@ export function NoteEditor({
     if (mountedNoteIdRef.current !== note.id) {
       const prevDraft = latestDraftRef.current;
       const prevSaved = savedSnapshotRef.current;
-      const prevWasDirty =
-        prevDraft.noteId === prevSaved.noteId &&
-        (prevDraft.title.trim() !== prevSaved.title ||
-          prevDraft.content !== prevSaved.content);
+      const prevWasDirty = isNoteDraftDirty(prevDraft, prevSaved);
 
       clearPendingTimer();
-      if (prevWasDirty && prevDraft.title.trim()) {
+      if (prevWasDirty) {
         void persistDraft(prevDraft);
       }
 
@@ -206,12 +204,16 @@ export function NoteEditor({
       setExportFeedback(null);
 
       const view = cmViewRef.current;
-      if (view && view.state.doc.toString() !== note.content) {
-        isSyncingRef.current = true;
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: note.content },
-        });
-        isSyncingRef.current = false;
+      if (view) {
+        const diff = computeMinimalTextDiff(
+          view.state.doc.toString(),
+          note.content
+        );
+        if (diff) {
+          isSyncingRef.current = true;
+          view.dispatch({ changes: diff });
+          isSyncingRef.current = false;
+        }
       }
     }
   }, [note.id, note.title, note.content, effectiveTitle, clearPendingTimer, persistDraft]);
@@ -229,21 +231,11 @@ export function NoteEditor({
       return;
     }
 
-    const trimmedTitle = effectiveTitle.trim();
-    const isTitleDirty = trimmedTitle !== saved.title;
-    const isContentDirty = content !== saved.content;
-
-    if (!isTitleDirty && !isContentDirty) {
+    const isDirty = isNoteDraftDirty(latestDraftRef.current, saved);
+    if (!isDirty) {
       clearPendingTimer();
       setSaveStatus((prev) => (prev === 'saving' ? prev : 'saved'));
       setSaveError(null);
-      return;
-    }
-
-    if (!trimmedTitle) {
-      clearPendingTimer();
-      setSaveStatus('error');
-      setSaveError('El título no puede estar vacío.');
       return;
     }
 
@@ -262,10 +254,27 @@ export function NoteEditor({
     }, NOTE_AUTOSAVE_DELAY_MS);
   }, [note.id, effectiveTitle, content, clearPendingTimer, persistDraft]);
 
-  // Clean up timers on unmount
+  // Clean up timers and flush pending edits on unmount or window unload
   useEffect(() => {
-    return () => {
+    const flushNow = () => {
       clearPendingTimer();
+      const draft = latestDraftRef.current;
+      const saved = savedSnapshotRef.current;
+      if (isNoteDraftDirty(draft, saved)) {
+        void cursadaClient.updateNote(draft.noteId, {
+          title: resolvePersistedNoteTitle(draft.title),
+          content: draft.content,
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', flushNow);
+    window.addEventListener('pagehide', flushNow);
+
+    return () => {
+      window.removeEventListener('beforeunload', flushNow);
+      window.removeEventListener('pagehide', flushNow);
+      flushNow();
       if (exportTimerRef.current !== null) {
         window.clearTimeout(exportTimerRef.current);
       }
@@ -295,7 +304,7 @@ export function NoteEditor({
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown({
             base: markdownLanguage,
-            codeLanguages: languages,
+            codeLanguages: CURSADA_CODE_LANGUAGES,
           }),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           EditorView.lineWrapping,

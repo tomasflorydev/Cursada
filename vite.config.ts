@@ -44,6 +44,54 @@ export default defineConfig({
   css: {
     postcss: {},
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'vendor-react';
+          }
+          if (id.includes('/framer-motion/')) {
+            return 'vendor-motion';
+          }
+          if (
+            id.includes('/react-markdown/') ||
+            id.includes('/remark-') ||
+            id.includes('/rehype-') ||
+            id.includes('/unified/') ||
+            id.includes('/micromark') ||
+            id.includes('/mdast-') ||
+            id.includes('/hast-') ||
+            id.includes('/unist-')
+          ) {
+            return 'vendor-markdown';
+          }
+          if (id.includes('/@lezer/')) {
+            return 'vendor-lezer';
+          }
+          if (
+            id.includes('/@codemirror/') &&
+            !id.includes('/@codemirror/lang-javascript/') &&
+            !id.includes('/@codemirror/lang-python/') &&
+            !id.includes('/@codemirror/lang-java/') &&
+            !id.includes('/@codemirror/lang-sql/') &&
+            !id.includes('/@codemirror/lang-json/') &&
+            !id.includes('/@codemirror/lang-html/') &&
+            !id.includes('/@codemirror/lang-css/') &&
+            !id.includes('/@codemirror/lang-cpp/') &&
+            !id.includes('/@codemirror/lang-yaml/')
+          ) {
+            return 'vendor-codemirror';
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,

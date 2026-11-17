@@ -1,14 +1,14 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Versión actual**: **`v2.4.0` (Ciclo 2 completado + Correcciones de Auditoría Fase 1 aplicadas en `main`)**.
-- **Próximo hito planificado**: **Fase 2 de auditoría** (informes en SQLite, embeddings unificados, ajustes desconectados y optimización del editor), validación manual en Electron (`npm run dev`) y reempaquetado opcional de `release/Cursada.app` (`npm run package`).
+- **Versión actual**: **`v2.4.0` (Ciclo 2 completado + Correcciones de Auditoría Fases 1 y 2 aplicadas en `main`)**.
+- **Próximo hito planificado**: **Fase 3 de auditoría** (desduplicación `shared/` y limpieza de código muerto/refactor grande), validación manual en Electron (`npm run dev`) y reempaquetado opcional de `release/Cursada.app` (`npm run package`).
 - **Última actualización**: 2026-11-16
 - **Métricas de verificación automatizada en `main`**:
-  - **37 archivos de test** y **178 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v8`).
+  - **40 archivos de test** y **190 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v9`).
   - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción compilado sin errores** (`npm run build`, incluyendo `dist-electron/preload.cjs` e inyección CSP).
-- **Alineación documental**: Sincronizado con `README.md`, `ROADMAP.md` (`v2.4.0`), `ARCHITECTURE.md` (esquema `v8` y hardening Fase 1), `DESIGN.md` (`v2.0`) y `AUDITORIA.md`.
+  - **Build de producción compilado sin errores ni warnings de chunk** (`npm run build`, incluyendo `dist-electron/preload.cjs`, inyección CSP y bundle principal de `380.54 kB`).
+- **Alineación documental**: Sincronizado con `README.md`, `ROADMAP.md` (`v2.4.0`), `ARCHITECTURE.md` (esquema `v9` y mejoras Fases 1–2), `DESIGN.md` (`v2.0`) y `AUDITORIA.md`.
 
 ## Avances Completados
 
@@ -195,6 +195,23 @@
   - Ícono SVG/PNG programático unificado con `build/icon-dark.svg` (`#1E2023` + `#FF5F52`), copia de `icon.png` dentro de `Contents/Resources/`, corrección de sintaxis CSS en `.course-overview-card`, `npm run dev` unificado (Vite + Electron), creación de `README.md` y poda segura de los 10 worktrees externos y las 12 ramas ya mergeadas en `main`.
   - Tests nuevos de seguridad, integridad y empaquetado (`src/__tests__/phase1Security.test.ts`, `coursesRepo.test.ts`, `notesRepo.test.ts`, `exportService.test.ts`, `stage0-db-backups.test.ts`, `notificationsAndPackaging.test.ts`; suite total: **37 archivos / 178 tests en verde**).
 
+### Correcciones de Auditoría — Fase 2 (Informes SQLite, Embeddings, Funciones Desconectadas y Editor)
+- [x] **T2.1 — Informes persistidos en SQLite v9 y sin datos demo en producción (`migrations.ts`, `reportsRepo.ts`, `backupService.ts`, `reportHandlers.ts`, `reportsStore.ts`, `ReportsPage.tsx`)**:
+  - Migración aditiva `v9` (`study_reports` + índices), repositorio `electron/db/reportsRepo.ts` (`list/getById/save/delete`), restauración en `backupService.ts` y handlers IPC `reports:*`.
+  - Remoción de `INITIAL_REPORTS` y `localStorage` en producción desde `src/lib/reportsStore.ts` (aislando datos demo únicamente en `src/lib/api/mockReports.ts`) y flujo de confirmación inline de dos pasos para eliminar informes en `src/pages/ReportsPage.tsx`. *(Commit `0552623`)*
+- [x] **T2.2 — Embeddings locales unificados, streaming NDJSON y cancelación (`ollamaClient.ts`, `sourcesService.ts`, `reportService.ts`, `ragService.ts`, `reportHandlers.ts`, `chatHandlers.ts`)**:
+  - Vectorizador determinístico offline unificado (`computeDeterministicLocalEmbedding`, reexportado como `computeFallbackEmbedding` en `sourcesService.ts`) para mantener el mismo espacio vectorial entre indexado, búsqueda y chat offline.
+  - Streaming NDJSON en `/api/chat` con progreso incremental vía evento IPC `ai:streamProgress` y cancelación explícita mediante `AbortController`, `OllamaCancelledError` y canales `reports:cancel` / `chat:cancel`. *(Commit `f532254`)*
+- [x] **T2.3 — Ajustes de IA y Google Calendar conectados, previsualización/reindexado de fuentes y navegación `Cmd+K` (`aiPreferences.ts`, `calendarSyncService.ts`, `commandPaletteSearch.ts`, `CourseDetailView.tsx`)**:
+  - Preferencias `cursada-ai-report-language` y `cursada-ai-cite-sources` centralizadas en `src/lib/ai/aiPreferences.ts` y aplicadas en `ragService.ts`, `reportService.ts`, `reportsStore.ts` y mocks.
+  - Disparador no bloqueante `triggerAutoGoogleCalendarSync` tras mutaciones de materias, tareas y exámenes cuando `isConnected && autoSyncEnabled`.
+  - Rutas corregidas en `CommandPalette` para tareas/exámenes (`section: 'tareas' | 'examenes'` y atajo `⌘1–6`) más diálogo **Ver** fragmentos/texto y botón **Reindexar** en fuentes con error dentro de `CourseDetailView.tsx`. *(Commit `435daf1`)*
+- [x] **T2.4 — Optimización del editor Live Preview, autosave seguro y reducción de bundle (`livePreviewExtension.ts`, `codeMirrorLanguages.ts`, `noteDraftUtils.ts`, `SuperMarkdownEditor.tsx`, `NoteEditor.tsx`, `CourseDetailView.tsx`, `vite.config.ts`)**:
+  - Parser `parseLivePreviewLines` compartido en un único `StateField` (`parsedLinesField`), omitiendo re-parseos en movimiento de cursor dentro de la misma línea y decorando solo rangos visibles (`view.visibleRanges`).
+  - Eliminación del barrido React `setCursorOffset` por tecla en CodeMirror, diffs incrementales mínimos (`computeMinimalTextDiff`), lazy loading de `SuperMarkdownEditor` (`React.lazy` + `<Suspense>`), reemplazo de `@codemirror/language-data` por 10 loaders modernos en `CURSADA_CODE_LANGUAGES` y `manualChunks` en `vite.config.ts` (reduciendo el bundle inicial de `1.3 MB` a `380.54 kB`, sin warnings de Vite).
+  - Respaldo automático con fallback `'Nota sin título'` (`resolvePersistedNoteTitle`) para no descartar cambios del cuerpo cuando el título está vacío, más flush inmediato ante `beforeunload` y `pagehide`.
+  - Nuevos tests de Fase 2 (`reportsPersistence.test.ts`, `phase2Integration.test.tsx`, `phase2EditorAndAutosave.test.tsx` y ampliaciones en `ollamaAndAiSettings`, `reportService`, `chatAndRag`, `stage0-db-backups`, `commandPaletteAndShortcuts`; suite total: **40 archivos / 190 tests en verde**).
+
 ## Qué sigue (Verificación Manual y Siguientes Fases)
 - [x] **Fase 9 (`v1.1.0`) — Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base**.
 - [x] **Fase 10 (`v2.0.0`) — Overhaul Total de la Interfaz Gráfica (Estilo Tipográfico Suizo)**.
@@ -204,4 +221,5 @@
 - [x] **Fase 14 (`v2.4.0`) — Sincronización con Google Calendar (iCal `.ics` + OAuth2 local)**.
 - [x] **Iteración Post-Fase 14 — Refinamiento UI Editorial Suizo, contraste de toggles/segmentados y centralización de Obsidian en Ajustes**.
 - [x] **Auditoría Fase 1 (Quick Wins T1.1–T1.4 completada al 100%)**.
-- [ ] **Pendientes post-Fase 1**: Ejecutar **Fase 2** (informes en SQLite, embeddings locales unificados, ajustes/CommandPalette, optimización de editor/bundle) y **Fase 3** (`AUDITORIA.md`), más verificación manual interactiva en Electron (`npm run dev` / `npm run package`).
+- [x] **Auditoría Fase 2 (Informes SQLite v9, Embeddings, Flujos desconectados y Editor completada al 100%)**.
+- [ ] **Pendientes post-Fase 2**: Ejecutar **Fase 3** (`AUDITORIA.md`: desduplicación `shared/` y limpieza de código muerto/refactors grandes) más verificación manual interactiva en Electron (`npm run dev` / `npm run package`).

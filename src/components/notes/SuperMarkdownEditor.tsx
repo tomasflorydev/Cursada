@@ -1,7 +1,10 @@
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { languages } from '@codemirror/language-data';
+import {
+  CURSADA_CODE_LANGUAGES,
+  computeMinimalTextDiff,
+} from '../../lib/editor/codeMirrorLanguages';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import {
@@ -323,6 +326,9 @@ export function SuperMarkdownEditor({
     };
   }, []);
 
+  const dismissedTriggerPosRef = useRef(dismissedTriggerPos);
+  dismissedTriggerPosRef.current = dismissedTriggerPos;
+
   // Reset transient cursor/popup state when switching notes
   useEffect(() => {
     setCursorOffset(0);
@@ -331,21 +337,62 @@ export function SuperMarkdownEditor({
     setDismissedTriggerPos(null);
   }, [noteId]);
 
+  const clearWikiTriggerIfNeeded = useCallback(() => {
+    if (wikiTriggerRef.current !== null) {
+      setWikiTrigger(null);
+    }
+    if (dismissedTriggerPosRef.current !== null) {
+      setDismissedTriggerPos(null);
+    }
+  }, []);
+
   const updateWikiTriggerFromCursor = useCallback(
     (nextText: string, nextCursorPos: number) => {
       const match = detectWikiLinkTrigger(nextText, nextCursorPos);
       if (!match) {
-        setWikiTrigger(null);
-        setDismissedTriggerPos(null);
+        clearWikiTriggerIfNeeded();
         return;
       }
-      if (dismissedTriggerPos !== null && dismissedTriggerPos !== match.triggerStart) {
+      if (
+        dismissedTriggerPosRef.current !== null &&
+        dismissedTriggerPosRef.current !== match.triggerStart
+      ) {
         setDismissedTriggerPos(null);
       }
       setWikiTrigger(match);
       setActiveWikiIndex(0);
     },
-    [dismissedTriggerPos]
+    [clearWikiTriggerIfNeeded]
+  );
+
+  const updateWikiTriggerFromCodeMirror = useCallback(
+    (doc: EditorView['state']['doc'], head: number) => {
+      const line = doc.lineAt(head);
+      if (!line.text.includes('[[')) {
+        clearWikiTriggerIfNeeded();
+        return;
+      }
+      const linePos = head - line.from;
+      const lineMatch = detectWikiLinkTrigger(line.text, linePos);
+      if (!lineMatch) {
+        clearWikiTriggerIfNeeded();
+        return;
+      }
+      const globalMatch: WikiLinkTriggerMatch = {
+        triggerStart: line.from + lineMatch.triggerStart,
+        replaceEnd: line.from + lineMatch.replaceEnd,
+        query: lineMatch.query,
+      };
+      if (
+        dismissedTriggerPosRef.current !== null &&
+        dismissedTriggerPosRef.current !== globalMatch.triggerStart
+      ) {
+        setDismissedTriggerPos(null);
+      }
+      setWikiTrigger(globalMatch);
+      setActiveWikiIndex(0);
+    },
+    [clearWikiTriggerIfNeeded]
   );
 
   const filteredWikiNotes = useMemo(() => {
@@ -403,19 +450,16 @@ export function SuperMarkdownEditor({
         sel.to,
         actionId
       );
+      const diff = computeMinimalTextDiff(currentDoc, result.nextContent);
       view.dispatch({
-        changes: {
-          from: 0,
-          to: currentDoc.length,
-          insert: result.nextContent,
-        },
+        ...(diff ? { changes: diff } : {}),
         selection: {
           anchor: result.selectionStart,
           head: result.selectionEnd,
         },
       });
       view.focus();
-      updateWikiTriggerFromCursor(result.nextContent, result.selectionEnd);
+      updateWikiTriggerFromCodeMirror(view.state.doc, result.selectionEnd);
       return;
     }
 
@@ -599,7 +643,7 @@ export function SuperMarkdownEditor({
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown({
             base: markdownLanguage,
-            codeLanguages: languages,
+            codeLanguages: CURSADA_CODE_LANGUAGES,
           }),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           EditorView.lineWrapping,
@@ -617,8 +661,7 @@ export function SuperMarkdownEditor({
             }
             if (update.docChanged || update.selectionSet) {
               const head = update.state.selection.main.head;
-              setCursorOffset(head);
-              updateWikiTriggerFromCursor(update.state.doc.toString(), head);
+              updateWikiTriggerFromCodeMirror(update.state.doc, head);
             }
           }),
         ],
@@ -658,15 +701,16 @@ export function SuperMarkdownEditor({
     });
   }, [editorMode]);
 
-  // Synchronize external content updates into CodeMirror without echoing change callbacks
+  // Synchronize external content updates into CodeMirror using minimal incremental diffs
   useEffect(() => {
     const view = cmViewRef.current;
     if (!view) return;
     const currentDoc = view.state.doc.toString();
-    if (currentDoc !== content) {
+    const diff = computeMinimalTextDiff(currentDoc, content);
+    if (diff) {
       isSyncingRef.current = true;
       view.dispatch({
-        changes: { from: 0, to: currentDoc.length, insert: content },
+        changes: diff,
       });
       isSyncingRef.current = false;
     }
@@ -741,13 +785,19 @@ export function SuperMarkdownEditor({
   }
 
   const activeLineIndex = useMemo(
-    () => getLineIndexFromOffset(content, cursorOffset),
-    [content, cursorOffset]
+    () =>
+      useFallbackEditor && editorMode === 'live'
+        ? getLineIndexFromOffset(content, cursorOffset)
+        : 0,
+    [useFallbackEditor, editorMode, content, cursorOffset]
   );
 
   const previewLines = useMemo(
-    () => parseLivePreviewLines(content, activeLineIndex),
-    [content, activeLineIndex]
+    () =>
+      useFallbackEditor && editorMode === 'live'
+        ? parseLivePreviewLines(content, activeLineIndex)
+        : [],
+    [useFallbackEditor, editorMode, content, activeLineIndex]
   );
 
   function renderFallbackLivePreview(): ReactNode {

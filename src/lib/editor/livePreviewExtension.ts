@@ -116,6 +116,8 @@ export interface LivePreviewLineDescriptor {
 export interface LivePreviewExtensionOptions {
   onToggleTaskLine?: (lineIndex: number) => void;
   onWikiLinkClick?: (targetTitle: string) => void;
+  /** Optional parser hook used in tests to verify single-pass state updates. */
+  parseLines?: typeof parseLivePreviewLines;
 }
 
 const CALLOUT_LABELS: Record<CalloutKind, string> = {
@@ -1174,12 +1176,42 @@ function addInlineTokenDecorations(
   }
 }
 
+interface ParsedLivePreviewState {
+  activeKey: string;
+  lines: LivePreviewLineDescriptor[];
+}
+
+function serializeActiveLineSet(activeLines: ReadonlySet<number>): string {
+  if (activeLines.size === 0) return '';
+  if (activeLines.size === 1) {
+    const [only] = activeLines;
+    return String(only);
+  }
+  return Array.from(activeLines)
+    .sort((a, b) => a - b)
+    .join(',');
+}
+
+function doesLineOverlapVisibleRanges(
+  lineFrom: number,
+  lineTo: number,
+  visibleRanges: readonly { from: number; to: number }[]
+): boolean {
+  if (visibleRanges.length === 0) {
+    return true;
+  }
+  for (const range of visibleRanges) {
+    if (lineTo >= range.from && lineFrom <= range.to) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function buildMultiLineMathDecorations(
-  state: EditorView['state']
+  state: EditorView['state'],
+  lines: LivePreviewLineDescriptor[]
 ): DecorationSet {
-  const docText = state.doc.toString();
-  const activeLines = getActiveLineSet(state);
-  const lines = parseLivePreviewLines(docText, activeLines);
   const builder = new RangeSetBuilder<Decoration>();
 
   let idx = 0;
@@ -1217,15 +1249,27 @@ function buildMultiLineMathDecorations(
 
 function buildViewPluginDecorations(
   view: EditorView,
-  opts: LivePreviewExtensionOptions
+  opts: LivePreviewExtensionOptions,
+  lines: LivePreviewLineDescriptor[]
 ): DecorationSet {
-  const docText = view.state.doc.toString();
-  const activeLines = getActiveLineSet(view.state);
-  const lines = parseLivePreviewLines(docText, activeLines);
   const tree = syntaxTree(view.state);
+  const visibleRanges = view.visibleRanges;
+  const hasVisibleBounds = visibleRanges.length > 0;
+  const maxVisibleTo = hasVisibleBounds
+    ? visibleRanges.reduce((max, r) => Math.max(max, r.to), 0)
+    : Infinity;
   const ranges: Range<Decoration>[] = [];
 
   for (const line of lines) {
+    if (hasVisibleBounds) {
+      if (line.from > maxVisibleTo) {
+        break;
+      }
+      if (!doesLineOverlapVisibleRanges(line.from, line.to, visibleRanges)) {
+        continue;
+      }
+    }
+
     // Check syntax tree for fenced code context as a secondary guard
     const nodeAtLine = tree.resolveInner(line.from, 1);
     const inTreeCodeBlock =
@@ -1512,15 +1556,46 @@ function buildViewPluginDecorations(
 export function createLivePreviewExtension(
   opts: LivePreviewExtensionOptions = {}
 ): Extension {
+  const parseFn = opts.parseLines ?? parseLivePreviewLines;
+
+  const parsedLinesField = StateField.define<ParsedLivePreviewState>({
+    create(state) {
+      const activeLines = getActiveLineSet(state);
+      return {
+        activeKey: serializeActiveLineSet(activeLines),
+        lines: parseFn(state.doc.toString(), activeLines),
+      };
+    },
+    update(prev, tr) {
+      const activeLines = getActiveLineSet(tr.state);
+      const activeKey = serializeActiveLineSet(activeLines);
+      if (!tr.docChanged && activeKey === prev.activeKey) {
+        return prev;
+      }
+      return {
+        activeKey,
+        lines: parseFn(tr.state.doc.toString(), activeLines),
+      };
+    },
+  });
+
   const multiLineMathField = StateField.define<DecorationSet>({
     create(state) {
-      return buildMultiLineMathDecorations(state);
+      return buildMultiLineMathDecorations(
+        state,
+        state.field(parsedLinesField).lines
+      );
     },
     update(value, tr) {
-      if (tr.docChanged || tr.selection) {
-        return buildMultiLineMathDecorations(tr.state);
+      const prevParsed = tr.startState.field(parsedLinesField, false);
+      const nextParsed = tr.state.field(parsedLinesField, false);
+      if (!nextParsed) {
+        return Decoration.none;
       }
-      return value;
+      if (prevParsed === nextParsed) {
+        return value;
+      }
+      return buildMultiLineMathDecorations(tr.state, nextParsed.lines);
     },
     provide: (field) => EditorView.decorations.from(field),
   });
@@ -1530,16 +1605,26 @@ export function createLivePreviewExtension(
       decorations: DecorationSet;
 
       constructor(view: EditorView) {
-        this.decorations = buildViewPluginDecorations(view, opts);
+        this.decorations = buildViewPluginDecorations(
+          view,
+          opts,
+          view.state.field(parsedLinesField).lines
+        );
       }
 
       update(update: ViewUpdate) {
+        const prevParsed = update.startState.field(parsedLinesField, false);
+        const nextParsed = update.state.field(parsedLinesField, false);
+        const parsedChanged = prevParsed !== nextParsed;
         if (
-          update.docChanged ||
-          update.selectionSet ||
-          update.viewportChanged
+          nextParsed &&
+          (update.docChanged || update.viewportChanged || parsedChanged)
         ) {
-          this.decorations = buildViewPluginDecorations(update.view, opts);
+          this.decorations = buildViewPluginDecorations(
+            update.view,
+            opts,
+            nextParsed.lines
+          );
         }
       }
     },
@@ -1548,5 +1633,5 @@ export function createLivePreviewExtension(
     }
   );
 
-  return [multiLineMathField, livePreviewPlugin];
+  return [parsedLinesField, multiLineMathField, livePreviewPlugin];
 }
