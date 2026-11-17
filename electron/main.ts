@@ -18,6 +18,9 @@ import { checkAndDispatchDueReminders } from './services/notificationService.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const distElectronDir =
+  path.basename(__dirname) === 'electron' ? path.dirname(__dirname) : __dirname;
+const appRootDir = path.dirname(distElectronDir);
 
 const REMINDER_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -35,19 +38,19 @@ function getAppOriginOptions(): AppOriginOptions {
   const isPackagedBundle =
     app.isPackaged ||
     __dirname.includes(`${path.sep}Contents${path.sep}Resources${path.sep}app`) ||
-    !fs.existsSync(path.join(__dirname, '../src'));
+    !fs.existsSync(path.join(appRootDir, 'src'));
 
   return {
     isPackagedBundle,
     loadDist: process.env.CURSADA_LOAD_DIST === '1',
     devServerUrl: process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173',
-    distHtmlPath: path.join(__dirname, '../dist/index.html'),
+    distHtmlPath: path.join(appRootDir, 'dist/index.html'),
   };
 }
 
 function resolveAppIconPath(): string | undefined {
   const candidates = [
-    path.join(__dirname, '../build/icon.png'),
+    path.join(appRootDir, 'build/icon.png'),
     path.join(process.resourcesPath ?? '', 'icon.png'),
   ];
   for (const candidate of candidates) {
@@ -100,7 +103,7 @@ function createMainWindow(originOptions: AppOriginOptions): void {
     backgroundColor: '#1E2023',
     icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
+      preload: path.join(distElectronDir, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

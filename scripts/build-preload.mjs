@@ -42,6 +42,16 @@ export function buildSandboxedPreload(projectRoot) {
 
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(outPath, transpiled.outputText, 'utf8');
+
+  const compiledMainEntry = path.join(outDir, 'electron', 'main.js');
+  if (fs.existsSync(compiledMainEntry)) {
+    fs.writeFileSync(
+      path.join(outDir, 'main.js'),
+      "import './electron/main.js';\n",
+      'utf8'
+    );
+  }
+
   return outPath;
 }
 
