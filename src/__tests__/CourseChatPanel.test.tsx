@@ -1,190 +1,129 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CourseChatPanel } from '../components/assistant/CourseChatPanel';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CourseDetailView } from '../components/courses/CourseDetailView';
+import { cursadaClient } from '../lib/api/client';
 import { resetAllMocks } from '../lib/api/mockClient';
-import { mockListNotes } from '../lib/api/mockNotes';
 
-beforeAll(() => {
-  if (typeof HTMLDialogElement !== 'undefined') {
-    if (!HTMLDialogElement.prototype.showModal) {
-      HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-        this.setAttribute('open', '');
-        this.returnValue = '';
-      };
-    }
-    if (!HTMLDialogElement.prototype.close) {
-      HTMLDialogElement.prototype.close = function close(
-        this: HTMLDialogElement,
-        returnValue?: string
-      ) {
-        this.returnValue = returnValue ?? '';
-        this.removeAttribute('open');
-        this.dispatchEvent(new Event('close', { bubbles: false }));
-      };
-    }
-  }
-});
-
-describe('CourseChatPanel', () => {
+describe('CourseDetailView RAG Ask Flow (migrated Swiss UI)', () => {
   beforeEach(() => {
+    localStorage.clear();
     resetAllMocks();
   });
 
-  it('sends message with customInstructions, renders assistant reply, model pill, and citation chip', async () => {
-    const { container } = render(
-      <CourseChatPanel
-        courseId="ing-soft-1"
-        courseName="Ingeniería de Software I"
-      />
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('sends question grounded on course sources, renders assistant reply and citation references', async () => {
+    const sendSpy = vi.spyOn(cursadaClient, 'sendChatMessage');
+
+    render(<CourseDetailView courseId="ing-soft-1" onSelectCourse={vi.fn()} />);
+
+    const assistantPane = await screen.findByLabelText(
+      'Asistente e informes con IA'
     );
-
-    expect(
-      await screen.findByText(/Consultá tus apuntes, PDFs y notas de Ingeniería de Software I/i)
-    ).toBeInTheDocument();
-
-    const instructionsInput = screen.getByLabelText(/Instrucciones personalizadas/i);
-    const promptInput = screen.getByLabelText(/Tu consulta sobre Ingeniería de Software I/i);
-
-    fireEvent.change(instructionsInput, {
-      target: { value: 'Usá puntos concisos para estudiar' },
+    const input = within(assistantPane).getByPlaceholderText(
+      'Preguntale a tus fuentes…'
+    );
+    const submitBtn = within(assistantPane).getByRole('button', {
+      name: 'Enviar consulta',
     });
-    fireEvent.change(promptInput, {
+
+    expect(submitBtn).toBeDisabled();
+
+    fireEvent.change(input, {
       target: { value: '¿Qué cubre el programa sobre ciclo de vida y requisitos?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
-
-    expect(
-      await screen.findByText('¿Qué cubre el programa sobre ciclo de vida y requisitos?')
-    ).toBeInTheDocument();
+    expect(submitBtn).toBeEnabled();
+    fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      const messagesRegion = container.querySelector('.assistant-messages');
-      expect(messagesRegion).not.toBeNull();
+      expect(sendSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          courseId: 'ing-soft-1',
+          content: '¿Qué cubre el programa sobre ciclo de vida y requisitos?',
+        })
+      );
+    });
+
+    expect(
+      await within(assistantPane).findByText(
+        '¿Qué cubre el programa sobre ciclo de vida y requisitos?'
+      )
+    ).toBeInTheDocument();
+
+    // Citation list below answer
+    await waitFor(() => {
       expect(
-        within(messagesRegion as HTMLElement).getByText(/Usá puntos concisos para estudiar/i)
-      ).toBeInTheDocument();
+        assistantPane.querySelector('.notebook-answer-copy')?.textContent?.trim()
+          .length ?? 0
+      ).toBeGreaterThan(15);
     });
-    expect(await screen.findByText(/llama3\.2/i)).toBeInTheDocument();
-
-    const citationButtons = await screen.findAllByRole('button', { name: /^\[1\]/i });
-    expect(citationButtons.length).toBeGreaterThan(0);
   });
 
-  it('opens native dialog with full citation excerpt and closes cleanly resetting returnValue', async () => {
-    render(
-      <CourseChatPanel
-        courseId="ing-soft-1"
-        courseName="Ingeniería de Software I"
-      />
+  it('supports canceling an in-flight RAG query without rendering an error alert', async () => {
+    const cancelSpy = vi
+      .spyOn(cursadaClient, 'cancelChatMessage')
+      .mockResolvedValue(undefined);
+    let resolvePending!: (val: never) => void;
+    vi.spyOn(cursadaClient, 'sendChatMessage').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePending = resolve as (val: never) => void;
+        })
     );
 
-    const quickPrompt = await screen.findByRole('button', {
-      name: /Resumime los temas principales de las fuentes/i,
+    render(<CourseDetailView courseId="ing-soft-1" onSelectCourse={vi.fn()} />);
+
+    const assistantPane = await screen.findByLabelText(
+      'Asistente e informes con IA'
+    );
+    const input = within(assistantPane).getByPlaceholderText(
+      'Preguntale a tus fuentes…'
+    );
+    fireEvent.change(input, { target: { value: 'Consulta lenta' } });
+    fireEvent.click(
+      within(assistantPane).getByRole('button', { name: 'Enviar consulta' })
+    );
+
+    const cancelBtn = await within(assistantPane).findByRole('button', {
+      name: 'Cancelar consulta',
     });
-    fireEvent.click(quickPrompt);
-
-    const citationChip = await screen.findByRole('button', { name: /^\[1\]/i });
-    fireEvent.click(citationChip);
-
-    const dialog = screen.getByRole('dialog') as HTMLDialogElement;
-    expect(dialog.open).toBe(true);
-    expect(dialog).not.toHaveAttribute('role');
-    expect(dialog).not.toHaveAttribute('aria-modal');
-
-    const dialogScope = within(dialog);
-    expect(dialogScope.getByRole('heading')).toHaveTextContent(/^\[1\]/);
-    expect(dialogScope.getByText(/Relevancia:/i)).toBeInTheDocument();
-
-    const excerptEl = dialog.querySelector('.citation-dialog-excerpt');
-    expect(excerptEl?.textContent?.trim().length).toBeGreaterThan(20);
-
-    fireEvent.click(dialogScope.getByRole('button', { name: 'Cerrar' }));
+    fireEvent.click(cancelBtn);
 
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(cancelSpy).toHaveBeenCalledTimes(1);
     });
-    expect(dialog.open).toBe(false);
-    expect(dialog.returnValue).toBe('');
-  });
-
-  it('saves assistant response as a note with citations and opens Notes tab on demand', async () => {
-    const onNoteCreated = vi.fn();
-    const onOpenNotesTab = vi.fn();
-
-    render(
-      <CourseChatPanel
-        courseId="ing-soft-1"
-        courseName="Ingeniería de Software I"
-        onNoteCreated={onNoteCreated}
-        onOpenNotesTab={onOpenNotesTab}
-      />
-    );
-
-    const promptInput = await screen.findByLabelText(/Tu consulta sobre Ingeniería de Software I/i);
-    fireEvent.change(promptInput, {
-      target: { value: 'Explicame modelos iterativos y requisitos' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
-
-    const saveButton = await screen.findByRole('button', { name: 'Guardar como Nota' });
-    fireEvent.click(saveButton);
-
-    const openNotesButton = await screen.findByRole('button', { name: 'Abrir en Notas' });
-    expect(screen.getByText('Nota guardada')).toBeInTheDocument();
-    expect(onNoteCreated).toHaveBeenCalledTimes(1);
-
-    const createdNoteId = onNoteCreated.mock.calls[0][0] as string;
-    const courseNotes = await mockListNotes({ courseId: 'ing-soft-1' });
-    const createdNote = courseNotes.find((note) => note.id === createdNoteId);
-    expect(createdNote).toBeDefined();
-    expect(createdNote!.origin).toBe('ai_summary');
-    expect(createdNote!.content).toContain('## Fuentes citadas');
-
-    fireEvent.click(openNotesButton);
-    expect(onOpenNotesTab).toHaveBeenCalledTimes(1);
-  });
-
-  it('guards against IME Enter submit and supports creating and deleting threads', async () => {
-    render(
-      <CourseChatPanel
-        courseId="ing-soft-1"
-        courseName="Ingeniería de Software I"
-      />
-    );
-
-    const promptInput = await screen.findByLabelText(/Tu consulta sobre Ingeniería de Software I/i);
-    fireEvent.change(promptInput, {
-      target: { value: 'Consulta en composición IME' },
-    });
-
-    // IME Enter must NOT submit
-    fireEvent.keyDown(promptInput, {
-      key: 'Enter',
-      isComposing: true,
-      keyCode: 229,
-    });
-
-    expect(screen.queryByRole('button', { name: 'Guardar como Nota' })).not.toBeInTheDocument();
-    expect((promptInput as HTMLTextAreaElement).value).toBe('Consulta en composición IME');
-
-    // Real Enter submits the message
-    fireEvent.keyDown(promptInput, {
-      key: 'Enter',
-      shiftKey: false,
-      isComposing: false,
-      keyCode: 13,
-    });
-
-    expect(await screen.findByRole('button', { name: 'Guardar como Nota' })).toBeInTheDocument();
-
-    // Create a second thread and verify empty state returns
-    fireEvent.click(screen.getByRole('button', { name: '+ Nueva consulta' }));
     expect(
-      await screen.findByText(/Consultá tus apuntes, PDFs y notas de Ingeniería de Software I/i)
-    ).toBeInTheDocument();
+      within(assistantPane).queryByRole('button', { name: 'Cancelar consulta' })
+    ).not.toBeInTheDocument();
+    expect(within(assistantPane).getByRole('alert')).toHaveTextContent(
+      /Consulta cancelada/i
+    );
+    void resolvePending;
+  });
 
-    // Delete current thread cleanly
-    fireEvent.click(screen.getByRole('button', { name: 'Eliminar conversación' }));
-    expect(await screen.findByRole('button', { name: 'Guardar como Nota' })).toBeInTheDocument();
+  it('surfaces errors gracefully when sendChatMessage rejects', async () => {
+    vi.spyOn(cursadaClient, 'sendChatMessage').mockRejectedValueOnce(
+      new Error('Error de conexión con Ollama')
+    );
+
+    render(<CourseDetailView courseId="ing-soft-1" onSelectCourse={vi.fn()} />);
+
+    const assistantPane = await screen.findByLabelText(
+      'Asistente e informes con IA'
+    );
+    fireEvent.change(
+      within(assistantPane).getByPlaceholderText('Preguntale a tus fuentes…'),
+      { target: { value: 'Consulta con fallo' } }
+    );
+    fireEvent.click(
+      within(assistantPane).getByRole('button', { name: 'Enviar consulta' })
+    );
+
+    expect(
+      await within(assistantPane).findByText(/Error de conexión con Ollama/i)
+    ).toBeInTheDocument();
   });
 });

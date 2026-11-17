@@ -1,14 +1,14 @@
 # PROGRESS.md — Estado del Proyecto Cursada
 
 ## Estado Actual
-- **Versión actual**: **`v2.4.0` (Ciclo 2 completado + Correcciones de Auditoría Fases 1 y 2 aplicadas en `main`)**.
-- **Próximo hito planificado**: **Fase 3 de auditoría** (desduplicación `shared/` y limpieza de código muerto/refactor grande), validación manual en Electron (`npm run dev`) y reempaquetado opcional de `release/Cursada.app` (`npm run package`).
-- **Última actualización**: 2026-11-16
+- **Versión actual**: **`v2.4.0` (Ciclo 2 completado + Plan completo de Auditoría Fases 1, 2 y 3 aplicado en `main`)**.
+- **Próximo hito planificado**: Validación manual interactiva en Electron (`npm run dev`), `npm audit` fuera del sandbox y empaquetado final de `release/Cursada.app` (`npm run package`).
+- **Última actualización**: 2026-11-17
 - **Métricas de verificación automatizada en `main`**:
-  - **40 archivos de test** y **190 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v9`).
-  - **0 errores de compilación TypeScript** en frontend y Electron (`npm run typecheck`).
-  - **Build de producción compilado sin errores ni warnings de chunk** (`npm run build`, incluyendo `dist-electron/preload.cjs`, inyección CSP y bundle principal de `380.54 kB`).
-- **Alineación documental**: Sincronizado con `README.md`, `ROADMAP.md` (`v2.4.0`), `ARCHITECTURE.md` (esquema `v9` y mejoras Fases 1–2), `DESIGN.md` (`v2.0`) y `AUDITORIA.md`.
+  - **40 archivos de test** y **181 tests unitarios y de integración en verde** (`npm test` sobre esquema SQLite `v9` tras migrar los tests de Fases 2–8 a las vistas Suizas vigentes).
+  - **0 errores de compilación TypeScript** en frontend, `shared/` y Electron (`npm run typecheck`).
+  - **Build de producción compilado sin errores ni warnings** (`npm run build`: `dist-electron/main.js` + `preload.cjs`, bundle JS inicial `383.81 kB` y CSS total reducido de `137.02 kB` a `93.39 kB`).
+- **Alineación documental**: Sincronizado con `README.md`, `ROADMAP.md` (`v2.4.0`), `ARCHITECTURE.md` (esquema `v9`, módulo `shared/` y arquitectura modular Suiza), `DESIGN.md` (`v2.0`) y `AUDITORIA.md`.
 
 ## Avances Completados
 
@@ -209,8 +209,22 @@
 - [x] **T2.4 — Optimización del editor Live Preview, autosave seguro y reducción de bundle (`livePreviewExtension.ts`, `codeMirrorLanguages.ts`, `noteDraftUtils.ts`, `SuperMarkdownEditor.tsx`, `NoteEditor.tsx`, `CourseDetailView.tsx`, `vite.config.ts`)**:
   - Parser `parseLivePreviewLines` compartido en un único `StateField` (`parsedLinesField`), omitiendo re-parseos en movimiento de cursor dentro de la misma línea y decorando solo rangos visibles (`view.visibleRanges`).
   - Eliminación del barrido React `setCursorOffset` por tecla en CodeMirror, diffs incrementales mínimos (`computeMinimalTextDiff`), lazy loading de `SuperMarkdownEditor` (`React.lazy` + `<Suspense>`), reemplazo de `@codemirror/language-data` por 10 loaders modernos en `CURSADA_CODE_LANGUAGES` y `manualChunks` en `vite.config.ts` (reduciendo el bundle inicial de `1.3 MB` a `380.54 kB`, sin warnings de Vite).
-  - Respaldo automático con fallback `'Nota sin título'` (`resolvePersistedNoteTitle`) para no descartar cambios del cuerpo cuando el título está vacío, más flush inmediato ante `beforeunload` y `pagehide`.
+  - Respaldo automático con fallback `'Nota sin título'` (`resolvePersistedNoteTitle`) para no descartar cambios del cuerpo cuando el título está vacío, más flush inmediato ante `beforeunload` y `pagehide`. *(Commit `444c334`)*
   - Nuevos tests de Fase 2 (`reportsPersistence.test.ts`, `phase2Integration.test.tsx`, `phase2EditorAndAutosave.test.tsx` y ampliaciones en `ollamaAndAiSettings`, `reportService`, `chatAndRag`, `stage0-db-backups`, `commandPaletteAndShortcuts`; suite total: **40 archivos / 190 tests en verde**).
+
+### Correcciones de Auditoría — Fase 3 (Refactor Grande: `shared/`, Subdivisión Modular y Poda de Código Muerto)
+- [x] **T3.1a — Infraestructura `shared/` y unificación de tipos (`shared/types.ts`, `tsconfig.electron.json`, `tsconfig.json`, `electron/main.ts`, `scripts/build-preload.mjs`)**:
+  - Centralización de los 102 tipos de dominio compartidos en `shared/types.ts` (reexportados por `electron/types.ts` y `src/types/domain.ts`, eliminando ~1.675 líneas duplicadas).
+  - Ajuste de `tsconfig.electron.json` (`rootDir: "."`, `include: ["electron", "shared"]`) con entry shim `dist-electron/main.js` generado por `build-preload.mjs` y resolución dinámica de rutas en `electron/main.ts`. *(Commit `792f633`)*
+- [x] **T3.1b — Desduplicación de extractor PDF, iCal `.ics` y WikiLinks/Frontmatter (`shared/pdfExtractor.ts`, `shared/icsCalendar.ts`, `shared/wikiLinks.ts`)**:
+  - Extractor PDF único en `shared/pdfExtractor.ts` (consumido por `src/lib/pdf/index.ts` y `electron/services/chunkingService.ts` con `zlib` inyectado).
+  - Generador/parser iCal `.ics` único en `shared/icsCalendar.ts` (consumido por `src/lib/calendar/icsParserAndBuilder.ts` y `electron/services/calendarSyncService.ts`) y parser único de `[[WikiLinks]]`/YAML frontmatter en `shared/wikiLinks.ts` (`wikiLinksParser.ts`, `electron/db/wikiLinks.ts`, `obsidianImportService.ts`). *(Commit `1d2b53e`)*
+- [x] **T3.2a — Subdivisión modular de `CourseDetailView` y `SettingsPage`**:
+  - Extracción de `CourseNotebookSidebar.tsx`, `CourseAssistantSidebar.tsx` y `SourcePreviewDialog.tsx` desde `CourseDetailView.tsx` (`2.106` → `1.396` líneas).
+  - Extracción de `SettingsGeneralSection.tsx`, `SettingsAiSection.tsx`, `SettingsAppearanceSection.tsx`, `SettingsDataSection.tsx` y `SettingsShortcutsSection.tsx` desde `SettingsPage.tsx` (`1.219` → `117` líneas). *(Commit `30825fd`)*
+- [x] **T3.2b — Migración de tests heredados y eliminación de código + CSS muertos**:
+  - Migración de `TasksPage.test.tsx`, `commandPaletteAndShortcuts.test.tsx`, `Phase4Integration.test.tsx`, `ExportMarkdownUI.test.tsx`, `NotesWorkspace.test.tsx`, `SourcesWorkspace.test.tsx`, `CourseChatPanel.test.tsx`, `CourseReportGenerator.test.tsx`, `NotificationSettingsUI.test.tsx` y `Phase12KnowledgeAndObsidian.test.tsx` para cubrir las vistas Suizas activas.
+  - Eliminación de **20 archivos muertos** (~10.210 líneas: `BasicViews`, `NotesPage`, `Sidebar`, `TaskList`, `ExamList`, `NotesWorkspace`, `NoteEditor`, `NotesGraphView`, `SourcesWorkspace`, `CourseAssistantWorkspace`, `CourseChatPanel`, `CourseReportGenerator`, `NotificationSettingsSection`, `OllamaSettingsSection`, `ExportMarkdownButton` y los 5 CSS heredados `tasks/exams/notes/sources/assistant.css`) más el bloque de grafo en `src/styles/knowledge.css` (269 líneas). CSS compilado reducido de `137.02 kB` a `93.39 kB`; suite final: **40 archivos / 181 tests en verde**.
 
 ## Qué sigue (Verificación Manual y Siguientes Fases)
 - [x] **Fase 9 (`v1.1.0`) — Limpieza de UI ("De-AI-fication"), Renombrado a Anotadores y Pulido Base**.
@@ -222,4 +236,5 @@
 - [x] **Iteración Post-Fase 14 — Refinamiento UI Editorial Suizo, contraste de toggles/segmentados y centralización de Obsidian en Ajustes**.
 - [x] **Auditoría Fase 1 (Quick Wins T1.1–T1.4 completada al 100%)**.
 - [x] **Auditoría Fase 2 (Informes SQLite v9, Embeddings, Flujos desconectados y Editor completada al 100%)**.
-- [ ] **Pendientes post-Fase 2**: Ejecutar **Fase 3** (`AUDITORIA.md`: desduplicación `shared/` y limpieza de código muerto/refactors grandes) más verificación manual interactiva en Electron (`npm run dev` / `npm run package`).
+- [x] **Auditoría Fase 3 (Desduplicación `shared/`, Subdivisión Modular y Poda de Código Muerto completada al 100%)**.
+- [ ] **Pendientes finales**: Verificación manual interactiva en Electron fuera del sandbox (`npm run dev`), `npm audit` y reempaquetado opcional de `release/Cursada.app` (`npm run package`).

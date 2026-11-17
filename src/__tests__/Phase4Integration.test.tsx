@@ -4,7 +4,7 @@ import { resetAllMocks } from '../lib/api/mockClient';
 import { App } from '../App';
 import { CoursesPage } from '../pages/CoursesPage';
 
-describe('Phase 4 Integration: NotesPage in App and CourseDetailView Notas + Export', () => {
+describe('Phase 4 Integration: CourseDetailView Notas + Export in App', () => {
   beforeEach(() => {
     resetAllMocks();
     if (!URL.createObjectURL) {

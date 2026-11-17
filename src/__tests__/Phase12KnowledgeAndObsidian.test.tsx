@@ -7,7 +7,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from '../../electron/db/coursesRepo';
@@ -26,7 +25,6 @@ import {
 } from '../../electron/services/obsidianImportService';
 import { ObsidianImportModal } from '../components/courses/ObsidianImportModal';
 import { NoteBacklinksPanel } from '../components/notes/NoteBacklinksPanel';
-import { NotesGraphView } from '../components/notes/NotesGraphView';
 import { cursadaClient } from '../lib/api/client';
 import { resetAllMocks } from '../lib/api/mockClient';
 import {
@@ -523,129 +521,6 @@ describe('Phase 12 (v2.2.0): Knowledge Network (WikiLinks, Backlinks, 2D Graph &
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Nota C')).not.toBeInTheDocument();
-  });
-
-  it('renders <NotesGraphView /> with scope toggle, archived switch, text filter, zoom controls, and accessible node list', async () => {
-    const getGraphSpy = vi
-      .spyOn(cursadaClient, 'getKnowledgeGraph')
-      .mockImplementation(async (opts) => {
-        if (opts?.courseId === 'c1') {
-          return {
-            nodes: [
-              {
-                id: 'n1',
-                noteId: 'n1',
-                title: 'Patrones Creacionales',
-                courseId: 'c1',
-                courseName: 'Diseño de Sistemas',
-                courseColor: 'violet',
-                courseStatus: 'active',
-                degree: 1,
-                updatedAt: '2026-11-10T10:00:00.000Z',
-              },
-            ],
-            edges: [],
-          };
-        }
-        const nodes = [
-          {
-            id: 'n1',
-            noteId: 'n1',
-            title: 'Patrones Creacionales',
-            courseId: 'c1',
-            courseName: 'Diseño de Sistemas',
-            courseColor: 'violet' as const,
-            courseStatus: 'active' as const,
-            degree: 2,
-            updatedAt: '2026-11-10T10:00:00.000Z',
-          },
-          {
-            id: 'n2',
-            noteId: 'n2',
-            title: 'Transacciones ACID',
-            courseId: 'c2',
-            courseName: 'Base de Datos II',
-            courseColor: 'emerald' as const,
-            courseStatus: 'active' as const,
-            degree: 1,
-            updatedAt: '2026-11-10T10:00:00.000Z',
-          },
-          ...(opts?.includeArchived
-            ? [
-                {
-                  id: 'n3',
-                  noteId: 'n3',
-                  title: 'Álgebra Antigua',
-                  courseId: 'c3',
-                  courseName: 'Álgebra I',
-                  courseColor: 'slate' as const,
-                  courseStatus: 'archived' as const,
-                  degree: 1,
-                  updatedAt: '2025-11-10T10:00:00.000Z',
-                },
-              ]
-            : []),
-        ];
-        return {
-          nodes,
-          edges: [
-            {
-              id: 'e1',
-              sourceNoteId: 'n1',
-              targetNoteId: 'n2',
-              label: 'Transacciones ACID',
-            },
-          ],
-        };
-      });
-
-    const onSelectNote = vi.fn();
-    render(<NotesGraphView courseId="c1" onSelectNote={onSelectNote} />);
-
-    expect(screen.getByTestId('notes-graph-canvas')).toBeInTheDocument();
-    const list = await screen.findByRole('list', { name: 'Nodos del grafo' });
-    expect(within(list).getByText('Patrones Creacionales')).toBeInTheDocument();
-    expect(
-      within(list).queryByText('Transacciones ACID')
-    ).not.toBeInTheDocument();
-
-    // Switch scope to Grafo global
-    fireEvent.click(screen.getByRole('button', { name: 'Grafo global' }));
-    expect(
-      await within(list).findByText('Transacciones ACID')
-    ).toBeInTheDocument();
-
-    // Toggle Incluir archivados switch
-    fireEvent.click(screen.getByRole('switch', { name: 'Incluir archivados' }));
-    expect(
-      await within(list).findByText('Álgebra Antigua')
-    ).toBeInTheDocument();
-    expect(getGraphSpy).toHaveBeenLastCalledWith({
-      courseId: undefined,
-      includeArchived: true,
-    });
-
-    // Zoom controls update HUD
-    fireEvent.click(screen.getByRole('button', { name: 'Acercar grafo' }));
-    expect(screen.getByText('125%')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Centrar grafo' }));
-    expect(screen.getByText('100%')).toBeInTheDocument();
-
-    // Filter notes by text (accent-insensitive)
-    fireEvent.change(
-      screen.getByLabelText('Filtrar notas en el grafo'),
-      { target: { value: 'transacciones' } }
-    );
-    expect(
-      within(list).queryByText('Patrones Creacionales')
-    ).not.toBeInTheDocument();
-    expect(within(list).getByText('Transacciones ACID')).toBeInTheDocument();
-
-    // Click node in accessible list opens note
-    fireEvent.click(
-      within(list).getByRole('button', { name: /Transacciones ACID/i })
-    );
-    expect(onSelectNote).toHaveBeenCalledWith('n2', 'c2');
   });
 
   it('renders <ObsidianImportModal /> supporting archived destination, native trigger, and fallback folder selection', async () => {

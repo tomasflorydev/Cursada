@@ -1,11 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TaskList } from '../components/tasks/TaskList';
 import { cursadaClient } from '../lib/api/client';
 import { resetAllMocks } from '../lib/api/mockClient';
 import { TasksPage } from '../pages/TasksPage';
 
-describe('TasksPage and TaskList (Task 2.1)', () => {
+describe('TasksPage (Swiss Tasks view)', () => {
   beforeEach(() => {
     resetAllMocks();
   });
@@ -216,45 +215,37 @@ describe('TasksPage and TaskList (Task 2.1)', () => {
     ).toBeInTheDocument();
   });
 
-  it('works in contextual course mode (<TaskList courseId="ing-soft-1" />) showing only that course tasks and associating new tasks automatically', async () => {
-    render(<TaskList courseId="ing-soft-1" />);
+  it('filters tasks by course from sidebar Por materia and clears with Todas', async () => {
+    render(<TasksPage onSelectCourse={vi.fn()} />);
 
-    // Shows task belonging to ing-soft-1
     expect(
       await screen.findByText(
         /Completar matriz de trazabilidad de requerimientos y criterios de aceptación/i
       )
     ).toBeInTheDocument();
 
-    // Does not show tasks from other courses
+    const sidebar = document.querySelector('aside.swiss-col-3') as HTMLElement;
+    fireEvent.click(
+      within(sidebar).getByRole('button', { name: /Ingeniería de Software I/i })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          /Entregar script de índices compuestos y análisis de plan de ejecución/i
+        )
+      ).not.toBeInTheDocument();
+    });
     expect(
-      screen.queryByText(
-        /Entregar script de índices compuestos y análisis de plan de ejecución/i
+      screen.getByText(
+        /Completar matriz de trazabilidad de requerimientos y criterios de aceptación/i
       )
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
 
-    // Does not render course filter dropdown in contextual mode
-    expect(
-      screen.queryByLabelText(/Filtrar por anotador/i)
-    ).not.toBeInTheDocument();
-
-    // Create a task directly inside the course context without asking for course selection
-    fireEvent.click(screen.getByRole('button', { name: /Nueva tarea/i }));
-
-    const form = screen.getByRole('form', { name: /Nueva tarea/i });
-    expect(within(form).queryByLabelText(/^Anotador$/i)).not.toBeInTheDocument();
-
-    fireEvent.change(within(form).getByLabelText(/Título/i), {
-      target: { value: 'Definir casos de prueba de aceptación del Sprint 4' },
-    });
-    fireEvent.change(within(form).getByLabelText(/Prioridad/i), {
-      target: { value: 'high' },
-    });
-    fireEvent.click(within(form).getByRole('button', { name: /Guardar tarea/i }));
-
+    fireEvent.click(within(sidebar).getByRole('button', { name: 'Todas' }));
     expect(
       await screen.findByText(
-        'Definir casos de prueba de aceptación del Sprint 4'
+        /Entregar script de índices compuestos y análisis de plan de ejecución/i
       )
     ).toBeInTheDocument();
   });

@@ -354,16 +354,22 @@ Cursada/
 ├── PROGRESS.md                      # Estado actual, historial de avances y próximos pasos
 ├── ROADMAP.md                       # Plan detallado por fases con tareas y criterios de aceptación
 ├── package.json                     # Dependencias y scripts (Vite + Electron + Vitest + Packager)
-├── tsconfig.json                    # Configuración estricta de TypeScript
+├── tsconfig.json                    # Configuración estricta de TypeScript (src + shared)
+├── tsconfig.electron.json           # Compilación Electron Main ESM (electron + shared -> dist-electron)
 ├── vite.config.ts                   # Configuración de Vite (con inyección CSP en build) y Vitest
 ├── index.html                       # Entrada HTML de la ventana de Cursada
 ├── public/
 │   └── theme-init.js                # Script externo anti-FOUC compatible con CSP estricta
 ├── build/                           # Íconos nativos de macOS (icon.svg, icon-dark.svg, icon.png, icon.icns)
 ├── scripts/
-│   ├── build-preload.mjs            # Transpilación CJS del preload (dist-electron/preload.cjs) para sandbox: true
+│   ├── build-preload.mjs            # Transpilación CJS de preload.cjs y shim dist-electron/main.js
 │   ├── dev-electron.mjs             # Lanzador unificado de desarrollo (Vite + tsc + preload + Electron)
 │   └── package-macos-app.mjs        # Generador de íconos Suizos y empaquetador nativo release/Cursada.app
+├── shared/                          # Código puro compartido entre Electron (NodeNext) y Renderer (Vite)
+│   ├── types.ts                     # Tipos de dominio IPC unificados (única fuente de verdad)
+│   ├── pdfExtractor.ts              # Extractor puro de texto y CMap ToUnicode en PDFs
+│   ├── icsCalendar.ts               # Builder y parser RFC 5545 iCalendar (.ics)
+│   └── wikiLinks.ts                 # Parser puro de [[WikiLinks]] y frontmatter YAML
 ├── electron/                        # Backend local en Node.js / Electron Main Process
 │   ├── main.ts                      # Creación de BrowserWindow (sandbox, CSP, guards), dock icon y scheduler
 │   ├── security.ts                  # Utilidades de seguridad (CSP, orígenes IPC, rutas nativas, SSRF, userData)
@@ -431,7 +437,7 @@ Cursada/
     │   ├── simulator/               # Parser y evaluador del Modo Simulacro Interactivo (practiceExamSimulator.ts)
     │   ├── reportsStore.ts          # Almacén reactivo de informes y citas [N] conectado a cursadaClient + exportación PDF
     │   └── shortcuts/               # Búsqueda normalizada y resolución de atajos macOS (commandPaletteSearch.ts)
-    ├── components/                  # Componentes por dominio (SuperMarkdownEditor, NoteBacklinksPanel, NotesGraphView, ObsidianImportModal, PomodoroHeaderWidget, CourseAttendancePanel, PracticeExamSimulatorModal, CalendarSyncSettingsSection, EditorShortcutsSettingsSection, etc.)
+    ├── components/                  # Componentes Suizos modulares (CourseNotebookSidebar, CourseAssistantSidebar, SourcePreviewDialog, SuperMarkdownEditor, NoteBacklinksPanel, ObsidianImportModal, PomodoroHeaderWidget, CourseAttendancePanel, PracticeExamSimulatorModal, Settings*Section, CalendarSyncSettingsSection, EditorShortcutsSettingsSection, etc.)
     ├── pages/                       # Vistas principales (Inicio, Materias, Calendario, Tareas, Exámenes, Informes, Ajustes)
     └── __tests__/                   # Tests unitarios y de integración (Vitest + RTL + SQLite temporal)
 ```

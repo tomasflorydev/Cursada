@@ -2,8 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from '../components/command-palette/CommandPalette';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
-import { NotesWorkspace } from '../components/notes/NotesWorkspace';
-import { Sidebar } from '../components/Sidebar';
+import { SwissHeader } from '../ui';
 import { cursadaClient } from '../lib/api/client';
 import { resetAllMocks } from '../lib/api/mockClient';
 import {
@@ -536,77 +535,27 @@ describe('Phase 8 Task 8.1: CommandPalette, search helpers, shortcuts, and deep 
     });
   });
 
-  describe('<Sidebar /> command palette trigger', () => {
-    it('renders the quick search trigger outside Principal nav and invokes onOpenCommandPalette', () => {
-      const onOpenCommandPalette = vi.fn();
+  describe('<SwissHeader /> navigation & Ajustes trigger', () => {
+    it('renders Swiss top navigation with Ajustes outside primary nav and triggers section changes', () => {
+      const onSelectSection = vi.fn();
       render(
-        <Sidebar
-          activeSection="inicio"
-          selectedCourseId={null}
-          courses={[]}
-          pendingTasksCount={0}
-          upcomingExamsCount={0}
-          themeMode="system"
-          onSelectSection={vi.fn()}
-          onSelectCourse={vi.fn()}
-          onChangeThemeMode={vi.fn()}
-          onOpenCommandPalette={onOpenCommandPalette}
-        />
+        <SwissHeader activeSection="inicio" onSelectSection={onSelectSection} />
       );
 
-      const trigger = screen.getByTestId('sidebar-command-palette-trigger');
-      expect(trigger).toHaveTextContent('Buscar…');
-      expect(trigger).toHaveTextContent('⌘K');
-
-      const primaryNav = screen.getByRole('navigation', { name: 'Principal' });
+      const primaryNav = screen.getByRole('navigation', {
+        name: 'Navegación principal',
+      });
       expect(
-        within(primaryNav).queryByTestId('sidebar-command-palette-trigger')
+        within(primaryNav).queryByRole('button', { name: 'Ajustes' })
       ).not.toBeInTheDocument();
 
-      fireEvent.click(trigger);
-      expect(onOpenCommandPalette).toHaveBeenCalledTimes(1);
+      const settingsBtn = screen.getByRole('button', { name: 'Ajustes' });
+      fireEvent.click(settingsBtn);
+      expect(onSelectSection).toHaveBeenCalledWith('ajustes');
     });
   });
 
   describe('Deep navigation & contextual creation wiring', () => {
-    it('selects initialNoteId in NotesWorkspace without overwriting later user selections and triggers creation on createRequestVersion', async () => {
-      const { rerender } = render(
-        <NotesWorkspace initialNoteId="note-2" createRequestVersion={0} />
-      );
-
-      const titleInput = (await screen.findByLabelText(
-        'Título de la nota'
-      )) as HTMLInputElement;
-
-      await waitFor(() => {
-        expect(titleInput.value).toBe(
-          'Comparativa práctica: Strategy vs. State en el dominio de envíos'
-        );
-      });
-
-      // User manually chooses note-1
-      const sidebar = screen.getByLabelText('Listado de notas');
-      fireEvent.click(
-        within(sidebar).getByText(
-          'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica'
-        )
-      );
-      expect(titleInput.value).toBe(
-        'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica'
-      );
-
-      // Rerender with same initialNoteId must NOT overwrite user selection
-      rerender(<NotesWorkspace initialNoteId="note-2" createRequestVersion={0} />);
-      expect(titleInput.value).toBe(
-        'Resumen de Métricas Ágiles, Velocidad y Deuda Técnica'
-      );
-
-      // Incrementing createRequestVersion creates a new note
-      rerender(<NotesWorkspace initialNoteId="note-2" createRequestVersion={1} />);
-      await waitFor(() => {
-        expect(titleInput.value).toBe('Nuevo apunte');
-      });
-    });
 
     it('opens target note in CoursesPage and handles newNoteRequestVersion and createRequestVersion on overview and detail view', async () => {
       const onSelectCourse = vi.fn();

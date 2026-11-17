@@ -1,11 +1,6 @@
 @layer reset, tokens, base, layout, components, utilities;
 
 @import './courses-calendar.css';
-@import './tasks.css';
-@import './exams.css';
-@import './notes.css';
-@import './sources.css';
-@import './assistant.css';
 @import './command-palette.css';
 @import './super-editor.css';
 @import './knowledge.css';

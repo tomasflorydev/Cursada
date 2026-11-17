@@ -460,7 +460,7 @@ describe('Phase 10 (v2.0.0): Swiss Typographic System & 8-View Overhaul', () => 
       .filter((name) => name.endsWith('.css'));
 
     expect(cssFiles).toContain('index.css');
-    expect(cssFiles.length).toBeGreaterThanOrEqual(8);
+    expect(cssFiles.length).toBeGreaterThanOrEqual(7);
 
     const indexCssRaw = fs.readFileSync(
       path.join(stylesDir, 'index.css'),
