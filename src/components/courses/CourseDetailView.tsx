@@ -3,7 +3,6 @@ import {
   lazy,
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -13,15 +12,9 @@ import {
 } from 'react';
 import { motion } from 'framer-motion';
 import { cursadaClient, DATA_CHANGED_EVENT } from '../../lib/api/client';
-import {
-  MONTH_SHORT_NAMES_ES,
-  parseIsoDateLocal,
-  toIsoDateString,
-} from '../../lib/dates';
-import { renderTextWithMathAndCitations } from '../../lib/math/latexRenderer';
+import { parseIsoDateLocal, toIsoDateString } from '../../lib/dates';
 import { readAiReportPreferences } from '../../lib/ai/aiPreferences';
 import {
-  formatRelativeAgeEs,
   generateAndStoreReport,
   getLatestStoredReport,
   isReportCancelledError,
@@ -37,23 +30,24 @@ import type {
   ExamWithCourse,
   NoteWithCourse,
   Source,
-  SourceType,
   SourceWithChunks,
   StudyReportType,
 } from '../../types';
 import {
   SwissButton,
-  SwissCheckbox,
   SwissEmptyState,
   SwissErrorAlert,
-  SwissLinkButton,
   SwissLoadingBar,
-  SwissSectionHeader,
   SwissSelect,
   SwissTitleUnderline,
 } from '../../ui';
 import { PracticeExamSimulatorModal } from '../assistant/PracticeExamSimulatorModal';
-import { NoteBacklinksPanel } from '../notes/NoteBacklinksPanel';
+import {
+  COURSE_EXAM_STAGE_OPTIONS,
+  CourseAssistantSidebar,
+} from './CourseAssistantSidebar';
+import { CourseNotebookSidebar } from './CourseNotebookSidebar';
+import { SourcePreviewDialog } from './SourcePreviewDialog';
 import {
   isNoteDraftDirty,
   resolvePersistedNoteTitle,
@@ -64,7 +58,6 @@ const SuperMarkdownEditor = lazy(() =>
     default: mod.SuperMarkdownEditor,
   }))
 );
-import { CourseAttendancePanel } from './CourseAttendancePanel';
 
 export interface CourseDetailViewProps {
   courseId: string;
@@ -91,46 +84,6 @@ const EXAM_CATEGORY_LABELS: Record<ExamCategory, string> = {
   tp: 'TP',
 };
 
-const SOURCE_TYPE_SHORT: Record<SourceType, string> = {
-  pdf: 'PDF',
-  markdown: 'MD',
-  txt: 'TXT',
-  pasted_text: 'Texto',
-  note: 'Nota',
-};
-
-const EXAM_STAGE_OPTIONS: ReadonlyArray<{ value: ExamStageTag; label: string }> = [
-  { value: 'general', label: 'General' },
-  { value: 'parcial_1', label: '1° Parcial' },
-  { value: 'parcial_2', label: '2° Parcial' },
-  { value: 'final', label: 'Final' },
-];
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-}
-
-function formatNoteDateShort(isoTimestamp: string, todayIso: string): string {
-  const parsed = new Date(isoTimestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return 'hoy';
-  }
-  const noteIso = toIsoDateString(parsed);
-  if (noteIso === todayIso) {
-    return 'hoy';
-  }
-  const todayDate = parseIsoDateLocal(todayIso);
-  const noteDate = parseIsoDateLocal(noteIso);
-  const diffDays = Math.round((todayDate.getTime() - noteDate.getTime()) / 86_400_000);
-  if (diffDays === 1) {
-    return 'ayer';
-  }
-  const monthShort = MONTH_SHORT_NAMES_ES[parsed.getMonth()] ?? '';
-  return `${parsed.getDate()} ${monthShort}`;
-}
-
 function sortNotes(notes: NoteWithCourse[]): NoteWithCourse[] {
   return [...notes].sort((a, b) => {
     if (a.isPinned !== b.isPinned) {
@@ -138,19 +91,6 @@ function sortNotes(notes: NoteWithCourse[]): NoteWithCourse[] {
     }
     return b.updatedAt.localeCompare(a.updatedAt);
   });
-}
-
-function extractReportExcerpt(content: string): string {
-  const blocks = content
-    .split(/\n{2,}/)
-    .map((b) => b.trim())
-    .filter((b) => b.length > 0 && !b.startsWith('#'));
-  const first = blocks[0] ?? content.trim();
-  const singleLine = first.replace(/\s+/g, ' ').trim();
-  if (singleLine.length <= 220) {
-    return singleLine;
-  }
-  return `${singleLine.slice(0, 217).trimEnd()}…`;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -201,10 +141,6 @@ export function CourseDetailView({
   onDeleteCourse,
   onCoursesChanged,
 }: CourseDetailViewProps) {
-  const askInputId = useId();
-  const pasteTitleId = useId();
-  const pasteBodyId = useId();
-
   const [course, setCourse] = useState<CourseWithSchedules | null>(null);
   const [notes, setNotes] = useState<NoteWithCourse[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
@@ -240,7 +176,6 @@ export function CourseDetailView({
   const [previewSource, setPreviewSource] = useState<SourceWithChunks | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [reindexingSourceId, setReindexingSourceId] = useState<string | null>(null);
-  const sourcePreviewDialogRef = useRef<HTMLDialogElement | null>(null);
 
   // Report generation, simulator & latest report state
   const [latestReport, setLatestReport] = useState<StoredReport | null>(() =>
@@ -875,28 +810,6 @@ export function CourseDetailView({
     }
   }
 
-  useEffect(() => {
-    const dialog = sourcePreviewDialogRef.current;
-    if (!dialog) {
-      return;
-    }
-    if (previewSource) {
-      if (typeof dialog.showModal === 'function') {
-        if (!dialog.open) {
-          dialog.showModal();
-        }
-      } else {
-        dialog.setAttribute('open', '');
-      }
-    } else if (dialog.open || dialog.hasAttribute('open')) {
-      if (typeof dialog.close === 'function' && dialog.open) {
-        dialog.close();
-      } else {
-        dialog.removeAttribute('open');
-      }
-    }
-  }, [previewSource]);
-
   async function handlePreviewSource(sourceId: string): Promise<void> {
     setSourceError(null);
     setIsLoadingPreview(true);
@@ -1217,196 +1130,33 @@ export function CourseDetailView({
     <section className={gridClassName} aria-labelledby="main-title">
       {/* Panel izquierdo: Listado de notas + Red de conocimiento + Asistencia */}
       {isLeftSidebarOpen ? (
-        <aside className="notebook-notes-pane" aria-label="Notas de la materia">
-          <div className="notebook-notes-top">
-            <div className="notebook-pane-header-bar">
-              <h2 className="swiss-section-label">Notas · {notes.length}</h2>
-              <div className="notebook-pane-header-actions">
-                <SwissLinkButton
-                  className="swiss-link-sm"
-                  onClick={() => {
-                    void handleCreateNote();
-                  }}
-                >
-                  + Nueva
-                </SwissLinkButton>
-                <button
-                  type="button"
-                  className="notebook-collapse-btn"
-                  aria-label="Colapsar panel izquierdo"
-                  aria-expanded={isLeftSidebarOpen}
-                  title="Ocultar panel de notas"
-                  onClick={() => setIsLeftSidebarOpen(false)}
-                >
-                  ‹
-                </button>
-              </div>
-            </div>
-
-            {notes.length === 0 ? (
-              <p className="swiss-meta-md">No hay notas cargadas todavía.</p>
-            ) : (
-              <div>
-                {notes.map((note) => {
-                  const isSelected = selectedNote?.id === note.id;
-                  const words = countWords(note.content);
-                  const dateLabel = formatNoteDateShort(note.updatedAt, todayIso);
-                  const stageTag = note.examStage ?? 'general';
-                  const stageShort =
-                    stageTag === 'parcial_1'
-                      ? '1°P'
-                      : stageTag === 'parcial_2'
-                        ? '2°P'
-                        : stageTag === 'final'
-                          ? 'Final'
-                          : null;
-                  return (
-                    <button
-                      key={note.id}
-                      type="button"
-                      className={`notebook-note-item ${isSelected ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        void handleSelectNote(note.id);
-                      }}
-                    >
-                      <span className="notebook-note-title">
-                        {note.title || 'Nota sin título'}
-                      </span>
-                      <span className="notebook-note-meta">
-                        {dateLabel} · {words} {words === 1 ? 'palabra' : 'palabras'}
-                        {stageShort ? ` · ${stageShort}` : ''}
-                        {note.isPinned ? ' · Fijada' : ''}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {selectedNote ? (
-              <div
-                style={{
-                  marginTop: '16px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid var(--rule)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-              >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  <SwissLinkButton
-                    className="swiss-link-sm"
-                    onClick={() => void handleTogglePin()}
-                  >
-                    {selectedNote.isPinned ? 'Desfijar' : 'Fijar'}
-                  </SwissLinkButton>
-                  <SwissLinkButton
-                    className="swiss-link-sm"
-                    onClick={() => void handleExportNote()}
-                  >
-                    Exportar .md
-                  </SwissLinkButton>
-                  {confirmDeleteNoteId === selectedNote.id ? (
-                    <>
-                      <SwissLinkButton
-                        className="swiss-link-sm"
-                        style={{ fontWeight: 600 }}
-                        onClick={() => void handleConfirmDeleteNote(selectedNote.id)}
-                      >
-                        Confirmar
-                      </SwissLinkButton>
-                      <SwissLinkButton
-                        className="swiss-link-sm"
-                        onClick={() => setConfirmDeleteNoteId(null)}
-                      >
-                        Cancelar
-                      </SwissLinkButton>
-                    </>
-                  ) : (
-                    <SwissLinkButton
-                      className="swiss-link-sm"
-                      onClick={() => setConfirmDeleteNoteId(selectedNote.id)}
-                    >
-                      Eliminar nota
-                    </SwissLinkButton>
-                  )}
-                </div>
-                {noteFeedback ? <span className="swiss-meta">{noteFeedback}</span> : null}
-              </div>
-            ) : null}
-
-            <div
-              style={{
-                marginTop: '16px',
-                paddingTop: '12px',
-                borderTop: '1px solid var(--rule)',
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '10px',
-              }}
-            >
-              <SwissLinkButton
-                className="swiss-link-sm"
-                onClick={() => onSelectCourse(null)}
-              >
-                ← Todas las materias
-              </SwissLinkButton>
-              <SwissLinkButton
-                className="swiss-link-sm"
-                onClick={() => void handleExportCourse()}
-              >
-                Exportar materia .md
-              </SwissLinkButton>
-              {onEditCourse ? (
-                <SwissLinkButton
-                  className="swiss-link-sm"
-                  onClick={() => onEditCourse(course)}
-                >
-                  Editar materia
-                </SwissLinkButton>
-              ) : null}
-              {onArchiveCourse ? (
-                <SwissLinkButton
-                  className="swiss-link-sm"
-                  onClick={() => onArchiveCourse(course)}
-                >
-                  {course.status === 'active' ? 'Archivar' : 'Activar'}
-                </SwissLinkButton>
-              ) : null}
-              {onDeleteCourse ? (
-                <SwissLinkButton
-                  className="swiss-link-sm"
-                  onClick={() => onDeleteCourse(course.id)}
-                >
-                  Eliminar materia
-                </SwissLinkButton>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="notebook-knowledge-section">
-            {selectedNote ? (
-              <NoteBacklinksPanel
-                noteId={selectedNote.id}
-                courseId={course.id}
-                refreshKey={selectedNote.updatedAt}
-                onOpenNote={(noteId, targetCourseId) => {
-                  if (targetCourseId === course.id) {
-                    void handleSelectNote(noteId);
-                  } else {
-                    onSelectCourse(targetCourseId, { noteId });
-                  }
-                }}
-                onOpenOrCreateWikiLink={(targetTitle) =>
-                  void handleOpenOrCreateWikiLink(targetTitle)
-                }
-              />
-            ) : null}
-
-            <CourseAttendancePanel courseId={course.id} />
-          </div>
-        </aside>
+        <CourseNotebookSidebar
+          course={course}
+          notes={notes}
+          selectedNote={selectedNote}
+          todayIso={todayIso}
+          confirmDeleteNoteId={confirmDeleteNoteId}
+          noteFeedback={noteFeedback}
+          isLeftSidebarOpen={isLeftSidebarOpen}
+          onCollapse={() => setIsLeftSidebarOpen(false)}
+          onCreateNote={() => void handleCreateNote()}
+          onSelectNote={(noteId) => void handleSelectNote(noteId)}
+          onTogglePin={() => void handleTogglePin()}
+          onExportNote={() => void handleExportNote()}
+          onRequestDeleteNote={setConfirmDeleteNoteId}
+          onConfirmDeleteNote={(noteId) => void handleConfirmDeleteNote(noteId)}
+          onBackToCourses={() => onSelectCourse(null)}
+          onExportCourse={() => void handleExportCourse()}
+          onEditCourse={onEditCourse}
+          onArchiveCourse={onArchiveCourse}
+          onDeleteCourse={onDeleteCourse}
+          onOpenExternalNote={(targetCourseId, noteId) =>
+            onSelectCourse(targetCourseId, { noteId })
+          }
+          onOpenOrCreateWikiLink={(targetTitle) =>
+            void handleOpenOrCreateWikiLink(targetTitle)
+          }
+        />
       ) : null}
 
       {/* Panel central: Super-Editor Markdown */}
@@ -1486,7 +1236,7 @@ export function CourseDetailView({
                       void handleNoteStageChange(e.target.value as ExamStageTag)
                     }
                   >
-                    {EXAM_STAGE_OPTIONS.map((opt) => (
+                    {COURSE_EXAM_STAGE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
@@ -1551,447 +1301,65 @@ export function CourseDetailView({
 
       {/* Panel derecho: Fuentes + Notas + Etapa + Informe con IA + Chat */}
       {isRightSidebarOpen ? (
-        <aside className="notebook-ai-pane" aria-label="Asistente e informes con IA">
-          <div className="notebook-pane-header-bar" style={{ marginBottom: 0 }}>
-            <h2 className="swiss-section-label">Informe con IA</h2>
-            <button
-              type="button"
-              className="notebook-collapse-btn"
-              aria-label="Colapsar panel derecho"
-              aria-expanded={isRightSidebarOpen}
-              title="Ocultar panel de asistente IA"
-              onClick={() => setIsRightSidebarOpen(false)}
-            >
-              ›
-            </button>
-          </div>
-
-          <div
-            className="stage-filter-row"
-            role="group"
-            aria-label="Filtrar contexto de IA por instancia"
-          >
-          {(
-            [
-              { id: 'all', label: 'Todo' },
-              { id: 'parcial_1', label: '1° Parcial' },
-              { id: 'parcial_2', label: '2° Parcial' },
-              { id: 'final', label: 'Final' },
-            ] as const
-          ).map((stage) => {
-            const isActive =
-              aiStageFilter === stage.id && aiContextFilter === 'all';
-            return (
-              <button
-                key={stage.id}
-                type="button"
-                className={`stage-pill ${isActive ? 'is-active' : ''}`}
-                aria-pressed={isActive}
-                onClick={() => {
-                  setAiStageFilter(stage.id);
-                  setAiContextFilter('all');
-                }}
-              >
-                {stage.label}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            className={`stage-pill ${aiContextFilter === 'sources_only' ? 'is-active' : ''}`}
-            aria-pressed={aiContextFilter === 'sources_only'}
-            onClick={() =>
-              setAiContextFilter((prev) =>
-                prev === 'sources_only' ? 'all' : 'sources_only'
-              )
-            }
-          >
-            Solo Fuentes
-          </button>
-          <button
-            type="button"
-            className={`stage-pill ${aiContextFilter === 'notes_only' ? 'is-active' : ''}`}
-            aria-pressed={aiContextFilter === 'notes_only'}
-            onClick={() =>
-              setAiContextFilter((prev) =>
-                prev === 'notes_only' ? 'all' : 'notes_only'
-              )
-            }
-          >
-            Solo Notas
-          </button>
-        </div>
-
-        <div>
-          <SwissSectionHeader
-            subtle
-            title={`Fuentes · ${checkedCount} de ${totalSources}`}
-            right={
-              <span style={{ display: 'inline-flex', gap: '8px' }}>
-                <SwissLinkButton
-                  className="swiss-link-sm"
-                  onClick={() => void handleUploadSourceTrigger()}
-                >
-                  + Subir PDF
-                </SwissLinkButton>
-                <SwissLinkButton
-                  className="swiss-link-sm"
-                  onClick={() => setIsPasteOpen((v) => !v)}
-                >
-                  + Texto
-                </SwissLinkButton>
-              </span>
-            }
-          />
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.md,.markdown,.txt"
-            className="visually-hidden"
-            aria-label="Seleccionar archivo PDF, Markdown o texto"
-            onChange={(e) => void handleFileInputChange(e)}
-          />
-
-          {isPasteOpen ? (
-            <form
-              onSubmit={(e) => void handlePasteSubmit(e)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                padding: '10px 0',
-                borderTop: '1px solid var(--rule)',
-              }}
-            >
-              <label htmlFor={pasteTitleId} className="visually-hidden">
-                Título de la fuente
-              </label>
-              <input
-                id={pasteTitleId}
-                type="text"
-                className="swiss-input"
-                placeholder="Título de la fuente…"
-                value={pasteTitle}
-                onChange={(e) => setPasteTitle(e.target.value)}
-              />
-              <label htmlFor={pasteBodyId} className="visually-hidden">
-                Contenido de la fuente
-              </label>
-              <textarea
-                id={pasteBodyId}
-                rows={4}
-                className="swiss-input"
-                placeholder="Pegá el texto de la bibliografía o consigna…"
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-              />
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <SwissButton
-                  type="submit"
-                  variant="primary"
-                  disabled={isImportingSource}
-                >
-                  Indexar
-                </SwissButton>
-                <SwissButton
-                  variant="secondary"
-                  onClick={() => setIsPasteOpen(false)}
-                >
-                  Cancelar
-                </SwissButton>
-              </div>
-            </form>
-          ) : null}
-
-          <div className="notebook-sources-list">
-            {aiContextFilter !== 'sources_only' ? (
-              <div className="notebook-source-row">
-                <div className="notebook-source-left">
-                  <SwissCheckbox
-                    checked={includeNotes}
-                    ariaLabel="Incluir todas las notas"
-                    onChange={() => setIncludeNotes((v) => !v)}
-                  />
-                  <span className="notebook-source-name">Todas las notas</span>
-                </div>
-                <span
-                  className="swiss-meta"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <span>{filteredNotes.length}</span>
-                  {filteredNotes.length > 0 ? (
-                    <SwissLinkButton
-                      style={{ fontSize: '11px', fontWeight: 500 }}
-                      onClick={() => setIsNotePickerExpanded((v) => !v)}
-                    >
-                      {isNotePickerExpanded ? 'Ocultar' : 'Elegir'}
-                    </SwissLinkButton>
-                  ) : null}
-                </span>
-              </div>
-            ) : null}
-
-            {aiContextFilter !== 'sources_only' &&
-            includeNotes &&
-            isNotePickerExpanded
-              ? filteredNotes.map((n) => (
-                  <div
-                    key={n.id}
-                    className="notebook-source-row"
-                    style={{ paddingLeft: '14px' }}
-                  >
-                    <div className="notebook-source-left">
-                      <SwissCheckbox
-                        checked={selectedNoteIds.has(n.id)}
-                        ariaLabel={`Incluir nota ${n.title}`}
-                        onChange={() => toggleNoteSelection(n.id)}
-                      />
-                      <span className="notebook-source-name" title={n.title}>
-                        {n.title}
-                      </span>
-                    </div>
-                    <span className="swiss-meta">Nota</span>
-                  </div>
-                ))
-              : null}
-
-            {aiContextFilter !== 'notes_only'
-              ? filteredSources.map((src) => {
-                  const isChecked = selectedSourceIds.has(src.id);
-                  return (
-                    <div key={src.id} className="notebook-source-row">
-                      <div className="notebook-source-left">
-                        <SwissCheckbox
-                          checked={isChecked}
-                          ariaLabel={`Incluir ${src.title}`}
-                          onChange={() => toggleSourceSelection(src.id)}
-                        />
-                        <span className="notebook-source-name" title={src.title}>
-                          {src.title}
-                        </span>
-                      </div>
-                      <span
-                        className="swiss-meta"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                        }}
-                      >
-                        <select
-                          aria-label={`Instancia de ${src.title}`}
-                          value={src.examStage ?? 'general'}
-                          onChange={(e) =>
-                            void handleSourceStageChange(
-                              src.id,
-                              e.target.value as ExamStageTag
-                            )
-                          }
-                          style={{
-                            fontSize: '11px',
-                            background: 'transparent',
-                            border: '1px solid var(--rule)',
-                            color: 'var(--mut)',
-                            padding: '1px 4px',
-                          }}
-                        >
-                          {EXAM_STAGE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        <span>{SOURCE_TYPE_SHORT[src.sourceType]}</span>
-                        {src.indexingStatus === 'error' ? (
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            style={{ fontWeight: 600, color: 'var(--acc)' }}
-                            aria-label={`Reindexar ${src.title}`}
-                            disabled={reindexingSourceId === src.id}
-                            onClick={() => void handleReindexSource(src.id)}
-                          >
-                            {reindexingSourceId === src.id ? 'Reindexando…' : 'Reindexar'}
-                          </SwissLinkButton>
-                        ) : null}
-                        <SwissLinkButton
-                          className="swiss-link-sm"
-                          style={{ fontWeight: 400 }}
-                          aria-label={`Ver ${src.title}`}
-                          disabled={isLoadingPreview}
-                          onClick={() => void handlePreviewSource(src.id)}
-                        >
-                          Ver
-                        </SwissLinkButton>
-                        <SwissLinkButton
-                          className="swiss-link-sm"
-                          style={{ fontWeight: 400 }}
-                          aria-label={`Quitar ${src.title}`}
-                          onClick={() => void handleDeleteSource(src.id)}
-                        >
-                          Quitar
-                        </SwissLinkButton>
-                      </span>
-                    </div>
-                  );
-                })
-              : null}
-          </div>
-
-          {isImportingSource ? <SwissLoadingBar text="Indexando fuente…" /> : null}
-          {sourceError ? <SwissErrorAlert message={sourceError} /> : null}
-        </div>
-
-        <div className="notebook-report-actions">
-          <SwissButton
-            variant="primary"
-            disabled={isGeneratingReport}
-            onClick={() => void handleGenerateReport('summary')}
-          >
-            Resumen de parcial
-          </SwissButton>
-          <SwissButton
-            variant="secondary"
-            disabled={isGeneratingReport}
-            onClick={() => void handleGenerateReport('study_guide')}
-          >
-            Guía de estudio
-          </SwissButton>
-          <SwissButton
-            variant="secondary"
-            disabled={isGeneratingReport}
-            onClick={() => void handleGenerateReport('practice_exam')}
-          >
-            Preguntas
-          </SwissButton>
-          <SwissButton
-            variant="secondary"
-            onClick={() => setIsSimulatorOpen(true)}
-          >
-            Simulacro interactivo
-          </SwissButton>
-        </div>
-
-        {isGeneratingReport ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <SwissLoadingBar text={reportProgressText ?? 'Generando informe…'} />
-            </div>
-            <SwissLinkButton
-              className="swiss-link-sm"
-              aria-label="Cancelar generación de informe"
-              onClick={handleCancelReport}
-            >
-              Cancelar
-            </SwissLinkButton>
-          </div>
-        ) : null}
-        {reportError ? <SwissErrorAlert message={reportError} /> : null}
-
-        {latestReport ? (
-          <div className="notebook-last-report">
-            <span className="swiss-section-label">
-              Último informe · {formatRelativeAgeEs(latestReport.updatedAt)}
-            </span>
-            <h3 className="notebook-last-report-title">{latestReport.title}</h3>
-            <p className="notebook-last-report-excerpt">
-              {renderTextWithMathAndCitations(
-                extractReportExcerpt(latestReport.content),
-                handleReportCitationClick
-              )}
-            </p>
-            <div>
-              <SwissLinkButton
-                underlined
-                onClick={() => onOpenReport?.(latestReport.id)}
-              >
-                Abrir informe →
-              </SwissLinkButton>
-            </div>
-          </div>
-        ) : null}
-
-        <form
-          className="notebook-ask-form"
-          style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}
-          onSubmit={(e) => void handleAskSubmit(e)}
-        >
-          <label htmlFor={askInputId} className="visually-hidden">
-            Preguntale a tus fuentes
-          </label>
-          <input
-            id={askInputId}
-            type="text"
-            className="swiss-input"
-            style={{ flex: 1, minWidth: 0 }}
-            placeholder="Preguntale a tus fuentes…"
-            value={askQuery}
-            disabled={isAsking}
-            onChange={(e) => setAskQuery(e.target.value)}
-          />
-          <SwissButton
-            type="submit"
-            variant="secondary"
-            aria-label="Enviar consulta"
-            disabled={isAsking || !askQuery.trim()}
-          >
-            →
-          </SwissButton>
-        </form>
-
-        {isAsking ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <SwissLoadingBar text="Consultando tus fuentes…" />
-            </div>
-            <SwissLinkButton
-              className="swiss-link-sm"
-              aria-label="Cancelar consulta"
-              onClick={handleCancelAsk}
-            >
-              Cancelar
-            </SwissLinkButton>
-          </div>
-        ) : null}
-        {streamingChatContent ? (
-          <p className="notebook-answer-copy" aria-live="polite">
-            {streamingChatContent}
-          </p>
-        ) : null}
-        {askError ? <SwissErrorAlert message={askError} /> : null}
-
-        {lastAnswer ? (
-          <div
-            style={{
-              borderTop: '1px solid var(--rule)',
-              paddingTop: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-          >
-            {lastQuestion ? (
-              <div className="swiss-meta">{lastQuestion}</div>
-            ) : null}
-            <p className="notebook-answer-copy">
-              {renderTextWithMathAndCitations(
-                lastAnswer.content,
-                handleChatCitationClick
-              )}
-            </p>
-            {lastAnswer.citations.length > 0 ? (
-              <div className="swiss-meta">
-                {lastAnswer.citations.map((c) => (
-                  <div key={c.chunkId}>
-                    [{c.citationNumber}] {c.sourceTitle}
-                    {c.pageNumber !== null ? ` (p. ${c.pageNumber})` : ''}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        </aside>
+        <CourseAssistantSidebar
+          isRightSidebarOpen={isRightSidebarOpen}
+          onCollapse={() => setIsRightSidebarOpen(false)}
+          aiStageFilter={aiStageFilter}
+          onChangeStageFilter={setAiStageFilter}
+          aiContextFilter={aiContextFilter}
+          onChangeContextFilter={setAiContextFilter}
+          checkedCount={checkedCount}
+          totalSources={totalSources}
+          fileInputRef={fileInputRef}
+          onUploadSourceTrigger={() => void handleUploadSourceTrigger()}
+          onFileInputChange={(e) => void handleFileInputChange(e)}
+          isPasteOpen={isPasteOpen}
+          onTogglePasteOpen={() => setIsPasteOpen((v) => !v)}
+          pasteTitle={pasteTitle}
+          onChangePasteTitle={setPasteTitle}
+          pasteText={pasteText}
+          onChangePasteText={setPasteText}
+          onPasteSubmit={(e) => void handlePasteSubmit(e)}
+          includeNotes={includeNotes}
+          onToggleIncludeNotes={() => setIncludeNotes((v) => !v)}
+          filteredNotes={filteredNotes}
+          selectedNoteIds={selectedNoteIds}
+          onToggleNoteSelection={toggleNoteSelection}
+          isNotePickerExpanded={isNotePickerExpanded}
+          onToggleNotePickerExpanded={() => setIsNotePickerExpanded((v) => !v)}
+          filteredSources={filteredSources}
+          selectedSourceIds={selectedSourceIds}
+          onToggleSourceSelection={toggleSourceSelection}
+          onSourceStageChange={(id, stage) =>
+            void handleSourceStageChange(id, stage)
+          }
+          reindexingSourceId={reindexingSourceId}
+          onReindexSource={(id) => void handleReindexSource(id)}
+          isLoadingPreview={isLoadingPreview}
+          onPreviewSource={(id) => void handlePreviewSource(id)}
+          onDeleteSource={(id) => void handleDeleteSource(id)}
+          isImportingSource={isImportingSource}
+          sourceError={sourceError}
+          isGeneratingReport={isGeneratingReport}
+          reportProgressText={reportProgressText}
+          reportError={reportError}
+          onGenerateReport={(type) => void handleGenerateReport(type)}
+          onCancelReport={handleCancelReport}
+          onOpenSimulator={() => setIsSimulatorOpen(true)}
+          latestReport={latestReport}
+          onReportCitationClick={handleReportCitationClick}
+          onOpenReport={onOpenReport}
+          askQuery={askQuery}
+          onChangeAskQuery={setAskQuery}
+          isAsking={isAsking}
+          onAskSubmit={(e) => void handleAskSubmit(e)}
+          onCancelAsk={handleCancelAsk}
+          streamingChatContent={streamingChatContent}
+          askError={askError}
+          lastQuestion={lastQuestion}
+          lastAnswer={lastAnswer}
+          onChatCitationClick={handleChatCitationClick}
+        />
       ) : null}
 
       <PracticeExamSimulatorModal
@@ -2017,90 +1385,12 @@ export function CourseDetailView({
         }}
       />
 
-      {previewSource ? (
-        <dialog
-          ref={sourcePreviewDialogRef}
-          open
-          role="dialog"
-          aria-modal="true"
-          aria-label={previewSource.title}
-          className="cursada-modal-dialog"
-          onCancel={(event) => {
-            event.preventDefault();
-            setPreviewSource(null);
-          }}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setPreviewSource(null);
-            }
-          }}
-        >
-          <div className="cursada-modal-content" style={{ maxWidth: '46rem', maxHeight: '82vh', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <header className="cursada-modal-header">
-              <div>
-                <h2 className="cursada-modal-title">{previewSource.title}</h2>
-                <p className="cursada-muted-text" style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                  Tipo: {previewSource.sourceType.toUpperCase()}
-                  {previewSource.pageCount != null ? ` · ${previewSource.pageCount} pág.` : ''}
-                  {` · ${previewSource.chunkCount} fragmentos · Estado: ${previewSource.indexingStatus}`}
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {previewSource.indexingStatus === 'error' ? (
-                  <button
-                    type="button"
-                    className="cursada-secondary-button"
-                    disabled={reindexingSourceId === previewSource.id}
-                    onClick={() => {
-                      void handleReindexSource(previewSource.id);
-                    }}
-                  >
-                    {reindexingSourceId === previewSource.id ? 'Reindexando...' : 'Reindexar'}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="cursada-secondary-button"
-                  onClick={() => setPreviewSource(null)}
-                >
-                  Cerrar
-                </button>
-              </div>
-            </header>
-
-            {previewSource.indexingError ? (
-              <p className="cursada-inline-error" role="alert">
-                Error de indexación: {previewSource.indexingError}
-              </p>
-            ) : null}
-
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem' }}>
-              {previewSource.chunks.length > 0 ? (
-                previewSource.chunks.map((chunk) => (
-                  <article
-                    key={chunk.id}
-                    style={{
-                      border: '1px solid var(--border-subtle, rgba(255,255,255,0.12))',
-                      borderRadius: '0.5rem',
-                      padding: '0.65rem 0.75rem',
-                    }}
-                  >
-                    <div className="cursada-muted-text" style={{ fontSize: '0.78rem', marginBottom: '0.35rem' }}>
-                      Fragmento #{chunk.chunkIndex + 1}
-                      {chunk.pageNumber != null ? ` · Página ${chunk.pageNumber}` : ''}
-                    </div>
-                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{chunk.content}</p>
-                  </article>
-                ))
-              ) : (
-                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontFamily: 'inherit' }}>
-                  {previewSource.rawText || 'Sin texto extraído disponible.'}
-                </pre>
-              )}
-            </div>
-          </div>
-        </dialog>
-      ) : null}
+      <SourcePreviewDialog
+        source={previewSource}
+        reindexingSourceId={reindexingSourceId}
+        onReindexSource={(id) => void handleReindexSource(id)}
+        onClose={() => setPreviewSource(null)}
+      />
     </section>
   );
 }
