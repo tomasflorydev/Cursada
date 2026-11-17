@@ -4,6 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createCourse, VALID_COURSE_COLORS, validateCourseStatus } from '../db/coursesRepo.js';
 import { syncAllNoteLinks } from '../db/knowledgeRepo.js';
 import { createNote } from '../db/notesRepo.js';
+import { parseMarkdownFrontmatter } from '../../shared/wikiLinks.js';
 import type {
   CourseColor,
   CourseStatus,
@@ -13,134 +14,11 @@ import type {
   ImportObsidianVaultResult,
 } from '../types.js';
 
+export { parseMarkdownFrontmatter };
+
 interface VaultMarkdownFile {
   relativePath: string;
   content: string;
-}
-
-function unquoteYamlScalar(rawValue: string): string {
-  const trimmed = rawValue.trim();
-  if (trimmed.length >= 2) {
-    if (
-      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-      (trimmed.startsWith("'") && trimmed.endsWith("'"))
-    ) {
-      const inner = trimmed.slice(1, -1);
-      if (trimmed.startsWith('"')) {
-        return inner.replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim();
-      }
-      return inner.replace(/''/g, "'").trim();
-    }
-  }
-  return trimmed;
-}
-
-function parseInlineYamlArray(rawValue: string): string {
-  const inner = rawValue.slice(1, -1).trim();
-  if (!inner) {
-    return '';
-  }
-  return inner
-    .split(',')
-    .map((item) => unquoteYamlScalar(item))
-    .filter((item) => item.length > 0)
-    .join(', ');
-}
-
-/**
- * Safely parses YAML frontmatter delimited by `---` at the start of a Markdown file.
- * Strips the frontmatter block from `body` and joins arrays as comma-separated strings.
- */
-export function parseMarkdownFrontmatter(raw: string): {
-  frontmatter: Record<string, string>;
-  body: string;
-} {
-  const input = (raw ?? '').replace(/^\uFEFF/, '');
-  const normalized = input.replace(/\r\n?/g, '\n');
-  const lines = normalized.split('\n');
-
-  if (lines.length === 0 || lines[0].trim() !== '---') {
-    return { frontmatter: {}, body: raw ?? '' };
-  }
-
-  let closingLineIndex = -1;
-  for (let i = 1; i < lines.length; i += 1) {
-    const trimmed = lines[i].trim();
-    if (trimmed === '---' || trimmed === '...') {
-      closingLineIndex = i;
-      break;
-    }
-  }
-
-  if (closingLineIndex === -1) {
-    return { frontmatter: {}, body: raw ?? '' };
-  }
-
-  const frontmatter: Record<string, string> = {};
-  const yamlLines = lines.slice(1, closingLineIndex);
-
-  let i = 0;
-  while (i < yamlLines.length) {
-    const line = yamlLines[i];
-    const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith('#')) {
-      i += 1;
-      continue;
-    }
-
-    const keyMatch = /^([A-Za-z0-9_.-]+)\s*:\s*(.*)$/.exec(trimmed);
-    if (!keyMatch) {
-      i += 1;
-      continue;
-    }
-
-    const key = keyMatch[1];
-    const rawVal = keyMatch[2].trim();
-
-    if (rawVal.startsWith('[') && rawVal.endsWith(']')) {
-      frontmatter[key] = parseInlineYamlArray(rawVal);
-      i += 1;
-      continue;
-    }
-
-    if (rawVal === '') {
-      const listItems: string[] = [];
-      let j = i + 1;
-      while (j < yamlLines.length) {
-        const nextLine = yamlLines[j];
-        const nextTrimmed = nextLine.trim();
-        if (!nextTrimmed || nextTrimmed.startsWith('#')) {
-          j += 1;
-          continue;
-        }
-        const listMatch = /^\s*-\s+(.*)$/.exec(nextLine);
-        if (listMatch) {
-          const val = unquoteYamlScalar(listMatch[1]);
-          if (val) {
-            listItems.push(val);
-          }
-          j += 1;
-        } else {
-          break;
-        }
-      }
-      if (listItems.length > 0) {
-        frontmatter[key] = listItems.join(', ');
-        i = j;
-        continue;
-      }
-      frontmatter[key] = '';
-      i += 1;
-      continue;
-    }
-
-    frontmatter[key] = unquoteYamlScalar(rawVal);
-    i += 1;
-  }
-
-  const body = lines.slice(closingLineIndex + 1).join('\n').replace(/^\n+/, '');
-  return { frontmatter, body };
 }
 
 function normalizeRelativePath(rawPath: string): string {
