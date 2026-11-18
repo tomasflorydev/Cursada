@@ -72,7 +72,7 @@ export function SettingsPage({
 
   return (
     <section aria-labelledby="main-title">
-      <header className="swiss-page-head">
+      <div className="swiss-page-head">
         <div className="swiss-page-head-left">
           <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
             Ajustes
@@ -81,7 +81,7 @@ export function SettingsPage({
             Preferencias locales, modelos de IA, respaldos y atajos
           </p>
         </div>
-      </header>
+      </div>
 
       <div className="swiss-grid">
         <aside className="swiss-col-3">

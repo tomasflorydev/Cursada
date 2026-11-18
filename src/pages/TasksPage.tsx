@@ -620,7 +620,7 @@ export function TasksPage({
 
   return (
     <section aria-labelledby="main-title">
-      <header className="swiss-page-head">
+      <div className="swiss-page-head">
         <div className="swiss-page-head-left">
           <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
             Tareas
@@ -639,7 +639,7 @@ export function TasksPage({
             + Nueva tarea
           </SwissButton>
         </div>
-      </header>
+      </div>
 
       <div className="swiss-grid">
         <aside className="swiss-col-3">

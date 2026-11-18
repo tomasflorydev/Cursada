@@ -405,7 +405,7 @@ export function ReportsPage({
 
   return (
     <section aria-labelledby="main-title">
-      <header className="swiss-page-head">
+      <div className="swiss-page-head">
         <div className="swiss-page-head-left">
           <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
             Informes
@@ -424,7 +424,7 @@ export function ReportsPage({
             + Nuevo informe
           </SwissButton>
         </div>
-      </header>
+      </div>
 
       <div className="swiss-grid">
         {/* Izquierda (3 cols): Lista de informes agrupada por materia */}
