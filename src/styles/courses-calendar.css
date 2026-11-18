@@ -449,7 +449,7 @@
 
   .calendar-day-col {
     min-inline-size: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .calendar-month-cell:nth-last-child(-n + 7) {
@@ -459,10 +459,6 @@
   .calendar-month-cell.is-outside-month {
     background-color: var(--bg-canvas);
     opacity: 0.55;
-  }
-
-  .calendar-month-cell.is-today {
-    background-color: var(--status-today-bg);
   }
 
   .calendar-month-cell-header {

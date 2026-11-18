@@ -594,7 +594,9 @@ export function CalendarPage({
               return (
                 <div
                   key={day.dateIso}
-                  className={`calendar-day-head ${isWeekend ? 'is-weekend' : ''}`.trim()}
+                  className={`calendar-day-head ${isWeekend ? 'is-weekend' : ''} ${
+                    day.isToday ? 'is-today' : ''
+                  }`.trim()}
                   data-date={day.dateIso}
                 >
                   <div className="swiss-section-label">
@@ -617,7 +619,9 @@ export function CalendarPage({
               return (
                 <div
                   key={day.dateIso}
-                  className="calendar-deliverable-cell"
+                  className={`calendar-deliverable-cell ${
+                    day.isToday ? 'is-today' : ''
+                  }`.trim()}
                   data-date={day.dateIso}
                 >
                   {dayExams.map((exam) => (
@@ -681,17 +685,36 @@ export function CalendarPage({
               const rawBlocks = blocksByDay.get(day.dayOfWeek) ?? [];
               const positionedBlocks = layoutDayBlocks(rawBlocks);
               const originMinutes = hourRange.minHour * 60;
+              const endRangeMinutes = hourRange.maxHour * 60;
+              const nowMinutes = anchorToday.getHours() * 60 + anchorToday.getMinutes();
+              const showCurrentTimeLine =
+                day.isToday &&
+                nowMinutes >= originMinutes &&
+                nowMinutes <= endRangeMinutes;
+              const currentTimeTopPx =
+                ((nowMinutes - originMinutes) / 60) * HOUR_HEIGHT_PX;
 
               return (
                 <div
                   key={day.dateIso}
-                  className="calendar-day-col"
+                  className={`calendar-day-col ${day.isToday ? 'is-today' : ''}`.trim()}
                   data-date={day.dateIso}
                   data-day-of-week={day.dayOfWeek}
                 >
                   {hourRange.hours.map((hour) => (
                     <div key={hour} className="calendar-hour-cell" />
                   ))}
+
+                  {showCurrentTimeLine ? (
+                    <div
+                      className="calendar-current-time-line"
+                      data-testid="calendar-current-time-line"
+                      style={{ top: `${currentTimeTopPx}px` }}
+                      aria-hidden="true"
+                    >
+                      <span className="calendar-current-time-dot" />
+                    </div>
+                  ) : null}
 
                   {positionedBlocks.map((block) => {
                     const topPx = ((block.startMinutes - originMinutes) / 60) * HOUR_HEIGHT_PX;
@@ -702,6 +725,7 @@ export function CalendarPage({
                     const blockKey = `${day.dateIso}::${block.scheduleId}`;
                     const isNext = nextClassKey === blockKey;
                     const hasOverlap = block.columnCount > 1;
+                    const locationText = block.location.trim();
 
                     const blockStyle = hasOverlap
                       ? {
@@ -725,14 +749,30 @@ export function CalendarPage({
                         data-course-id={block.courseId}
                         onClick={() => onSelectCourse(block.courseId)}
                       >
-                        <span className="calendar-class-block-name">
+                        <span
+                          className="calendar-class-block-name"
+                          title={block.courseName}
+                        >
                           {block.courseName}
                         </span>
                         <span className="calendar-class-block-time">
-                          {block.startTime}–{block.endTime}
-                          {block.location ? ` · ${block.location}` : ''}
-                          {isNext ? ' · próxima clase' : ''}
+                          <span>
+                            {block.startTime}–{block.endTime}
+                          </span>
+                          {isNext ? (
+                            <span className="calendar-class-block-next-tag">
+                              Próxima
+                            </span>
+                          ) : null}
                         </span>
+                        {locationText ? (
+                          <span
+                            className="calendar-class-block-location"
+                            title={locationText}
+                          >
+                            {locationText}
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -782,8 +822,16 @@ export function CalendarPage({
                 ...dayTasks.map((task) => ({
                   key: `task-${task.id}`,
                   label: `Entrega · ${task.title}`,
-                  variantClass: task.status === 'done' ? 'is-done' : '',
+                  variantClass: task.status === 'done' ? 'is-task is-done' : 'is-task',
                   title: `${task.title} · ${task.courseName}`,
+                })),
+                ...dayClasses.map((block) => ({
+                  key: `class-${block.scheduleId}`,
+                  label: `${block.startTime} · ${block.courseName}`,
+                  variantClass: 'is-class',
+                  title: `${block.startTime}–${block.endTime} · ${block.courseName}${
+                    block.location.trim() ? ` (${block.location.trim()})` : ''
+                  }`,
                 })),
                 ...dayExternal.map((evt) => ({
                   key: `ext-${evt.id}`,
@@ -806,13 +854,9 @@ export function CalendarPage({
                   }`}
                   className={`calendar-month-cell ${
                     !day.isCurrentMonth ? 'is-outside' : ''
-                  } ${day.isToday ? 'is-today' : ''}`.trim()}
-                  style={{
-                    cursor: 'pointer',
-                    ...(isSelected && !day.isToday
-                      ? { outline: '2px solid var(--ink)', outlineOffset: '-2px' }
-                      : {}),
-                  }}
+                  } ${day.isToday ? 'is-today' : ''} ${
+                    isSelected ? 'is-selected' : ''
+                  }`.trim()}
                   data-date={day.dateIso}
                   onClick={() => setSelectedMonthDateIso(day.dateIso)}
                   onKeyDown={(e) => {
@@ -834,7 +878,13 @@ export function CalendarPage({
                           className={`calendar-month-badge ${badge.variantClass}`.trim()}
                           title={badge.title}
                         >
-                          {badge.label}
+                          <span
+                            className="calendar-month-badge-dot"
+                            aria-hidden="true"
+                          />
+                          <span className="calendar-month-badge-text">
+                            {badge.label}
+                          </span>
                         </span>
                       ))}
                       {extraBadgesCount > 0 ? (
@@ -842,18 +892,6 @@ export function CalendarPage({
                           +{extraBadgesCount} más
                         </span>
                       ) : null}
-                    </div>
-                  ) : null}
-
-                  {dayClasses.length > 0 ? (
-                    <div className="calendar-event-dots" aria-hidden="true">
-                      {dayClasses.map((block) => (
-                        <span
-                          key={`${day.dateIso}-${block.scheduleId}`}
-                          className="calendar-event-rect"
-                          title={`Clase: ${block.courseName}`}
-                        />
-                      ))}
                     </div>
                   ) : null}
                 </div>
