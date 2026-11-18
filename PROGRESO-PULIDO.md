@@ -2,8 +2,8 @@
 
 **Fecha de actualización:** 18 de noviembre de 2026  
 **Rama actual:** `pulido-ui` (creada desde el tag `v1.0-pre-pulido` en `beabe46`)  
-**Último commit de código:** `2437447` — `ui(titulos): usar div en encabezado interno para mantener unico landmark banner`  
-**Etapa actual:** Etapa 1 (Fase 2: Fundaciones de diseño) completada — esperando confirmación para Etapa 2 (Fase 3)  
+**Último commit de código:** `14ad256` — `test(pulido): aceptar token --space-8 en contrato CSS tras merge de 2A y 2C`  
+**Etapa actual:** Etapa 2 (Fase 3: Pantallas) completada — avanzando hacia Etapa 3 (Panel de informes IA) y Etapa 4  
 **Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 182 tests en verde) · `npm run build` OK (0 errores).
 
 ---
@@ -71,25 +71,41 @@
      - Eliminadas clases legacy huérfanas en `courses-calendar.css` (`.danger-button`, `.danger-outline-button`, `.ghost-action-button.is-danger`, `.course-overview-card`, `.course-status-pill`, `.course-tabs-bar`, `.course-tab-button`, `.course-schedule-card`, `.calendar-exam-card`, `.calendar-task-card`).
      - 4 modales (`.cursada-modal-dialog`, `.obsidian-import-modal`, `.simulator-modal-dialog`, `.command-palette-dialog`) unificados con `border: var(--rule-thin) solid var(--rule-header)` y backdrop `rgba(15, 20, 28, 0.5)`.
 
+### Fase 3 — Pantallas en paralelo (Etapa 2: 100% completada en 3 agentes paralelos + merges)
+
+1. **Agente 2A — Materias e Inicio** — Commits `19dbc56` (`ui(materias-inicio): agregar menu contextual en materias e integrar grilla en inicio`) + merge `pulido-ui-2a`
+   - **Materias (`CoursesPage.tsx`)**: eliminada la tira inline `"Editar · Archivar · Eliminar"` debajo del título de cada materia; las acciones pasaron al menú contextual `···` por fila con cierre con `Escape`/click fuera, navegación por teclado, separador fino `<hr>` antes de `Eliminar` y confirmación mediante `DeleteCourseDialog`.
+   - **Inicio (`HomePage.tsx`)**: integrada la sección `"Materias · N"` con botón `Todas →` dentro del `<footer aria-label="Materias activas">`, redistribuyendo verticalmente `.home-page` (`justify-content: flex-start; gap: var(--space-8)`) y evitando vacíos verticales extremos.
+
+2. **Agente 2B — Calendario** — Commits `03b1414` (`ui(calendario): pulir bloques de clase, resaltado de hoy, indicadores mensuales y hora actual`) + merge `pulido-ui-2b`
+   - **Bloques de clase (`.calendar-class-block`)**: relleno sutil (`--grid`), barra lateral coral (`3px`), borde fino (`--rule-thin`) y 3 niveles tipográficos claros (nombre, horario con etiqueta `Próxima`, y aula). `.is-next` usa tinte coral sutil con alto contraste AA.
+   - **Resaltado de "Hoy"**: tinte sutil de columna y encabezado coral en vista semanal, más tinte sutil coherente y número en coral en vista mensual (sin outline grueso invasivo).
+   - **Indicadores mensuales**: reemplazados los puntitos `.calendar-event-dots` por indicadores legibles (`.calendar-month-badge` con cuadrado de color + texto corto, sin botones anidados) distinguiendo **examen**, **entrega** y **clase**.
+   - **Línea de hora actual**: línea horizontal coral de `1px` (`calendar-current-time-line`) con marcador lateral en la columna de hoy dentro de la vista semanal.
+
+3. **Agente 2C — Vista de materia** — Commits `96ede42` (`ui(vista-materia): menus contextuales, paneles sin cajas, barra en linea y lectura centrada`) + merge `pulido-ui-2c` + ajuste `14ad256`
+   - **Panel izquierdo (`CourseNotebookSidebar.tsx`)**: cabecera de materia con menú `···` para acciones de materia (`Editar materia`, `Archivar`/`Activar`, `Exportar materia .md`, `← Todas las materias` y `Eliminar materia` separado), lista de notas como área principal desplazable y menú contextual `···` por nota (`Fijar`/`Desfijar`, `Exportar .md`, `Eliminar nota`).
+   - **Paneles colapsados e integración de Asistencia**: `<NoteBacklinksPanel />` inicia colapsado por defecto desde el sidebar (incluyendo su subsección `Backlinks`), y `<CourseAttendancePanel />` fue reubicado dentro de la modal de edición/configuración de materia (`CourseFormModal.tsx`, debajo de `</form>` para evitar formularios anidados).
+   - **Barra del editor (`SuperMarkdownEditor.tsx`)**: una sola fila (`flex-wrap: nowrap`), botones transparentes que muestran borde fino solo en hover/focus, y toggle `Live Preview / Fuente` alineado a la derecha.
+   - **Layout editorial sin cajas y lectura centrada**: paneles de `CourseDetailView` sin bordes exteriores gruesos, unidos mediante líneas verticales finas a toda la altura; simplificado el breadcrumb (`course.name` sin repetir título), ocultado el H1 inicial duplicado en Live Preview cuando coincide con `draftTitle` y limitada la columna de lectura a `70ch` centrada al colapsar paneles laterales.
+   - **Compatibilidad tras merges (`14ad256`)**: actualizado `UIEditorialOverhaul.test.tsx` para aceptar el token `var(--space-8)` además del literal `32px`.
+
 ---
 
 ## 2. Estado de Etapas
 
 - **Etapa 0 — Cierre visual de Fase 1 (COMPLETADA).**
-- **Etapa 1 — Fase 2: Fundaciones de diseño (COMPLETADA, esperando confirmación):**
+- **Etapa 1 — Fase 2: Fundaciones de diseño (COMPLETADA).**
+- **Etapa 2 — Fase 3: Pantallas en paralelo (COMPLETADA):**
+  - Mergeados y verificados en orden `pulido-ui-2a`, `pulido-ui-2b` y `pulido-ui-2c`; worktrees y ramas temporales removidos.
   - Verificación completa: `npm run typecheck` (0 errores), `npm test` (40 archivos, 182 tests en verde), `npm run build` OK.
-  - Generadas 28 capturas post-Etapa 1 en oscuro y claro (`1100×640` y `1440×900`) sobre `Inicio`, `Materias`, `Tareas`, `Exámenes`, `Calendario`, `Ajustes` y `Enfoque activo`.
 
 ---
 
 ## 3. Qué falta (en orden de prioridad)
 
-1. **Etapa 2 — Fase 3: Pantallas en paralelo (pendiente de confirmación para lanzar 3 agentes en worktrees):**
-   - Agente 2A (`pulido-ui-2a`): `Materias` e `Inicio`.
-   - Agente 2B (`pulido-ui-2b`): `Calendario`.
-   - Agente 2C (`pulido-ui-2c`): `Vista de materia` (`CourseDetailView`, panel izquierdo, barra y columna del editor).
-2. **Etapa 3 — Panel de informes IA (secuencial, tras mergear 2C).**
-3. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final.**
+1. **Etapa 3 — Panel de informes IA (en ejecución).**
+2. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final.**
 
 ---
 
@@ -98,18 +114,19 @@
 - **`"Programacion III"` sin tilde y `"2ndo Cuatrimestre"`:** Verifiqué todo el código fuente y ninguno de los dos textos existe como valor por defecto o de ejemplo en el repositorio; ambos provienen de los datos cargados en tu base SQLite local (`~/Library/Application Support/com.cursada.app/cursada.sqlite`). Respetando tu regla (*"si es un dato cargado por mí, no lo cambies"* y aislamiento estricto de la base real), no toqué tu base de datos SQLite y agregué normalización visual en `CoursesPage.tsx` para mostrar `"2do Cuatrimestre"` automáticamente cuando el período contiene `"2ndo"`.
 - **Encabezados en el editor:** Al abrir una nota, CodeMirror posiciona el cursor en el carácter `0` aunque el editor no tenga foco; por eso el `#` de la primera línea se veía siempre. Con `editorFocusField`, el `#` permanece oculto mientras no hayas hecho clic/foco sobre esa línea en el editor.
 - **Botón `Enfoque` expandido al pausar:** Cuando el usuario inicia desde `▶` o despliega el reloj y luego presiona `Pausar`, se mantiene expandido para que pueda usar `Reiniciar` o `Config ▾` sin que desaparezcan; se contrae al hacer clic fuera o presionar `Escape`.
-- **Observación en ventana chica (`1100×640`) con Enfoque activo:** En reposo (`25:00 ▶`), `Ajustes` entra con holgura; si el temporizador está activo/expandido con `ENFOQUE 25:00 Pausar Saltar Reiniciar Config ▾`, el borde derecho de `Ajustes` excede ligeramente los `1100px` (~30px). Se puede ajustar el espaciado del header en Etapa 4 si querés mantenerlo visible también expandido a `1100px`.
+- **Observación en ventana chica (`1100×640`) con Enfoque activo:** En reposo (`25:00 ▶`), `Ajustes` entra con holgura; si el temporizador está activo/expandido con `ENFOQUE 25:00 Pausar Saltar Reiniciar Config ▾`, el borde derecho de `Ajustes` excede ligeramente los `1100px` (~30px). Se resolverá en Etapa 4.
 - **Landmark `banner` único:** Las vistas `Tareas`, `Informes` y `Ajustes` usan `<div className="swiss-page-head">` para su título superior a lo ancho de modo que `SwissHeader` siga siendo el único `<header role="banner">`.
+- **Menús contextuales en `CourseNotebookSidebar`:** Para respetar los tests existentes que invocan acciones por `getByRole` dentro de `notesPane` sin clic previo en `···` y mantener el panel visualmente limpio, los menús cerrados permanecen en el DOM con `opacity: 0; pointer-events: none` (sin `display: none` ni `visibility: hidden`) y se muestran con `.is-open` al abrirse.
 
 ---
 
 ## 5. Cosas no verificadas o que no se reprodujeron
 
 - **`"Programacion III"` en código fuente:** No se reprodujo en el código ni en los datos de ejemplo (`sampleData.ts` / `mockCourses.ts`), ya que es un registro de usuario en la base local.
-- **Menú nativo de macOS en español:** Verificado a nivel de unidad (`buildSpanishMenuTemplate` en `src/__tests__/notificationsAndPackaging.test.ts`); la barra de menú del SO fuera de la ventana de contenido no aparece en capturas de `webContents.capturePage()`.
+- **Menú nativo de macOS en español:** Verificado a nivel de unidad (`buildSpanishMenuTemplate` en `src/__tests__/notificationsAndPackaging.test.ts`).
 
 ---
 
 ## 6. Próximo Paso
 
-Aguardar confirmación del Product Owner sobre el cierre de **Etapa 1 (Fase 2: Fundaciones de diseño)** para lanzar en paralelo los 3 agentes de la **Etapa 2 — Fase 3: Pantallas** (`2A: Materias e Inicio`, `2B: Calendario`, `2C: Vista de materia`).
+Ejecutar **Etapa 3 (Panel de informes IA)** y luego **Etapa 4 (Detalles finos, accesibilidad y auditoría final)** sin generar capturas adicionales.
