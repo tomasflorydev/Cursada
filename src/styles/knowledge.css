@@ -8,7 +8,7 @@
      ========================================================================== */
   .backlinks-panel {
     margin-top: 24px;
-    border-top: 3px solid var(--ink);
+    border-top: var(--rule-thin) solid var(--rule);
     padding-top: 12px;
     display: flex;
     flex-direction: column;
@@ -82,7 +82,7 @@
     letter-spacing: 0.12em;
     color: var(--mut);
     padding-bottom: 6px;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .backlinks-list {
@@ -93,7 +93,7 @@
   }
 
   .backlinks-list-item {
-    border-bottom: 1px solid var(--rule);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .backlinks-item-btn {
@@ -219,7 +219,7 @@
     justify-content: space-between;
     gap: 16px;
     padding-bottom: 12px;
-    border-bottom: 3px solid var(--ink);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .obsidian-import-title {
@@ -274,6 +274,6 @@
     justify-content: flex-end;
     gap: 10px;
     padding-top: 14px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 }

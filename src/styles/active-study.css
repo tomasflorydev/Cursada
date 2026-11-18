@@ -161,7 +161,7 @@
 
   .pomodoro-popover-head {
     padding-bottom: 8px;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .pomodoro-form-grid {
@@ -188,7 +188,7 @@
     justify-content: space-between;
     gap: 10px;
     padding-top: 6px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .pomodoro-popover-actions {
@@ -345,7 +345,7 @@
     flex-direction: column;
     gap: 6px;
     padding-top: 10px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-config-row {
@@ -370,7 +370,7 @@
     flex-direction: column;
     gap: 10px;
     padding-top: 10px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-record-fields {
@@ -396,7 +396,7 @@
     flex-direction: column;
     gap: 8px;
     padding-top: 10px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-records-list {
@@ -413,7 +413,7 @@
     justify-content: space-between;
     gap: 10px;
     padding: 8px 0;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-record-row:first-child {
@@ -486,7 +486,7 @@
     justify-content: space-between;
     gap: 16px;
     padding-bottom: 14px;
-    border-bottom: 3px solid var(--ink);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .simulator-header-copy {
@@ -677,7 +677,7 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 14px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
     background-color: var(--grid);
   }
 
@@ -706,7 +706,7 @@
     justify-content: space-between;
     gap: 12px;
     padding-top: 14px;
-    border-top: 2px solid var(--ink);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .simulator-footer-actions {

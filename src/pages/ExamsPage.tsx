@@ -466,8 +466,8 @@ export function ExamsPage({
         <section
           aria-label={formMode === 'edit' ? 'Editar examen' : 'Nuevo examen'}
           style={{
-            borderTop: '3px solid var(--ink)',
-            borderBottom: '3px solid var(--ink)',
+            borderTop: 'var(--rule-thin) solid var(--rule)',
+            borderBottom: 'var(--rule-thin) solid var(--rule)',
             padding: '20px 0',
             marginBottom: '28px',
           }}
@@ -849,7 +849,7 @@ export function ExamsPage({
                         alignItems: 'center',
                         gap: '20px',
                         padding: '16px 0',
-                        borderTop: '1px solid var(--rule)',
+                        borderTop: 'var(--rule-thin) solid var(--rule)',
                       }}
                     >
                       <div className="swiss-meta-md">

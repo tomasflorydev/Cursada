@@ -47,7 +47,7 @@
     justify-content: space-between;
     gap: var(--space-3);
     padding-block-end: 14px;
-    border-block-end: 1px solid var(--border-subtle);
+    border-block-end: var(--rule-thin) solid var(--rule);
   }
 
   .cursada-modal-title {
@@ -64,7 +64,7 @@
     justify-content: flex-end;
     gap: 10px;
     padding-block-start: 16px;
-    border-block-start: 1px solid var(--border-subtle);
+    border-block-start: var(--rule-thin) solid var(--rule);
   }
 
   /* Danger buttons */
@@ -432,7 +432,7 @@
     justify-content: space-between;
     gap: 16px;
     padding-block-end: 12px;
-    border-block-end: 1px solid var(--border-subtle);
+    border-block-end: var(--rule-thin) solid var(--rule);
     font-size: 0.85rem;
   }
 
