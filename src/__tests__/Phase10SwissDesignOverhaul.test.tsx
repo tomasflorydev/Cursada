@@ -56,7 +56,7 @@ describe('Phase 10 (v2.0.0): Swiss Typographic System & 8-View Overhaul', () => 
       screen.getByRole('heading', { level: 2, name: 'Exámenes' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Informe listo' })
+      screen.getByRole('heading', { level: 2, name: 'Informes' })
     ).toBeInTheDocument();
 
     // 2. Materias

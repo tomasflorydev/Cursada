@@ -93,10 +93,14 @@ function formatNextClassLabel(course: CourseWithSchedules, now: Date): string {
   return `${DAY_SHORT_NAMES_ES[best.dayOfWeek]} ${best.startTime}`;
 }
 
+function formatTermDisplay(term: string): string {
+  return term.trim().replace(/\b2ndo\b/gi, '2do');
+}
+
 function getCommonTermLabel(courses: CourseWithSchedules[]): string {
   const counts = new Map<string, number>();
   for (const c of courses) {
-    const t = c.term.trim();
+    const t = formatTermDisplay(c.term);
     if (!t) continue;
     counts.set(t, (counts.get(t) ?? 0) + 1);
   }
@@ -500,8 +504,10 @@ export function CoursesPage({
                         >
                           {course.name}
                         </button>
-                        {course.term.trim() ? (
-                          <div className="swiss-meta">{course.term.trim()}</div>
+                        {formatTermDisplay(course.term) ? (
+                          <div className="swiss-meta">
+                            {formatTermDisplay(course.term)}
+                          </div>
                         ) : null}
                       </div>
                       <span className="swiss-meta">Archivada</span>

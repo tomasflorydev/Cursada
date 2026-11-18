@@ -283,6 +283,13 @@ export function HomePage({
     ? `Tu próxima clase es ${nextClass.courseName} ${nextClass.dayLabel} a las ${nextClass.startTime}.`
     : 'No tenés clases semanales cargadas.';
 
+  const statusSummarySentence =
+    pendingTasks.length === 0 && reports.length === 0
+      ? 'No tenés tareas abiertas ni informes generados todavía.'
+      : pendingTasks.length === 0
+        ? `No tenés tareas abiertas y tenés ${reportsSummaryText}.`
+        : `Hoy ${tasksSummaryText} y ${reportsSummaryText}.`;
+
   const footerCourses = useMemo(() => courses.slice(0, 5), [courses]);
 
   return (
@@ -301,7 +308,7 @@ export function HomePage({
             de {monthName}
           </p>
           <p className="home-summary">
-            {nextClassSummaryText} Hoy {tasksSummaryText} y {reportsSummaryText}.
+            {nextClassSummaryText} {statusSummarySentence}
           </p>
         </section>
 
@@ -424,8 +431,8 @@ export function HomePage({
             )}
           </section>
 
-          <section aria-label="Informe listo">
-            <SwissSectionHeader title="Informe listo" />
+          <section aria-label="Informes">
+            <SwissSectionHeader title="Informes" />
 
             <div className="home-report-block">
               {latestReport ? (
