@@ -115,6 +115,7 @@
 
     --gutter: 28px;
     --gutter-home: 24px;
+    --calendar-axis-col: 88px;
     --radius-sm: 0px;
     --radius-md: 0px;
     --radius-lg: 0px;
@@ -1641,7 +1642,7 @@
   .calendar-deliverables-band,
   .calendar-body-cols {
     display: grid;
-    grid-template-columns: 56px repeat(7, minmax(0, 1fr));
+    grid-template-columns: var(--calendar-axis-col) repeat(7, minmax(0, 1fr));
   }
 
   .calendar-day-heads {
@@ -1674,7 +1675,12 @@
   }
 
   .calendar-deliverables-label {
-    padding: 10px 4px 10px 0;
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-2) var(--space-2) 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .calendar-deliverable-cell {
