@@ -1157,50 +1157,30 @@ export function CourseDetailView({
             void handleOpenOrCreateWikiLink(targetTitle)
           }
         />
-      ) : null}
+      ) : (
+        <aside
+          className="notebook-collapsed-rail"
+          aria-label="Panel de notas colapsado"
+        >
+          <button
+            type="button"
+            className="notebook-collapse-btn is-collapsed-restore notebook-collapsed-rail-btn"
+            aria-label="Mostrar panel de notas"
+            aria-expanded={false}
+            title="Mostrar panel de notas"
+            onClick={() => setIsLeftSidebarOpen(true)}
+          >
+            <span aria-hidden="true">›</span>
+            <span className="notebook-collapsed-rail-label">Notas</span>
+          </button>
+        </aside>
+      )}
 
       {/* Panel central: Super-Editor Markdown */}
       <div ref={editorPaneRef} className="notebook-editor-pane">
         <h1 id="main-title" tabIndex={-1} className="visually-hidden">
           {course.name}
         </h1>
-
-        <div className="notebook-editor-topbar">
-          <div className="notebook-editor-topbar-left">
-            <button
-              type="button"
-              className={`notebook-collapse-btn ${
-                !isLeftSidebarOpen ? 'is-collapsed-restore' : ''
-              }`.trim()}
-              aria-label={
-                isLeftSidebarOpen
-                  ? 'Ocultar panel de notas'
-                  : 'Mostrar panel de notas'
-              }
-              aria-expanded={isLeftSidebarOpen}
-              onClick={() => setIsLeftSidebarOpen((open) => !open)}
-            >
-              {isLeftSidebarOpen ? '‹ Notas' : '› Notas'}
-            </button>
-          </div>
-          <div className="notebook-editor-topbar-right">
-            <button
-              type="button"
-              className={`notebook-collapse-btn ${
-                !isRightSidebarOpen ? 'is-collapsed-restore' : ''
-              }`.trim()}
-              aria-label={
-                isRightSidebarOpen
-                  ? 'Ocultar panel de asistente IA'
-                  : 'Mostrar panel de asistente IA'
-              }
-              aria-expanded={isRightSidebarOpen}
-              onClick={() => setIsRightSidebarOpen((open) => !open)}
-            >
-              {isRightSidebarOpen ? 'IA ›' : '‹ IA'}
-            </button>
-          </div>
-        </div>
 
         <motion.div
           key={selectedNote ? 'course-editor' : 'course-empty'}
@@ -1360,7 +1340,24 @@ export function CourseDetailView({
           lastAnswer={lastAnswer}
           onChatCitationClick={handleChatCitationClick}
         />
-      ) : null}
+      ) : (
+        <aside
+          className="notebook-collapsed-rail"
+          aria-label="Panel de asistente IA colapsado"
+        >
+          <button
+            type="button"
+            className="notebook-collapse-btn is-collapsed-restore notebook-collapsed-rail-btn"
+            aria-label="Mostrar panel de asistente IA"
+            aria-expanded={false}
+            title="Mostrar panel de asistente IA"
+            onClick={() => setIsRightSidebarOpen(true)}
+          >
+            <span aria-hidden="true">‹</span>
+            <span className="notebook-collapsed-rail-label">IA</span>
+          </button>
+        </aside>
+      )}
 
       <PracticeExamSimulatorModal
         isOpen={isSimulatorOpen}

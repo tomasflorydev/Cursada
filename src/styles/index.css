@@ -1272,15 +1272,15 @@
   }
 
   .notebook-grid.is-left-collapsed {
-    grid-template-columns: minmax(0, 1fr) minmax(290px, 345px);
+    grid-template-columns: auto minmax(0, 1fr) minmax(290px, 345px);
   }
 
   .notebook-grid.is-right-collapsed {
-    grid-template-columns: minmax(270px, 315px) minmax(0, 1fr);
+    grid-template-columns: minmax(270px, 315px) minmax(0, 1fr) auto;
   }
 
   .notebook-grid.is-left-collapsed.is-right-collapsed {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .notebook-notes-pane,
@@ -1418,21 +1418,25 @@
     container: editor-pane / inline-size;
   }
 
-  .notebook-editor-topbar {
+  .notebook-collapsed-rail {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--rule);
+    padding: 12px 8px;
+    border: 1px solid var(--ink);
+    background-color: var(--bg);
   }
 
-  .notebook-editor-topbar-left,
-  .notebook-editor-topbar-right {
-    display: flex;
-    align-items: center;
+  .notebook-collapsed-rail-btn {
+    flex-direction: column;
+    padding: 10px 6px;
     gap: 8px;
-    min-width: 0;
+    border-color: transparent;
+  }
+
+  .notebook-collapsed-rail-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
   }
 
   .notebook-editor-wrap {

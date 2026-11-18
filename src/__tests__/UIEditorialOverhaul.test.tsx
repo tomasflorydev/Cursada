@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
@@ -69,19 +69,24 @@ describe('Swiss Editorial & Minimal Neo-Brutalist UI Overhaul', () => {
       expect(grid).not.toHaveClass('is-left-collapsed');
       expect(grid).not.toHaveClass('is-right-collapsed');
 
-      // Collapse left sidebar from topbar button
-      fireEvent.click(screen.getByRole('button', { name: 'Ocultar panel de notas' }));
+      // Collapse left sidebar from its own header button
+      const notesPane = await screen.findByLabelText('Notas de la materia');
+      fireEvent.click(
+        within(notesPane).getByRole('button', { name: 'Colapsar panel izquierdo' })
+      );
       expect(screen.queryByLabelText('Notas de la materia')).not.toBeInTheDocument();
       expect(grid).toHaveClass('is-left-collapsed');
 
-      const restoreLeftBtn = screen.getByRole('button', {
+      const leftCollapsedRail = screen.getByLabelText('Panel de notas colapsado');
+      const restoreLeftBtn = within(leftCollapsedRail).getByRole('button', {
         name: 'Mostrar panel de notas',
       });
       expect(restoreLeftBtn).toHaveAttribute('aria-expanded', 'false');
 
-      // Collapse right sidebar while left is collapsed
+      // Collapse right sidebar from its own header button while left is collapsed
+      const aiPane = await screen.findByLabelText('Asistente e informes con IA');
       fireEvent.click(
-        screen.getByRole('button', { name: 'Ocultar panel de asistente IA' })
+        within(aiPane).getByRole('button', { name: 'Colapsar panel derecho' })
       );
       expect(
         screen.queryByLabelText('Asistente e informes con IA')
@@ -89,13 +94,18 @@ describe('Swiss Editorial & Minimal Neo-Brutalist UI Overhaul', () => {
       expect(grid).toHaveClass('is-left-collapsed');
       expect(grid).toHaveClass('is-right-collapsed');
 
-      // Restore both sidebars
+      // Restore both sidebars from their respective collapsed rails
       fireEvent.click(restoreLeftBtn);
       expect(await screen.findByLabelText('Notas de la materia')).toBeInTheDocument();
       expect(grid).not.toHaveClass('is-left-collapsed');
 
+      const rightCollapsedRail = screen.getByLabelText(
+        'Panel de asistente IA colapsado'
+      );
       fireEvent.click(
-        screen.getByRole('button', { name: 'Mostrar panel de asistente IA' })
+        within(rightCollapsedRail).getByRole('button', {
+          name: 'Mostrar panel de asistente IA',
+        })
       );
       expect(
         await screen.findByLabelText('Asistente e informes con IA')
