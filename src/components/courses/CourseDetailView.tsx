@@ -184,6 +184,8 @@ export function CourseDetailView({
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportProgressText, setReportProgressText] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [lastRequestedReportType, setLastRequestedReportType] =
+    useState<StudyReportType>('summary');
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
   // Ask sources chat state
@@ -915,6 +917,7 @@ export function CourseDetailView({
 
   async function handleGenerateReport(reportType: StudyReportType): Promise<void> {
     if (!course) return;
+    setLastRequestedReportType(reportType);
     setReportError(null);
 
     const {
@@ -1331,6 +1334,7 @@ export function CourseDetailView({
           reportProgressText={reportProgressText}
           reportError={reportError}
           onGenerateReport={(type) => void handleGenerateReport(type)}
+          onRetryReport={() => void handleGenerateReport(lastRequestedReportType)}
           onCancelReport={handleCancelReport}
           onOpenSimulator={() => setIsSimulatorOpen(true)}
           latestReport={latestReport}

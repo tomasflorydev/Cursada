@@ -1,4 +1,12 @@
-import { useId, type ChangeEvent, type FormEvent, type RefObject } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type RefObject,
+} from 'react';
 import { formatRelativeAgeEs, type StoredReport } from '../../lib/reportsStore';
 import { renderTextWithMathAndCitations } from '../../lib/math/latexRenderer';
 import type {
@@ -35,6 +43,72 @@ const SOURCE_TYPE_SHORT: Record<SourceType, string> = {
   pasted_text: 'Texto',
   note: 'Nota',
 };
+
+function sanitizeReportFilename(title: string): string {
+  const normalized = (title || 'informe-ia')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 72);
+  return `${normalized || 'informe-ia'}.md`;
+}
+
+function downloadReportMarkdown(report: StoredReport): boolean {
+  if (
+    typeof document === 'undefined' ||
+    typeof URL === 'undefined' ||
+    typeof URL.createObjectURL !== 'function'
+  ) {
+    return false;
+  }
+  const markdownBody = report.content.trimStart().startsWith('#')
+    ? report.content
+    : `# ${report.title}\n\n${report.content}`;
+  const blob = new Blob([markdownBody], {
+    type: 'text/markdown;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = sanitizeReportFilename(report.title);
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  if (typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(url);
+  }
+  return true;
+}
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === 'function'
+  ) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  if (typeof document !== 'undefined' && typeof document.execCommand === 'function') {
+    const helper = document.createElement('textarea');
+    helper.value = text;
+    helper.setAttribute('readonly', '');
+    helper.style.position = 'fixed';
+    helper.style.opacity = '0';
+    document.body.appendChild(helper);
+    helper.select();
+    try {
+      return document.execCommand('copy');
+    } finally {
+      helper.remove();
+    }
+  }
+  return false;
+}
 
 function extractReportExcerpt(content: string): string {
   const blocks = content
@@ -98,6 +172,7 @@ export interface CourseAssistantSidebarProps {
   reportProgressText: string | null;
   reportError: string | null;
   onGenerateReport: (type: StudyReportType) => void;
+  onRetryReport?: () => void;
   onCancelReport: () => void;
   onOpenSimulator: () => void;
   latestReport: StoredReport | null;
@@ -160,6 +235,7 @@ export function CourseAssistantSidebar({
   reportProgressText,
   reportError,
   onGenerateReport,
+  onRetryReport,
   onCancelReport,
   onOpenSimulator,
   latestReport,
@@ -179,6 +255,49 @@ export function CourseAssistantSidebar({
   const askInputId = useId();
   const pasteTitleId = useId();
   const pasteBodyId = useId();
+  const [reportActionNotice, setReportActionNotice] = useState<string | null>(
+    null
+  );
+  const reportNoticeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (reportNoticeTimerRef.current !== null) {
+        window.clearTimeout(reportNoticeTimerRef.current);
+      }
+    };
+  }, []);
+
+  function showReportActionNotice(message: string): void {
+    setReportActionNotice(message);
+    if (reportNoticeTimerRef.current !== null) {
+      window.clearTimeout(reportNoticeTimerRef.current);
+    }
+    reportNoticeTimerRef.current = window.setTimeout(() => {
+      setReportActionNotice(null);
+      reportNoticeTimerRef.current = null;
+    }, 2500);
+  }
+
+  async function handleCopyLatestReport(): Promise<void> {
+    if (!latestReport) return;
+    try {
+      const ok = await copyTextToClipboard(latestReport.content);
+      showReportActionNotice(
+        ok ? 'Copiado al portapapeles.' : 'No se pudo copiar el informe.'
+      );
+    } catch {
+      showReportActionNotice('No se pudo copiar el informe.');
+    }
+  }
+
+  function handleExportLatestReport(): void {
+    if (!latestReport) return;
+    const ok = downloadReportMarkdown(latestReport);
+    showReportActionNotice(
+      ok ? 'Exportado en Markdown.' : 'No se pudo exportar el informe.'
+    );
+  }
 
   return (
     <aside className="notebook-ai-pane" aria-label="Asistente e informes con IA">
@@ -197,59 +316,74 @@ export function CourseAssistantSidebar({
       </div>
 
       <div
-        className="stage-filter-row"
+        className="stage-filter-groups"
         role="group"
         aria-label="Filtrar contexto de IA por instancia"
       >
-        {(
-          [
-            { id: 'all', label: 'Todo' },
-            { id: 'parcial_1', label: '1° Parcial' },
-            { id: 'parcial_2', label: '2° Parcial' },
-            { id: 'final', label: 'Final' },
-          ] as const
-        ).map((stage) => {
-          const isActive =
-            aiStageFilter === stage.id && aiContextFilter === 'all';
-          return (
+        <div className="stage-filter-group">
+          <span className="swiss-section-label stage-filter-group-label">
+            Alcance
+          </span>
+          <div className="stage-filter-pills">
+            {(
+              [
+                { id: 'all', label: 'Todo' },
+                { id: 'parcial_1', label: '1° Parcial' },
+                { id: 'parcial_2', label: '2° Parcial' },
+                { id: 'final', label: 'Final' },
+              ] as const
+            ).map((stage) => {
+              const isActive = aiStageFilter === stage.id;
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  className={`stage-pill ${isActive ? 'is-active' : ''}`.trim()}
+                  aria-pressed={isActive}
+                  onClick={() => onChangeStageFilter(stage.id)}
+                >
+                  {stage.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="stage-filter-group">
+          <span className="swiss-section-label stage-filter-group-label">
+            Origen
+          </span>
+          <div className="stage-filter-pills">
             <button
-              key={stage.id}
               type="button"
-              className={`stage-pill ${isActive ? 'is-active' : ''}`}
-              aria-pressed={isActive}
-              onClick={() => {
-                onChangeStageFilter(stage.id);
-                onChangeContextFilter('all');
-              }}
+              className={`stage-pill ${
+                aiContextFilter === 'sources_only' ? 'is-active' : ''
+              }`.trim()}
+              aria-pressed={aiContextFilter === 'sources_only'}
+              onClick={() =>
+                onChangeContextFilter((prev) =>
+                  prev === 'sources_only' ? 'all' : 'sources_only'
+                )
+              }
             >
-              {stage.label}
+              Solo Fuentes
             </button>
-          );
-        })}
-        <button
-          type="button"
-          className={`stage-pill ${aiContextFilter === 'sources_only' ? 'is-active' : ''}`}
-          aria-pressed={aiContextFilter === 'sources_only'}
-          onClick={() =>
-            onChangeContextFilter((prev) =>
-              prev === 'sources_only' ? 'all' : 'sources_only'
-            )
-          }
-        >
-          Solo Fuentes
-        </button>
-        <button
-          type="button"
-          className={`stage-pill ${aiContextFilter === 'notes_only' ? 'is-active' : ''}`}
-          aria-pressed={aiContextFilter === 'notes_only'}
-          onClick={() =>
-            onChangeContextFilter((prev) =>
-              prev === 'notes_only' ? 'all' : 'notes_only'
-            )
-          }
-        >
-          Solo Notas
-        </button>
+            <button
+              type="button"
+              className={`stage-pill ${
+                aiContextFilter === 'notes_only' ? 'is-active' : ''
+              }`.trim()}
+              aria-pressed={aiContextFilter === 'notes_only'}
+              onClick={() =>
+                onChangeContextFilter((prev) =>
+                  prev === 'notes_only' ? 'all' : 'notes_only'
+                )
+              }
+            >
+              Solo Notas
+            </button>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -498,44 +632,128 @@ export function CourseAssistantSidebar({
         </SwissButton>
       </div>
 
-      {isGeneratingReport ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <SwissLoadingBar text={reportProgressText ?? 'Generando informe…'} />
-          </div>
-          <SwissLinkButton
-            className="swiss-link-sm"
-            aria-label="Cancelar generación de informe"
-            onClick={onCancelReport}
+      <section
+        className="notebook-report-panel"
+        aria-label="Estado del informe con IA"
+      >
+        {isGeneratingReport ? (
+          <div
+            className="notebook-report-state is-generating"
+            data-testid="assistant-report-generating"
           >
-            Cancelar
-          </SwissLinkButton>
-        </div>
-      ) : null}
-      {reportError ? <SwissErrorAlert message={reportError} /> : null}
-
-      {latestReport ? (
-        <div className="notebook-last-report">
-          <span className="swiss-section-label">
-            Último informe · {formatRelativeAgeEs(latestReport.updatedAt)}
-          </span>
-          <h3 className="notebook-last-report-title">{latestReport.title}</h3>
-          <p className="notebook-last-report-excerpt">
-            {renderTextWithMathAndCitations(
-              extractReportExcerpt(latestReport.content),
-              onReportCitationClick
-            )}
-          </p>
-          <div>
-            <SwissLinkButton
-              underlined
-              onClick={() => onOpenReport?.(latestReport.id)}
-            >
-              Abrir informe →
-            </SwissLinkButton>
+            <div className="notebook-report-progress-row">
+              <div className="notebook-report-progress-track">
+                <SwissLoadingBar
+                  text={reportProgressText ?? 'Generando informe…'}
+                />
+              </div>
+              <SwissButton
+                variant="tertiary"
+                size="sm"
+                aria-label="Cancelar generación de informe"
+                onClick={onCancelReport}
+              >
+                Cancelar
+              </SwissButton>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : reportError ? (
+          <div
+            className="notebook-report-state is-error"
+            data-testid="assistant-report-error"
+          >
+            <SwissErrorAlert message={reportError} />
+            <div className="notebook-report-error-actions">
+              <SwissButton
+                variant="secondary"
+                size="sm"
+                aria-label="Reintentar generación de informe"
+                onClick={() =>
+                  onRetryReport ? onRetryReport() : onGenerateReport('summary')
+                }
+              >
+                Reintentar
+              </SwissButton>
+            </div>
+          </div>
+        ) : latestReport ? (
+          <div
+            className="notebook-last-report"
+            data-testid="assistant-report-result"
+          >
+            <span className="swiss-section-label">
+              Último informe · {formatRelativeAgeEs(latestReport.updatedAt)}
+            </span>
+            <h3
+              className="notebook-last-report-title"
+              title={latestReport.title}
+            >
+              {latestReport.title}
+            </h3>
+            <p className="notebook-last-report-excerpt">
+              {renderTextWithMathAndCitations(
+                extractReportExcerpt(latestReport.content),
+                onReportCitationClick
+              )}
+            </p>
+            <div className="notebook-last-report-actions">
+              <SwissButton
+                variant="secondary"
+                size="sm"
+                aria-label="Copiar informe"
+                onClick={() => void handleCopyLatestReport()}
+              >
+                Copiar
+              </SwissButton>
+              <SwissButton
+                variant="secondary"
+                size="sm"
+                aria-label="Exportar informe"
+                onClick={handleExportLatestReport}
+              >
+                Exportar
+              </SwissButton>
+              <SwissButton
+                variant="secondary"
+                size="sm"
+                aria-label="Regenerar informe"
+                onClick={() => onGenerateReport(latestReport.reportType)}
+              >
+                Regenerar
+              </SwissButton>
+              <SwissLinkButton
+                underlined
+                className="notebook-open-report-link"
+                onClick={() => onOpenReport?.(latestReport.id)}
+              >
+                Abrir informe →
+              </SwissLinkButton>
+            </div>
+            {reportActionNotice ? (
+              <span
+                className="swiss-meta"
+                role="status"
+                aria-live="polite"
+              >
+                {reportActionNotice}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <div
+            className="notebook-report-empty"
+            data-testid="assistant-report-empty"
+          >
+            <p className="notebook-report-empty-title">
+              Sin informe generado todavía
+            </p>
+            <p className="notebook-report-empty-copy">
+              Elegí un formato arriba para sintetizar {checkedCount}{' '}
+              {checkedCount === 1 ? 'fuente activa' : 'fuentes activas'}.
+            </p>
+          </div>
+        )}
+      </section>
 
       <form
         className="notebook-ask-form"

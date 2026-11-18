@@ -235,11 +235,29 @@
   /* ==========================================================================
      EXAM STAGE PILLS (Todo / 1° Parcial / 2° Parcial / Final / Solo Fuentes / Solo Notas)
      ========================================================================== */
+  .stage-filter-groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .stage-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .stage-filter-group-label {
+    font-size: var(--font-size-xs);
+    color: var(--mut);
+  }
+
+  .stage-filter-pills,
   .stage-filter-row {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 12px;
   }
 
   .stage-pill {

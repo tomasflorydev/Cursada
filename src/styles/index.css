@@ -1951,26 +1951,84 @@
     gap: 8px;
   }
 
-  .notebook-last-report {
+  .notebook-report-panel {
     border-top: var(--rule-thin) solid var(--rule);
-    padding-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    padding-top: var(--space-3);
   }
 
-  .notebook-last-report-title {
-    font-size: 1.375rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
+  .notebook-report-state {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .notebook-report-progress-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .notebook-report-progress-track {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notebook-report-error-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .notebook-report-empty {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-1) 0;
+  }
+
+  .notebook-report-empty-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
     color: var(--ink);
   }
 
+  .notebook-report-empty-copy {
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+    color: var(--mut);
+  }
+
+  .notebook-last-report {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .notebook-last-report-title {
+    font-size: var(--font-size-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.18;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
   .notebook-last-report-excerpt {
-    font-size: 0.9375rem;
-    line-height: 1.55;
+    font-size: var(--font-size-md);
+    line-height: 1.6;
     color: var(--soft);
+  }
+
+  .notebook-last-report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding-top: var(--space-1);
+  }
+
+  .notebook-open-report-link {
+    margin-left: auto;
   }
 
   .notebook-last-report-excerpt a,
