@@ -560,6 +560,19 @@ describe('Phase 11: Offline LaTeX Math, CodeMirror 6 Live Preview & Configurable
       );
 
       const textarea = screen.getByLabelText('Contenido de la nota');
+      const codeBtn = screen.getByRole('button', { name: 'Código' });
+      expect(codeBtn).not.toHaveAttribute('title');
+      const codeTooltip = screen.getByTestId(
+        'editor-toolbar-tooltip-insert_code_block'
+      );
+      expect(codeTooltip).toHaveAttribute('role', 'tooltip');
+      expect(codeTooltip).toHaveTextContent('Insertar bloque de código ⌘⇧C');
+
+      fireEvent.focus(codeBtn);
+      expect(codeTooltip).toHaveClass('is-open');
+      fireEvent.keyDown(codeBtn, { key: 'Escape' });
+      expect(codeTooltip).not.toHaveClass('is-open');
+
       fireEvent.click(screen.getByRole('button', { name: 'Tabla' }));
       expect(screen.getByTestId('controlled-raw-content').textContent).toContain(
         '| Columna 1 | Columna 2 |'

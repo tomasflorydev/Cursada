@@ -11,9 +11,11 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -296,6 +298,59 @@ export function SuperMarkdownEditor({
   const [activeWikiIndex, setActiveWikiIndex] = useState<number>(0);
   const [dismissedTriggerPos, setDismissedTriggerPos] = useState<number | null>(
     null
+  );
+  const [activeToolbarTooltipId, setActiveToolbarTooltipId] =
+    useState<EditorShortcutActionId | null>(null);
+  const [toolbarTooltipShiftX, setToolbarTooltipShiftX] = useState<number>(0);
+  const [toolbarTooltipFlipBelow, setToolbarTooltipFlipBelow] =
+    useState<boolean>(false);
+  const toolbarTooltipBaseId = useId();
+  const toolbarTooltipRefs = useRef<
+    Partial<Record<EditorShortcutActionId, HTMLSpanElement | null>>
+  >({});
+
+  const updateToolbarTooltipPosition = useCallback(
+    (actionId: EditorShortcutActionId) => {
+      const el = toolbarTooltipRefs.current[actionId];
+      if (!el || typeof window === 'undefined') {
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        return;
+      }
+      const margin = 12;
+      let shiftX = 0;
+      if (rect.left < margin) {
+        shiftX = Math.round(margin - rect.left);
+      } else if (rect.right > window.innerWidth - margin) {
+        shiftX = Math.round(window.innerWidth - margin - rect.right);
+      }
+      setToolbarTooltipShiftX(shiftX);
+      setToolbarTooltipFlipBelow(rect.top < margin);
+    },
+    []
+  );
+
+  const openToolbarTooltip = useCallback(
+    (actionId: EditorShortcutActionId) => {
+      setActiveToolbarTooltipId(actionId);
+      setToolbarTooltipShiftX(0);
+      setToolbarTooltipFlipBelow(false);
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          updateToolbarTooltipPosition(actionId);
+        });
+      }
+    },
+    [updateToolbarTooltipPosition]
+  );
+
+  const closeToolbarTooltip = useCallback(
+    (actionId: EditorShortcutActionId) => {
+      setActiveToolbarTooltipId((prev) => (prev === actionId ? null : prev));
+    },
+    []
   );
 
   const cmHostRef = useRef<HTMLDivElement | null>(null);
@@ -1198,16 +1253,61 @@ export function SuperMarkdownEditor({
             const shortcutLabel = formatShortcutBindingForDisplay(
               shortcuts[action.id]
             );
+            const tooltipId = `${toolbarTooltipBaseId}-tip-${action.id}`;
+            const isTooltipOpen = activeToolbarTooltipId === action.id;
+            const tooltipStyle: CSSProperties | undefined =
+              isTooltipOpen && toolbarTooltipShiftX !== 0
+                ? ({
+                    '--tooltip-shift-x': `${toolbarTooltipShiftX}px`,
+                  } as CSSProperties)
+                : undefined;
+
             return (
-              <SwissButton
+              <div
                 key={action.id}
-                variant="secondary"
-                className="super-editor-toolbar-btn"
-                title={`${action.description} (${shortcutLabel})`}
-                onClick={() => executeCommand(action.id)}
+                className="super-editor-toolbar-item"
+                onMouseEnter={() => openToolbarTooltip(action.id)}
+                onMouseLeave={() => closeToolbarTooltip(action.id)}
               >
-                {action.label}
-              </SwissButton>
+                <SwissButton
+                  variant="secondary"
+                  className="super-editor-toolbar-btn"
+                  aria-describedby={tooltipId}
+                  onFocus={() => openToolbarTooltip(action.id)}
+                  onBlur={() => closeToolbarTooltip(action.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && isTooltipOpen) {
+                      e.stopPropagation();
+                      setActiveToolbarTooltipId(null);
+                    }
+                  }}
+                  onClick={() => {
+                    setActiveToolbarTooltipId(null);
+                    executeCommand(action.id);
+                  }}
+                >
+                  {action.label}
+                </SwissButton>
+                <span
+                  ref={(node) => {
+                    toolbarTooltipRefs.current[action.id] = node;
+                  }}
+                  id={tooltipId}
+                  role="tooltip"
+                  data-testid={`editor-toolbar-tooltip-${action.id}`}
+                  className={`super-editor-tooltip ${
+                    isTooltipOpen ? 'is-open' : ''
+                  } ${
+                    isTooltipOpen && toolbarTooltipFlipBelow
+                      ? 'is-flipped-below'
+                      : ''
+                  }`.trim()}
+                  style={tooltipStyle}
+                >
+                  <span>{action.description}</span>{' '}
+                  <kbd className="super-editor-tooltip-kbd">{shortcutLabel}</kbd>
+                </span>
+              </div>
             );
           })}
         </div>

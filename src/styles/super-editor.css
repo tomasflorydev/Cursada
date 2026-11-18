@@ -405,12 +405,74 @@
     gap: 6px;
   }
 
+  .super-editor-toolbar-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
   .super-editor-toolbar-btn {
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     font-weight: 600;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .super-editor-tooltip {
+    position: absolute;
+    bottom: calc(100% + var(--space-1));
+    left: 50%;
+    transform: translateX(calc(-50% + var(--tooltip-shift-x, 0px)));
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border: var(--border-thin) solid var(--ink);
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 100ms ease, visibility 100ms ease;
+  }
+
+  .super-editor-tooltip::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: var(--space-1);
+  }
+
+  .super-editor-tooltip.is-flipped-below {
+    bottom: auto;
+    top: calc(100% + var(--space-1));
+  }
+
+  .super-editor-tooltip.is-flipped-below::before {
+    top: auto;
+    bottom: 100%;
+  }
+
+  .super-editor-tooltip.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .super-editor-tooltip-kbd {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
   }
 
   .super-editor-stage {
