@@ -185,13 +185,13 @@
   dialog.obsidian-import-modal::backdrop {
     overflow: hidden;
     overscroll-behavior: contain;
-    background-color: rgba(15, 20, 28, 0.52);
+    background-color: rgba(15, 20, 28, 0.5);
   }
 
   .obsidian-import-modal {
     margin: auto;
     padding: 0;
-    border: 2px solid var(--ink);
+    border: var(--rule-thin) solid var(--rule-header);
     border-radius: 0;
     box-shadow: none;
     background-color: var(--bg);

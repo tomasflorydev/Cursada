@@ -567,17 +567,7 @@ export function CalendarPage({
       </header>
 
       {icsFeedback ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="swiss-meta-md"
-          style={{
-            borderLeft: '4px solid var(--acc)',
-            padding: '6px 12px',
-            marginBottom: '12px',
-            color: 'var(--ink)',
-          }}
-        >
+        <div role="status" aria-live="polite" className="swiss-status-banner">
           {icsFeedback}
         </div>
       ) : null}

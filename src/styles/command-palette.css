@@ -78,7 +78,7 @@
     align-items: flex-start;
     justify-content: center;
     padding: clamp(48px, 12vh, 112px) 16px 24px;
-    background-color: rgba(15, 20, 28, 0.45);
+    background-color: rgba(15, 20, 28, 0.5);
     overscroll-behavior: contain;
   }
 
@@ -89,7 +89,7 @@
     flex-direction: column;
     background-color: var(--bg-surface);
     color: var(--text-primary);
-    border: 1px solid var(--border-strong);
+    border: var(--rule-thin) solid var(--rule-header);
     border-radius: 0;
     box-shadow: none;
     overflow: hidden;
@@ -162,7 +162,7 @@
     min-block-size: 26px;
     padding: 3px 10px;
     border-radius: 0;
-    border: 1px solid var(--toggle-border);
+    border: var(--rule-thin) solid var(--rule);
     background: var(--toggle-inactive-bg);
     color: var(--toggle-inactive-fg);
     font-size: 0.8125rem;

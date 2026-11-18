@@ -173,17 +173,7 @@ export function SettingsDataSection({ sectionRef }: SettingsDataSectionProps) {
         ) : null}
 
         {lastCreatedBackup ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="swiss-meta-md"
-            style={{
-              borderLeft: '4px solid var(--acc)',
-              padding: '8px 12px',
-              marginBottom: '12px',
-              color: 'var(--ink)',
-            }}
-          >
+          <div role="status" aria-live="polite" className="swiss-status-banner">
             Copia creada: <code>{lastCreatedBackup.filename}</code> (
             {formatBackupDate(lastCreatedBackup.createdAt)})
           </div>
@@ -194,13 +184,7 @@ export function SettingsDataSection({ sectionRef }: SettingsDataSectionProps) {
             role="status"
             aria-live="polite"
             data-testid="backup-restored-alert"
-            className="swiss-meta-md"
-            style={{
-              borderLeft: '4px solid var(--acc)',
-              padding: '8px 12px',
-              marginBottom: '12px',
-              color: 'var(--ink)',
-            }}
+            className="swiss-status-banner"
           >
             Restaurado desde{' '}
             <code>{lastRestoreResult.restoredFrom.filename}</code>. Respaldo
@@ -213,13 +197,7 @@ export function SettingsDataSection({ sectionRef }: SettingsDataSectionProps) {
           <div
             role="status"
             aria-live="polite"
-            className="swiss-meta-md"
-            style={{
-              borderLeft: '4px solid var(--ink)',
-              padding: '8px 12px',
-              marginBottom: '12px',
-              color: 'var(--ink)',
-            }}
+            className="swiss-status-banner is-neutral"
           >
             Exportación Markdown completada ({lastExportResult.fileCount}{' '}
             {lastExportResult.fileCount === 1 ? 'archivo' : 'archivos'}).

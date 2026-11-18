@@ -9,13 +9,13 @@
   dialog::backdrop {
     overflow: hidden;
     overscroll-behavior: contain;
-    background-color: rgba(15, 20, 28, 0.45);
+    background-color: rgba(15, 20, 28, 0.5);
   }
 
   .cursada-modal-dialog {
     margin: auto;
     padding: 0;
-    border: 1px solid var(--border-subtle);
+    border: var(--rule-thin) solid var(--rule-header);
     border-radius: 0;
     background-color: var(--bg-surface);
     color: var(--text-primary);
@@ -67,47 +67,54 @@
     border-block-start: var(--rule-thin) solid var(--rule);
   }
 
-  /* Danger buttons */
-  .danger-button {
-    min-block-size: 34px;
-    padding: 6px 14px;
+  .source-preview-content {
+    max-width: 46rem;
+    max-height: 82vh;
+    gap: var(--space-3);
+  }
+
+  .source-preview-meta {
+    font-size: var(--font-size-sm);
+    color: var(--mut);
+    margin-top: var(--space-1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .source-preview-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .source-preview-body {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-right: var(--space-1);
+  }
+
+  .source-chunk-card {
+    border: var(--rule-thin) solid var(--rule);
     border-radius: 0;
-    border: 1px solid var(--status-urgent-text);
-    background-color: var(--status-urgent-bg);
-    color: var(--status-urgent-text);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
+    padding: var(--space-3);
+    background-color: var(--bg);
   }
 
-  .danger-button:hover {
-    filter: brightness(0.96);
+  .source-chunk-meta {
+    font-size: var(--font-size-xs);
+    color: var(--mut);
+    margin-bottom: var(--space-1);
+    font-variant-numeric: tabular-nums;
   }
 
-  .danger-outline-button {
-    min-block-size: 34px;
-    padding: 6px 12px;
-    border-radius: 0;
-    border: 1px solid var(--border-subtle);
-    background-color: var(--bg-surface);
-    color: var(--status-urgent-text);
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .danger-outline-button:hover {
-    background-color: var(--status-urgent-bg);
-    border-color: var(--status-urgent-text);
-  }
-
-  .ghost-action-button.is-danger {
-    color: var(--status-urgent-text);
-  }
-
-  .ghost-action-button.is-danger:hover {
-    background-color: var(--status-urgent-bg);
-    color: var(--status-urgent-text);
+  .source-chunk-copy,
+  .source-raw-copy {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    color: var(--soft);
+    font-family: inherit;
   }
 
   /* Course Form */
@@ -156,11 +163,16 @@
     min-block-size: 36px;
     padding: 7px 11px;
     border-radius: 0;
-    border: 1px solid var(--border-strong);
+    border: var(--rule-thin) solid var(--rule);
     background-color: var(--bg-canvas);
     color: var(--text-primary);
     font: inherit;
     font-size: 0.86rem;
+  }
+
+  .course-form-input:hover:not(:disabled),
+  .course-form-select:hover:not(:disabled) {
+    border-color: var(--ink);
   }
 
   .course-form-input:focus-visible,
@@ -313,55 +325,7 @@
     line-height: 1.6;
   }
 
-  .course-overview-card {
-    position: relative;
-    transition: border-color 140ms ease;
-  }
-
-  .course-overview-card:has(.card-link) .card-link::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 0;
-  }
-
-  .course-overview-card:has(.card-link) .card-link:focus-visible {
-    outline: none;
-  }
-
-  .course-overview-card:has(.card-link:focus-visible) {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 2px;
-  }
-
-  .course-overview-card:has(.card-link:hover) {
-    border-color: var(--border-strong);
-  }
-
-  .course-overview-card.is-archived {
-    opacity: 0.88;
-    background-color: var(--bg-surface-subtle);
-  }
-
-  .course-status-pill {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 0;
-  }
-
-  .course-status-pill.is-active {
-    background-color: var(--status-done-bg);
-    color: var(--status-done-text);
-  }
-
-  .course-status-pill.is-archived {
-    background-color: var(--bg-surface-active);
-    color: var(--text-secondary);
-  }
-
-  /* Course Detail View & Tabs */
+  /* Course Detail View & Summary */
   .course-detail-badges-row {
     display: flex;
     align-items: center;
@@ -371,45 +335,6 @@
 
   .course-detail-actions {
     flex-wrap: wrap;
-  }
-
-  .course-tabs-bar {
-    display: inline-flex;
-    align-self: flex-start;
-    align-items: center;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 0;
-    background-color: var(--toggle-inactive-bg);
-    border: 2px solid var(--toggle-border);
-    max-width: 100%;
-    overflow-x: auto;
-  }
-
-  .course-tab-button {
-    min-block-size: 32px;
-    padding: 6px 14px;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    color: var(--toggle-inactive-fg);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 120ms ease, color 120ms ease;
-  }
-
-  .course-tab-button:hover:not(.is-active) {
-    background-color: var(--grid);
-    color: var(--toggle-inactive-fg);
-  }
-
-  .course-tab-button.is-active {
-    background-color: var(--toggle-active-bg);
-    color: var(--toggle-active-fg);
-    font-weight: 600;
-    box-shadow: none;
   }
 
   .course-summary-grid {
@@ -446,19 +371,6 @@
     flex-direction: column;
     gap: 12px;
     margin-block-start: 14px;
-  }
-
-  .course-schedule-card {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 14px 16px;
-    border-radius: 0;
-    background-color: var(--course-bg);
-    color: var(--course-text);
-    border-inline-start: 3px solid var(--course-dot);
-    border-block: 1px solid var(--course-border);
-    border-inline-end: 1px solid var(--course-border);
   }
 
   .course-schedule-card-main {
@@ -677,115 +589,12 @@
     min-inline-size: 0;
   }
 
-  .calendar-exam-card {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1px;
-    width: 100%;
-    max-inline-size: 100%;
-    min-inline-size: 0;
-    overflow: hidden;
-    padding: 5px 7px;
-    border-radius: 0;
-    background-color: var(--status-warn-bg);
-    color: var(--status-warn-text);
-    border: 1px solid var(--status-warn-text);
-    border-inline-start: 3px solid var(--course-dot);
-    text-align: start;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.7rem;
-    line-height: 1.25;
-  }
-
-  .calendar-exam-card:hover {
-    filter: brightness(0.97);
-  }
-
-  .calendar-exam-badge {
-    font-family: var(--font-mono);
-    font-size: 0.63rem;
-    font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .calendar-exam-title {
-    display: block;
-    font-size: 0.71rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-inline-size: 0;
-  }
-
   /* Task Deliveries Overlay (Task 2.2) */
   .calendar-day-tasks-overlay {
     display: flex;
     flex-direction: column;
     gap: 4px;
     min-inline-size: 0;
-  }
-
-  .calendar-task-card {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    width: 100%;
-    max-inline-size: 100%;
-    min-inline-size: 0;
-    overflow: hidden;
-    padding: 4px 7px;
-    border-radius: 0;
-    background-color: var(--bg-surface-subtle);
-    border: 1px solid var(--course-border);
-    border-inline-start: 3px solid var(--course-dot);
-    font-size: 0.71rem;
-    line-height: 1.25;
-  }
-
-  .calendar-task-card.is-completed {
-    opacity: 0.72;
-  }
-
-  .calendar-task-checkbox {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    cursor: pointer;
-    accent-color: var(--course-dot);
-  }
-
-  .calendar-task-title-btn {
-    border: none;
-    background: transparent;
-    padding: 0;
-    color: var(--text-primary);
-    font: inherit;
-    font-weight: 600;
-    text-align: start;
-    cursor: pointer;
-    line-height: 1.3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .calendar-task-title-btn:hover {
-    color: var(--accent-primary);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  .calendar-task-card.is-completed .calendar-task-title-btn {
-    text-decoration: line-through;
-    color: var(--text-muted);
   }
 
   .calendar-task-dialog-body {

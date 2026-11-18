@@ -450,13 +450,8 @@ export function ExamsPage({
         <div
           role="status"
           aria-live="polite"
-          className="swiss-meta-md"
-          style={{
-            borderLeft: '4px solid var(--acc)',
-            padding: '8px 12px',
-            marginBottom: '20px',
-            color: 'var(--ink)',
-          }}
+          className="swiss-status-banner"
+          style={{ marginBottom: 'var(--space-5)' }}
         >
           {feedbackMsg}
         </div>
