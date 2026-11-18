@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { SourceWithChunks } from '../../types';
+import { SwissButton } from '../../ui';
 
 export interface SourcePreviewDialogProps {
   source: SourceWithChunks | null;
@@ -87,22 +88,17 @@ export function SourcePreviewDialog({
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             {source.indexingStatus === 'error' ? (
-              <button
-                type="button"
-                className="cursada-secondary-button"
+              <SwissButton
+                variant="secondary"
                 disabled={reindexingSourceId === source.id}
                 onClick={() => onReindexSource(source.id)}
               >
                 {reindexingSourceId === source.id ? 'Reindexando...' : 'Reindexar'}
-              </button>
+              </SwissButton>
             ) : null}
-            <button
-              type="button"
-              className="cursada-secondary-button"
-              onClick={onClose}
-            >
+            <SwissButton variant="tertiary" onClick={onClose}>
               Cerrar
-            </button>
+            </SwissButton>
           </div>
         </header>
 

@@ -342,7 +342,7 @@ export function SettingsDataSection({ sectionRef }: SettingsDataSectionProps) {
                                 : 'Confirmar restauración'}
                             </SwissButton>
                             <SwissButton
-                              variant="secondary"
+                              variant="tertiary"
                               disabled={isBackupBusy}
                               onClick={() => setConfirmingRestoreFilename(null)}
                             >

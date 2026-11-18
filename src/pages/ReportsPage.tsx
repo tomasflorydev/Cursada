@@ -472,7 +472,7 @@ export function ReportsPage({
                 {isCreating ? 'Generando…' : 'Generar'}
               </SwissButton>
               <SwissButton
-                variant="secondary"
+                variant="tertiary"
                 disabled={isCreating}
                 onClick={() => {
                   setIsCreateOpen(false);
@@ -583,7 +583,7 @@ export function ReportsPage({
                   {isConfirmingDelete ? (
                     <>
                       <SwissButton
-                        variant="secondary"
+                        variant="primary"
                         disabled={isDeleting}
                         aria-label="Confirmar eliminación"
                         onClick={() => void handleDeleteReport()}
@@ -591,7 +591,7 @@ export function ReportsPage({
                         {isDeleting ? 'Eliminando…' : 'Confirmar eliminación'}
                       </SwissButton>
                       <SwissButton
-                        variant="secondary"
+                        variant="tertiary"
                         disabled={isDeleting}
                         onClick={() => setIsConfirmingDelete(false)}
                       >
@@ -600,7 +600,7 @@ export function ReportsPage({
                     </>
                   ) : (
                     <SwissButton
-                      variant="secondary"
+                      variant="tertiary"
                       aria-label="Eliminar informe"
                       disabled={isRegenerating || isDeleting}
                       onClick={() => setIsConfirmingDelete(true)}

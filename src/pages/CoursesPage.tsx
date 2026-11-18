@@ -328,7 +328,7 @@ export function CoursesPage({
             </div>
 
             <div className="swiss-page-actions">
-              <SwissButton variant="secondary" onClick={handleOpenCreate}>
+              <SwissButton variant="primary" onClick={handleOpenCreate}>
                 + Nueva materia
               </SwissButton>
             </div>
@@ -339,6 +339,7 @@ export function CoursesPage({
                 title="No tenés materias activas"
                 description="Creá una materia para organizar tus notas, fuentes, tareas y próximos exámenes."
                 actionLabel="+ Nueva materia"
+                actionVariant="primary"
                 onAction={handleOpenCreate}
               />
             ) : (
@@ -525,7 +526,7 @@ export function CoursesPage({
                           Restaurar
                         </SwissButton>
                         <SwissButton
-                          variant="secondary"
+                          variant="tertiary"
                           onClick={() => void handleRequestDelete(course.id)}
                         >
                           Eliminar

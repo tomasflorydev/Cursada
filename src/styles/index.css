@@ -532,7 +532,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Buttons (Section 5) */
+  /* Buttons (3 unified levels: primary, secondary, tertiary) */
   .swiss-btn-primary,
   .primary-button {
     display: inline-flex;
@@ -541,9 +541,9 @@
     gap: 6px;
     background-color: var(--acc);
     color: var(--on-acc);
-    border: 0;
-    padding: 9px 14px;
-    font-size: 0.875rem;
+    border: var(--rule-thin) solid var(--acc);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
     font-weight: 600;
     line-height: 1.25;
     cursor: pointer;
@@ -569,9 +569,9 @@
     gap: 6px;
     background-color: transparent;
     color: var(--ink);
-    border: 2px solid var(--ink);
+    border: var(--rule-thin) solid var(--rule);
     padding: 7px 12px;
-    font-size: 0.875rem;
+    font-size: var(--font-size-sm);
     font-weight: 600;
     line-height: 1.25;
     cursor: pointer;
@@ -580,8 +580,9 @@
 
   .swiss-btn-secondary:hover:not(:disabled),
   .secondary-button:hover:not(:disabled) {
-    border-color: var(--acc);
-    color: var(--acc);
+    border-color: var(--ink);
+    background-color: var(--grid);
+    color: var(--ink);
   }
 
   .swiss-btn-secondary.is-selected,
@@ -595,7 +596,42 @@
   .secondary-button:disabled {
     color: var(--mut);
     border-color: var(--rule);
+    opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .swiss-btn-tertiary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background-color: transparent;
+    color: var(--soft);
+    border: var(--rule-thin) solid transparent;
+    padding: 5px 10px;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    line-height: 1.25;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .swiss-btn-tertiary:hover:not(:disabled) {
+    color: var(--ink);
+    background-color: var(--grid);
+  }
+
+  .swiss-btn-tertiary:disabled {
+    color: var(--mut);
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .swiss-btn-primary.is-sm,
+  .swiss-btn-secondary.is-sm,
+  .swiss-btn-tertiary.is-sm {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
   }
 
   .swiss-link {
@@ -605,7 +641,7 @@
     background: transparent;
     border: 0;
     padding: 0;
-    color: var(--ink);
+    color: var(--soft);
     font-size: 0.9375rem;
     font-weight: 600;
     text-decoration: none;
@@ -613,10 +649,14 @@
   }
 
   .swiss-link:hover:not(:disabled) {
-    color: var(--acc);
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 4px;
   }
 
   .swiss-link.is-underlined {
+    color: var(--ink);
     text-decoration: underline;
     text-underline-offset: 4px;
     text-decoration-thickness: 1px;

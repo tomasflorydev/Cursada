@@ -236,7 +236,7 @@ export function PracticeExamSimulatorModal({
                 ? `Resultado: ${attempt.correctCount} / ${attempt.totalCount} · ${attempt.scorePercent}%`
                 : `${answeredCount} / ${questions.length} respondidas`}
             </span>
-            <SwissButton variant="secondary" onClick={onClose}>
+            <SwissButton variant="tertiary" onClick={onClose}>
               Cerrar
             </SwissButton>
           </div>
@@ -446,7 +446,7 @@ export function PracticeExamSimulatorModal({
                   Las respuestas correctas y citas se muestran al corregir el simulacro.
                 </span>
                 <div className="simulator-footer-actions">
-                  <SwissButton variant="secondary" onClick={onClose}>
+                  <SwissButton variant="tertiary" onClick={onClose}>
                     Cancelar
                   </SwissButton>
                   <SwissButton variant="primary" onClick={handleSubmitExam}>

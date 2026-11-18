@@ -434,7 +434,7 @@ export function ExamsPage({
         </div>
 
         <div className="swiss-page-actions">
-          <SwissButton variant="secondary" onClick={openCreateForm}>
+          <SwissButton variant="primary" onClick={openCreateForm}>
             + Nuevo examen
           </SwissButton>
         </div>
@@ -610,7 +610,7 @@ export function ExamsPage({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <SwissButton variant="secondary" onClick={closeForm}>
+              <SwissButton variant="tertiary" onClick={closeForm}>
                 Cancelar
               </SwissButton>
               <SwissButton
@@ -635,6 +635,7 @@ export function ExamsPage({
             title="No tenés exámenes próximos"
             description="Agendá tu próximo parcial, final o entrega evaluativa para seguir el conteo de días y armar guías de estudio."
             actionLabel="+ Nuevo examen"
+            actionVariant="primary"
             onAction={openCreateForm}
           />
         </div>
@@ -764,7 +765,7 @@ export function ExamsPage({
                         {isSavingGrade ? 'Guardando…' : 'Guardar'}
                       </SwissButton>
                       <SwissButton
-                        variant="secondary"
+                        variant="tertiary"
                         onClick={() => setGradingExamId(null)}
                       >
                         Cancelar
@@ -795,7 +796,7 @@ export function ExamsPage({
                     </div>
                   ) : (
                     <SwissButton
-                      variant={isNearest ? 'primary' : 'secondary'}
+                      variant="secondary"
                       disabled={generatingExamId !== null}
                       onClick={() => void handleGenerateStudyGuide(exam)}
                     >
@@ -901,7 +902,7 @@ export function ExamsPage({
                               {isSavingGrade ? 'Guardando…' : 'Guardar'}
                             </SwissButton>
                             <SwissButton
-                              variant="secondary"
+                              variant="tertiary"
                               onClick={() => setGradingExamId(null)}
                             >
                               Cancelar

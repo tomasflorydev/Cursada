@@ -120,7 +120,7 @@ export function DeleteCourseDialog({
 
         <footer className="cursada-modal-footer">
           <SwissButton
-            variant="secondary"
+            variant="tertiary"
             autoFocus
             disabled={isDeleting}
             onClick={handleDialogClose}

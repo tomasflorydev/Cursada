@@ -2,20 +2,28 @@ import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'reac
 import { Fragment } from 'react';
 
 export interface SwissButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'tertiary';
+  size?: 'sm' | 'md';
 }
 
 export function SwissButton({
   variant = 'secondary',
+  size = 'md',
   className = '',
   type = 'button',
   ...rest
 }: SwissButtonProps) {
-  const variantClass = variant === 'primary' ? 'swiss-btn-primary' : 'swiss-btn-secondary';
+  const variantClass =
+    variant === 'primary'
+      ? 'swiss-btn-primary'
+      : variant === 'tertiary'
+        ? 'swiss-btn-tertiary'
+        : 'swiss-btn-secondary';
+  const sizeClass = size === 'sm' ? 'is-sm' : '';
   return (
     <button
       type={type}
-      className={`${variantClass} ${className}`.trim()}
+      className={`${variantClass} ${sizeClass} ${className}`.trim()}
       {...rest}
     />
   );
@@ -280,6 +288,7 @@ export interface SwissEmptyStateProps {
   title: string;
   description: string;
   actionLabel?: string;
+  actionVariant?: 'primary' | 'secondary' | 'tertiary';
   onAction?: () => void;
 }
 
@@ -287,6 +296,7 @@ export function SwissEmptyState({
   title,
   description,
   actionLabel,
+  actionVariant = 'secondary',
   onAction,
 }: SwissEmptyStateProps) {
   return (
@@ -294,7 +304,7 @@ export function SwissEmptyState({
       <p className="swiss-empty-title">{title}</p>
       <p className="swiss-empty-body">{description}</p>
       {actionLabel && onAction ? (
-        <SwissButton variant="secondary" onClick={onAction}>
+        <SwissButton variant={actionVariant} onClick={onAction}>
           {actionLabel}
         </SwissButton>
       ) : null}

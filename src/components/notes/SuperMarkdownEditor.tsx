@@ -1270,7 +1270,7 @@ export function SuperMarkdownEditor({
                 onMouseLeave={() => closeToolbarTooltip(action.id)}
               >
                 <SwissButton
-                  variant="secondary"
+                  variant="tertiary"
                   className="super-editor-toolbar-btn"
                   aria-describedby={tooltipId}
                   onFocus={() => openToolbarTooltip(action.id)}

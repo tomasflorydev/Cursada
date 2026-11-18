@@ -438,7 +438,7 @@ export function CourseFormModal({
 
           <footer className="cursada-modal-footer">
             <SwissButton
-              variant="secondary"
+              variant="tertiary"
               onClick={handleDialogClose}
               disabled={isSubmitting}
             >

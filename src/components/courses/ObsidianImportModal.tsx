@@ -366,7 +366,7 @@ export function ObsidianImportModal({
 
         <footer className="obsidian-import-footer">
           <SwissButton
-            variant="secondary"
+            variant="tertiary"
             onClick={handleDialogClose}
             disabled={isImporting}
           >

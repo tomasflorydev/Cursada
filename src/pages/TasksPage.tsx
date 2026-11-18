@@ -504,7 +504,7 @@ export function TasksPage({
                   Sin fecha
                 </SwissButton>
               ) : null}
-              <SwissButton variant="secondary" onClick={cancelEditing}>
+              <SwissButton variant="tertiary" onClick={cancelEditing}>
                 Cancelar
               </SwissButton>
               <SwissButton type="submit" variant="primary" disabled={isSavingEdit}>

@@ -324,7 +324,7 @@ export function CourseAssistantSidebar({
               >
                 Indexar
               </SwissButton>
-              <SwissButton variant="secondary" onClick={onTogglePasteOpen}>
+              <SwissButton variant="tertiary" onClick={onTogglePasteOpen}>
                 Cancelar
               </SwissButton>
             </div>
