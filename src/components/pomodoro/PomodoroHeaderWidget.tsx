@@ -52,6 +52,7 @@ export function PomodoroHeaderWidget({
   const roundsInputId = `${baseId}-rounds`;
   const notifyId = `${baseId}-notify`;
 
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [focusDraft, setFocusDraft] = useState(String(state.settings.focusMinutes));
   const [shortDraft, setShortDraft] = useState(
@@ -96,8 +97,10 @@ export function PomodoroHeaderWidget({
     }
   }, [isSettingsOpen, state.settings]);
 
+  const showFullControls = state.isRunning || isExpanded || isSettingsOpen;
+
   useEffect(() => {
-    if (!isSettingsOpen) {
+    if (!showFullControls) {
       return;
     }
     const handlePointerDown = (event: MouseEvent) => {
@@ -106,11 +109,18 @@ export function PomodoroHeaderWidget({
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsSettingsOpen(false);
+        if (!state.isRunning) {
+          setIsExpanded(false);
+        }
       }
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsSettingsOpen(false);
+        if (isSettingsOpen) {
+          setIsSettingsOpen(false);
+        } else if (!state.isRunning) {
+          setIsExpanded(false);
+        }
       }
     };
     document.addEventListener('mousedown', handlePointerDown);
@@ -119,7 +129,7 @@ export function PomodoroHeaderWidget({
       document.removeEventListener('mousedown', handlePointerDown);
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [isSettingsOpen]);
+  }, [showFullControls, isSettingsOpen, state.isRunning]);
 
   function handleSaveSettings(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -149,88 +159,146 @@ export function PomodoroHeaderWidget({
   return (
     <div
       ref={containerRef}
-      className="pomodoro-widget"
+      className={`pomodoro-widget ${state.isRunning ? 'is-running' : ''} ${
+        showFullControls ? 'is-expanded' : 'is-compact'
+      }`.trim()}
       role="region"
       aria-label="Temporizador Pomodoro"
     >
-      <div className="pomodoro-status-group">
-        <span
-          className={`pomodoro-phase ${state.isRunning ? 'is-running' : ''}`.trim()}
-          data-testid="pomodoro-phase"
-        >
-          {PHASE_LABELS[state.phase]}
-        </span>
-        <span
-          className="pomodoro-timer"
-          data-testid="pomodoro-timer"
-          aria-live="off"
-        >
-          {formattedTime}
-        </span>
-        <span className="pomodoro-rounds" title="Ronda actual del ciclo">
-          {currentRoundDisplay}/{state.settings.roundsBeforeLongBreak}
-        </span>
-        {state.linkedCourseName ? (
-          <span
-            className="pomodoro-course-tag"
-            title={`Vinculado a ${state.linkedCourseName}`}
-          >
-            {state.linkedCourseName}
-          </span>
-        ) : null}
-      </div>
+      {showFullControls ? (
+        <>
+          <div className="pomodoro-status-group">
+            <span
+              className={`pomodoro-phase ${state.isRunning ? 'is-running' : ''}`.trim()}
+              data-testid="pomodoro-phase"
+            >
+              {PHASE_LABELS[state.phase]}
+            </span>
+            <button
+              type="button"
+              className="pomodoro-timer-toggle"
+              aria-expanded={true}
+              title={
+                state.isRunning
+                  ? 'Temporizador de enfoque en curso'
+                  : 'Contraer controles de enfoque'
+              }
+              onClick={() => {
+                if (!state.isRunning) {
+                  setIsSettingsOpen(false);
+                  setIsExpanded(false);
+                }
+              }}
+            >
+              <span
+                className="pomodoro-timer"
+                data-testid="pomodoro-timer"
+                aria-live="off"
+              >
+                {formattedTime}
+              </span>
+            </button>
+            {state.linkedCourseName ? (
+              <span
+                className="pomodoro-course-tag"
+                title={`Vinculado a ${state.linkedCourseName}`}
+              >
+                {state.linkedCourseName}
+              </span>
+            ) : null}
+          </div>
 
-      <div className="pomodoro-controls">
-        {state.isRunning ? (
+          <div className="pomodoro-controls">
+            {state.isRunning ? (
+              <button
+                type="button"
+                className="pomodoro-btn is-running"
+                onClick={() => pausePomodoro()}
+              >
+                Pausar
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="pomodoro-btn"
+                onClick={() => {
+                  setLastNotice(null);
+                  setIsExpanded(true);
+                  startPomodoro();
+                }}
+              >
+                Iniciar
+              </button>
+            )}
+            <button
+              type="button"
+              className="pomodoro-btn"
+              onClick={() => {
+                setLastNotice(null);
+                skipPomodoroPhase();
+              }}
+            >
+              Saltar
+            </button>
+            <button
+              type="button"
+              className="pomodoro-btn"
+              onClick={() => {
+                setLastNotice(null);
+                resetPomodoro();
+              }}
+            >
+              Reiniciar
+            </button>
+            <button
+              type="button"
+              className={`pomodoro-btn ${isSettingsOpen ? 'is-active' : ''}`.trim()}
+              aria-expanded={isSettingsOpen}
+              aria-label="Configurar Pomodoro"
+              onClick={() => setIsSettingsOpen((open) => !open)}
+            >
+              Config ▾
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="pomodoro-compact-group">
+          <span className="visually-hidden" data-testid="pomodoro-phase">
+            {PHASE_LABELS[state.phase]}
+          </span>
+          {state.linkedCourseName ? (
+            <span className="visually-hidden">{state.linkedCourseName}</span>
+          ) : null}
           <button
             type="button"
-            className="pomodoro-btn is-primary"
-            onClick={() => pausePomodoro()}
+            className="pomodoro-timer-toggle"
+            aria-expanded={false}
+            title="Mostrar controles de enfoque"
+            onClick={() => setIsExpanded(true)}
           >
-            Pausar
+            <span
+              className="pomodoro-timer"
+              data-testid="pomodoro-timer"
+              aria-live="off"
+            >
+              {formattedTime}
+            </span>
           </button>
-        ) : (
           <button
             type="button"
-            className="pomodoro-btn is-primary"
+            className="pomodoro-btn pomodoro-play-btn"
+            aria-label="Iniciar"
+            title="Iniciar bloque de enfoque"
             onClick={() => {
               setLastNotice(null);
+              setIsExpanded(true);
               startPomodoro();
             }}
           >
-            Iniciar
+            ▶
           </button>
-        )}
-        <button
-          type="button"
-          className="pomodoro-btn"
-          onClick={() => {
-            setLastNotice(null);
-            skipPomodoroPhase();
-          }}
-        >
-          Saltar
-        </button>
-        <button
-          type="button"
-          className="pomodoro-btn"
-          onClick={() => {
-            setLastNotice(null);
-            resetPomodoro();
-          }}
-        >
-          Reiniciar
-        </button>
-        <button
-          type="button"
-          className={`pomodoro-btn ${isSettingsOpen ? 'is-active' : ''}`.trim()}
-          aria-expanded={isSettingsOpen}
-          aria-label="Configurar Pomodoro"
-          onClick={() => setIsSettingsOpen((open) => !open)}
-        >
-          Config ▾
-        </button>
-      </div>
+        </div>
+      )}
 
       {lastNotice ? (
         <div className="pomodoro-notice" role="status" aria-live="polite">
@@ -259,6 +327,9 @@ export function PomodoroHeaderWidget({
           >
             <div className="pomodoro-popover-head">
               <span className="swiss-section-label">Temporizador Pomodoro</span>
+              <span className="swiss-meta">
+                Bloque actual: {currentRoundDisplay} de {state.settings.roundsBeforeLongBreak}
+              </span>
             </div>
 
             {settingsError ? <SwissErrorAlert message={settingsError} /> : null}
