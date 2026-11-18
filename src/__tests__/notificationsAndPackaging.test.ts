@@ -16,6 +16,7 @@ import {
 } from '../../electron/db/notificationSettingsRepo';
 import { createTask, toggleTaskStatus } from '../../electron/db/tasksRepo';
 import { registerNotificationHandlers } from '../../electron/ipc/notificationHandlers';
+import { buildSpanishMenuTemplate } from '../../electron/menu';
 import {
   checkAndDispatchDueReminders,
   clearDispatchedRemindersCache,
@@ -580,5 +581,16 @@ describe('Phase 8 Task 8.2 Backend: notificationSettingsRepo, notificationServic
       );
       expect(parsedPlist.ElectronAsarIntegrity).toBeUndefined();
     }
+  });
+
+  it('builds a native macOS application menu translated into Spanish', () => {
+    const template = buildSpanishMenuTemplate('Cursada');
+    expect(template.map((item) => item.label)).toEqual([
+      'Cursada',
+      'Archivo',
+      'Edición',
+      'Ver',
+      'Ventana',
+    ]);
   });
 });
