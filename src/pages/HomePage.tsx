@@ -290,7 +290,7 @@ export function HomePage({
         ? `No tenés tareas abiertas y tenés ${reportsSummaryText}.`
         : `Hoy ${tasksSummaryText} y ${reportsSummaryText}.`;
 
-  const footerCourses = useMemo(() => courses.slice(0, 5), [courses]);
+  const footerCourses = useMemo(() => courses.slice(0, 6), [courses]);
 
   return (
     <div className="home-page">
@@ -471,24 +471,45 @@ export function HomePage({
         </div>
       </div>
 
-      {/* Pie: Hasta 5 materias activas */}
+      {/* Sección inferior: Hasta 6 materias activas */}
       <footer className="home-footer" aria-label="Materias activas">
-        {footerCourses.map((course) => {
-          const count = notesCountByCourse[course.id] ?? 0;
-          return (
-            <button
-              key={course.id}
-              type="button"
-              className="home-footer-item"
-              onClick={() => onSelectCourse(course.id)}
+        <SwissSectionHeader
+          title={`Materias · ${courses.length}`}
+          right={
+            <SwissLinkButton
+              aria-label="Todas las materias"
+              onClick={() => onNavigateSection('materias')}
             >
-              <span className="home-footer-name">{course.name}</span>
-              <span className="home-footer-count">
-                {count === 1 ? '1 nota' : `${count} notas`}
-              </span>
-            </button>
-          );
-        })}
+              Todas →
+            </SwissLinkButton>
+          }
+        />
+
+        {footerCourses.length === 0 ? (
+          <p className="swiss-meta-md">No tenés materias activas.</p>
+        ) : (
+          <div className="home-footer-grid">
+            {footerCourses.map((course) => {
+              const count = notesCountByCourse[course.id] ?? 0;
+              return (
+                <button
+                  key={course.id}
+                  type="button"
+                  className="home-footer-item"
+                  title={course.name}
+                  onClick={() => onSelectCourse(course.id)}
+                >
+                  <span className="home-footer-name" title={course.name}>
+                    {course.name}
+                  </span>
+                  <span className="home-footer-count">
+                    {count === 1 ? '1 nota' : `${count} notas`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </footer>
     </div>
   );

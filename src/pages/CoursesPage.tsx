@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
@@ -136,8 +143,52 @@ export function CoursesPage({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
+  const [openMenuCourseId, setOpenMenuCourseId] = useState<string | null>(null);
 
   const lastCreateRequestVersionRef = useRef<number>(0);
+  const menuTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const openMenuRef = useRef<HTMLDivElement | null>(null);
+  const focusMenuOnOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!openMenuCourseId) {
+      return;
+    }
+
+    if (focusMenuOnOpenRef.current) {
+      focusMenuOnOpenRef.current = false;
+      const firstItem = openMenuRef.current?.querySelector<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)'
+      );
+      firstItem?.focus();
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest(`[data-course-menu="${openMenuCourseId}"]`)) {
+        return;
+      }
+      setOpenMenuCourseId(null);
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        const trigger = menuTriggerRefs.current[openMenuCourseId];
+        setOpenMenuCourseId(null);
+        trigger?.focus();
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('click', handleOutsideClick);
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+    };
+  }, [openMenuCourseId]);
 
   useEffect(() => {
     const hasNewCreateRequest =
@@ -293,6 +344,65 @@ export function CoursesPage({
     onCoursesChanged?.();
   }
 
+  function handleMenuTriggerKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    courseId: string,
+    isOpen: boolean
+  ): void {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isOpen) {
+        const firstItem = openMenuRef.current?.querySelector<HTMLButtonElement>(
+          '[role="menuitem"]:not(:disabled)'
+        );
+        firstItem?.focus();
+      } else {
+        focusMenuOnOpenRef.current = true;
+        setOpenMenuCourseId(courseId);
+      }
+    }
+  }
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
+    if (event.key === 'Tab') {
+      setOpenMenuCourseId(null);
+      return;
+    }
+
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)'
+      )
+    );
+    if (items.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    let nextIndex = 0;
+    if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = items.length - 1;
+    } else if (event.key === 'ArrowDown') {
+      nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+    } else {
+      nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+    }
+    items[nextIndex]?.focus();
+  }
+
   return (
     <>
       {selectedCourseId !== null ? (
@@ -378,14 +488,25 @@ export function CoursesPage({
                   const daysLeft = nextExam
                     ? Math.max(0, diffCalendarDays(nextExam.examDate, todayIso))
                     : null;
+                  const isMenuOpen = openMenuCourseId === course.id;
+                  const menuId = `course-actions-menu-${course.id}`;
+                  const triggerId = `course-actions-trigger-${course.id}`;
+                  const courseMetaParts = [
+                    course.professor.trim(),
+                    formatTermDisplay(course.term),
+                  ].filter(Boolean);
 
                   return (
                     <div
                       key={course.id}
-                      className="courses-table-row"
+                      className={`courses-table-row ${isMenuOpen ? 'is-menu-open' : ''}`.trim()}
                       role="row"
                       onClick={(e) => {
-                        if ((e.target as HTMLElement).closest('button')) return;
+                        if (
+                          (e.target as HTMLElement).closest('.courses-row-menu, button')
+                        ) {
+                          return;
+                        }
                         onSelectCourse(course.id);
                       }}
                     >
@@ -393,7 +514,7 @@ export function CoursesPage({
                         {indexText}
                       </span>
 
-                      <div role="cell">
+                      <div className="courses-row-main" role="cell">
                         <button
                           type="button"
                           className="courses-row-name"
@@ -401,29 +522,9 @@ export function CoursesPage({
                         >
                           {course.name}
                         </button>
-                        <div className="swiss-meta">
-                          {course.professor.trim() ? `${course.professor.trim()} · ` : ''}
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            onClick={() => handleOpenEdit(course)}
-                          >
-                            Editar
-                          </SwissLinkButton>
-                          {' · '}
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            onClick={() => void handleToggleArchive(course)}
-                          >
-                            Archivar
-                          </SwissLinkButton>
-                          {' · '}
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            onClick={() => void handleRequestDelete(course.id)}
-                          >
-                            Eliminar
-                          </SwissLinkButton>
-                        </div>
+                        {courseMetaParts.length > 0 ? (
+                          <div className="swiss-meta">{courseMetaParts.join(' · ')}</div>
+                        ) : null}
                       </div>
 
                       <span className="courses-row-nextclass" role="cell">
@@ -461,9 +562,89 @@ export function CoursesPage({
                       </div>
 
                       <div className="courses-row-actions" role="cell">
+                        <div
+                          className="courses-row-menu-wrap"
+                          data-course-menu={course.id}
+                        >
+                          <button
+                            ref={(el) => {
+                              menuTriggerRefs.current[course.id] = el;
+                            }}
+                            id={triggerId}
+                            type="button"
+                            className={`swiss-btn-tertiary is-sm courses-row-menu-trigger ${isMenuOpen ? 'is-open' : ''}`.trim()}
+                            aria-label={`Acciones de ${course.name}`}
+                            aria-haspopup="menu"
+                            aria-expanded={isMenuOpen}
+                            aria-controls={isMenuOpen ? menuId : undefined}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isMenuOpen && e.detail === 0) {
+                                focusMenuOnOpenRef.current = true;
+                              }
+                              setOpenMenuCourseId(isMenuOpen ? null : course.id);
+                            }}
+                            onKeyDown={(e) =>
+                              handleMenuTriggerKeyDown(e, course.id, isMenuOpen)
+                            }
+                          >
+                            <span aria-hidden="true">···</span>
+                          </button>
+
+                          {isMenuOpen ? (
+                            <div
+                              ref={openMenuRef}
+                              id={menuId}
+                              role="menu"
+                              aria-labelledby={triggerId}
+                              className="courses-row-menu"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={handleMenuKeyDown}
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="courses-row-menu-item"
+                                onClick={() => {
+                                  setOpenMenuCourseId(null);
+                                  handleOpenEdit(course);
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="courses-row-menu-item"
+                                onClick={() => {
+                                  setOpenMenuCourseId(null);
+                                  void handleToggleArchive(course);
+                                }}
+                              >
+                                {course.status === 'active' ? 'Archivar' : 'Activar'}
+                              </button>
+                              <hr className="courses-row-menu-sep" />
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="courses-row-menu-item is-danger"
+                                onClick={() => {
+                                  setOpenMenuCourseId(null);
+                                  void handleRequestDelete(course.id);
+                                }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+
                         <SwissLinkButton
                           aria-label={`Abrir ${course.name}`}
-                          onClick={() => onSelectCourse(course.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectCourse(course.id);
+                          }}
                         >
                           →
                         </SwissLinkButton>
