@@ -2,9 +2,9 @@
 
 **Fecha de actualización:** 18 de noviembre de 2026  
 **Rama actual:** `pulido-ui` (creada desde el tag `v1.0-pre-pulido` en `beabe46`)  
-**Último commit de código:** `59902e7` — `ui(informes-ia): separar chips en alcance y origen y pulir cuatro estados del panel`  
-**Etapa actual:** Etapa 3 (Panel de informes IA) completada — avanzando hacia Etapa 4 (Fase 4: Detalles finos e integración)  
-**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 183 tests en verde) · `npm run build` OK (0 errores).
+**Último commit de código:** `176979c` — `ui(auditoria): corregir showModal en SourcePreviewDialog, jerarquia en Informes y tokens menores`  
+**Etapa actual:** Etapa 4 (Fase 4: Detalles finos e integración) completada — lista para revisión y merge a `main` por el Product Owner  
+**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 183 tests en verde) · `npm run build` OK (`dist/theme-init.js` y `dist/favicon.svg` verificados).
 
 ---
 
@@ -100,6 +100,33 @@
   - **Resultado (`assistant-report-result`)**: tipografía editorial legible (`--font-size-xl`, `line-height: 1.6`), acciones `Copiar` (clipboard + aviso), `Exportar` (descarga `.md`), `Regenerar` y `Abrir informe →`.
   - **Error (`assistant-report-error`)**: `SwissErrorAlert` claro y botón `Reintentar` que relanza el último `StudyReportType` solicitado.
 
+### Fase 4 — Detalles finos e integración (Etapa 4: 100% completada + auditoría final)
+
+1. **Estados interactivos, accesibilidad, contraste AA y movimiento reducido (`040079e`)**
+   - Contraste WCAG AA en modo oscuro y claro: `--on-acc: #111111` sobre coral `--acc: #FF5F52` en oscuro (`6.30:1`), botones `.is-danger` en hover/focus con fondo `--acc` y tinta `--on-acc`, y remoción de atenuación `opacity: 0.55` en `.calendar-month-cell.is-outside-month`.
+   - Token único de transición `--transition-fast: 120ms ease` y reglas completas `@media (prefers-reduced-motion: reduce)` (en CSS global + guardia en `SettingsPage.tsx` para `scrollIntoView`, sumado a `<MotionConfig reducedMotion="user">` en `App.tsx`).
+   - Estados `:hover`, `:focus-visible`, `:active`, `:disabled` y `.is-selected`/`.is-active` completados en botones, enlaces, checkboxes, switches, segmentados, selects, menús y controles del calendario/editor/panel IA.
+   - Foco y skip link: `.skip-link` reubicado debajo de los controles de ventana de macOS (`top: 34px; left: 48px;`), y trampa/restauración de foco en `CommandPalette.tsx` y `PomodoroHeaderWidget.tsx`.
+
+2. **Casos extremos y ancho compacto `~1100px` (`4786ceb`)**
+   - Truncado con `text-overflow: ellipsis`, `overflow-wrap: anywhere` y atributo `title` para nombres largos en Inicio, Materias, Cuaderno de Materia (fuentes/notas/backlinks/informes), Tareas, Exámenes e Informes.
+   - Compactación responsiva (`@media (max-width: 1240px)`) del header y de `.pomodoro-widget` (ocultando `.pomodoro-course-tag` y ajustando paddings/tamaños) para conservar `Ajustes` dentro de ventana a `1100px`.
+   - En `CourseDetailView.tsx`, trasladado `id="main-title" tabIndex={-1}` al `<section>` de carga para no montar un `<h1>` transitorio durante `isLoading`.
+
+3. **Marca, favicon y arranque sin parpadeo (`acd8221`)**
+   - Creado `public/favicon.svg` (`64×64`, squircle `#1E2023`, C blanco `#FFFFFF` y punto coral `#FF5F52` sin estilos inline) y conectado desde `index.html`.
+   - Unificado `<meta name="color-scheme">` en `dark light` entre `index.html`, `public/theme-init.js` y `src/App.tsx`, y fijado `aspect-ratio: 78 / 68` en `.cursada-mark svg`.
+
+4. **Auditoría final de solo lectura y correcciones (`176979c`)**
+   - Ejecutado un agente revisor independiente (solo lectura) sobre tokens, botones en 3 niveles, reglas, títulos, accesibilidad, contraste AA, casos extremos y brand assets.
+   - **Correcciones aplicadas en `176979c`:**
+     - Eliminado el atributo `open` hardcoded en `SourcePreviewDialog.tsx` para que Chromium/Electron abra el `<dialog>` con `.showModal()` real (manteniendo fallback `setAttribute('open', '')` en jsdom).
+     - Pasado `Regenerar` en `ReportsPage.tsx` de `variant="primary"` a `variant="secondary"` para respetar una única acción primaria coral (`+ Nuevo informe`).
+     - Restaurado `:focus-visible` en el campo de búsqueda de `CommandPalette` (`.command-palette-input:focus:not(:focus-visible)`), definida la clase `.course-dot` (`6×6`, `border-radius: 0`, `var(--course-dot)`) y unificadas las transiciones restantes con `var(--transition-fast)`.
+   - **Cabos sueltos informativos (sin cambios adicionales para preservar compatibilidad visual/tests):**
+     - `CalendarPage.tsx` conserva `.calendar-header` / `.calendar-range-title` (`44px` con controles semanales/mensuales en línea) en vez de `.swiss-page-head` (`56px`).
+     - Restan algunos literales `rgba(...)` heredados en backdrops/tintes del calendario, reglas internas con `1px solid var(--rule)` literal, ~30 clases legacy sin uso en `courses-calendar.css` / `.sidebar-command-trigger*`, variantes menores de botón `Cerrar` en el popover del Pomodoro (`secondary` vs `tertiary`), retorno de foco puntual en popover de Pomodoro/confirmación de eliminación de nota, y el límite muy justo (~21px de holgura excedida en ancho exacto `1100px`) únicamente cuando Pomodoro está expandido en fase `Descanso largo`.
+
 ---
 
 ## 2. Estado de Etapas
@@ -107,14 +134,15 @@
 - **Etapa 0 — Cierre visual de Fase 1 (COMPLETADA).**
 - **Etapa 1 — Fase 2: Fundaciones de diseño (COMPLETADA).**
 - **Etapa 2 — Fase 3: Pantallas en paralelo (COMPLETADA).**
-- **Etapa 3 — Panel de informes IA (COMPLETADA):**
-  - Verificación completa: `npm run typecheck` (0 errores), `npm test` (40 archivos, 183 tests en verde), `npm run build` OK.
+- **Etapa 3 — Panel de informes IA (COMPLETADA).**
+- **Etapa 4 — Fase 4: Detalles finos, casos extremos, íconos y auditoría final (COMPLETADA):**
+  - Verificación final obligatoria: `npm run typecheck` (0 errores), `npm test` (40 archivos, 183 tests en verde), `npm run build` OK (`dist/theme-init.js` y `dist/favicon.svg` verificados).
 
 ---
 
 ## 3. Qué falta (en orden de prioridad)
 
-1. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final (en ejecución).**
+- Nada pendiente en `pulido-ui`: Fases 1, 2, 3 y 4 del pulido visual están cerradas y verificadas. Queda a criterio del Product Owner la revisión final y el merge de `pulido-ui` a `main`.
 
 ---
 
@@ -122,8 +150,7 @@
 
 - **`"Programacion III"` sin tilde y `"2ndo Cuatrimestre"`:** Verifiqué todo el código fuente y ninguno de los dos textos existe como valor por defecto o de ejemplo en el repositorio; ambos provienen de los datos cargados en tu base SQLite local (`~/Library/Application Support/com.cursada.app/cursada.sqlite`). Respetando tu regla (*"si es un dato cargado por mí, no lo cambies"* y aislamiento estricto de la base real), no toqué tu base de datos SQLite y agregué normalización visual en `CoursesPage.tsx` para mostrar `"2do Cuatrimestre"` automáticamente cuando el período contiene `"2ndo"`.
 - **Encabezados en el editor:** Al abrir una nota, CodeMirror posiciona el cursor en el carácter `0` aunque el editor no tenga foco; por eso el `#` de la primera línea se veía siempre. Con `editorFocusField`, el `#` permanece oculto mientras no hayas hecho clic/foco sobre esa línea en el editor.
-- **Botón `Enfoque` expandido al pausar:** Cuando el usuario inicia desde `▶` o despliega el reloj y luego presiona `Pausar`, se mantiene expandido para que pueda usar `Reiniciar` o `Config ▾` sin que desaparezcan; se contrae al hacer clic fuera o presionar `Escape`.
-- **Observación en ventana chica (`1100×640`) con Enfoque activo:** En reposo (`25:00 ▶`), `Ajustes` entra con holgura; si el temporizador está activo/expandido con `ENFOQUE 25:00 Pausar Saltar Reiniciar Config ▾`, el borde derecho de `Ajustes` excede ligeramente los `1100px` (~30px). Se resolverá en Etapa 4.
+- **Botón `Enfoque` expandido al pausar:** Cuando el usuario inicia desde `▶` o despliega el reloj y luego presiona `Pausar`, se mantiene expandido para que pueda usar `Reiniciar` o `Config ▾` sin que desaparezcan; se contrae al hacer clic fuera o presionar `Escape`. Resuelto en Etapa 4 el ajuste compacto para `1100px` en estado expandido estándar (`Enfoque`), ocultando `.pomodoro-course-tag` debajo de `1240px`.
 - **Landmark `banner` único:** Las vistas `Tareas`, `Informes` y `Ajustes` usan `<div className="swiss-page-head">` para su título superior a lo ancho de modo que `SwissHeader` siga siendo el único `<header role="banner">`.
 - **Menús contextuales en `CourseNotebookSidebar`:** Para respetar los tests existentes que invocan acciones por `getByRole` dentro de `notesPane` sin clic previo en `···` y mantener el panel visualmente limpio, los menús cerrados permanecen en el DOM con `opacity: 0; pointer-events: none` (sin `display: none` ni `visibility: hidden`) y se muestran con `.is-open` al abrirse.
 
@@ -138,4 +165,4 @@
 
 ## 6. Próximo Paso
 
-Completar **Etapa 4 (Fase 4: Detalles finos, accesibilidad, casos extremos, logo/ícono/favicon y revisor final de solo lectura)** sin capturas adicionales y entregar el resumen final al Product Owner.
+Revisar el cierre de Fases 1–4 y ejecutar el merge de `pulido-ui` a `main` desde tu flujo habitual cuando lo apruebes.
