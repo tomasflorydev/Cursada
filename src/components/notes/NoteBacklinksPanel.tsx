@@ -171,7 +171,10 @@ export function NoteBacklinksPanel({
                             onClick={() => void handleForwardLinkClick(link)}
                           >
                             <span className="backlinks-item-top">
-                              <span className="backlinks-item-name">
+                              <span
+                                className="backlinks-item-name"
+                                title={link.displayText}
+                              >
                                 {link.displayText}
                               </span>
                               <span
@@ -229,10 +232,16 @@ export function NoteBacklinksPanel({
                               }
                             >
                               <span className="backlinks-item-top">
-                                <span className="backlinks-item-name">
+                                <span
+                                  className="backlinks-item-name"
+                                  title={link.sourceNoteTitle}
+                                >
                                   {link.sourceNoteTitle}
                                 </span>
-                                <span className="backlinks-item-status">
+                                <span
+                                  className="backlinks-item-status"
+                                  title={link.sourceCourseName}
+                                >
                                   {link.sourceCourseName}
                                 </span>
                               </span>

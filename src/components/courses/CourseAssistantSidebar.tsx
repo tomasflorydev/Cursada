@@ -532,15 +532,9 @@ export function CourseAssistantSidebar({
                         {src.title}
                       </span>
                     </div>
-                    <span
-                      className="swiss-meta"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
-                    >
+                    <span className="swiss-meta notebook-source-actions">
                       <select
+                        className="notebook-source-stage-select"
                         aria-label={`Instancia de ${src.title}`}
                         value={src.examStage ?? 'general'}
                         onChange={(e) =>
@@ -549,13 +543,6 @@ export function CourseAssistantSidebar({
                             e.target.value as ExamStageTag
                           )
                         }
-                        style={{
-                          fontSize: '11px',
-                          background: 'transparent',
-                          border: '1px solid var(--rule)',
-                          color: 'var(--mut)',
-                          padding: '1px 4px',
-                        }}
                       >
                         {COURSE_EXAM_STAGE_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -824,7 +811,7 @@ export function CourseAssistantSidebar({
             )}
           </p>
           {lastAnswer.citations.length > 0 ? (
-            <div className="swiss-meta">
+            <div className="swiss-meta notebook-answer-citations">
               {lastAnswer.citations.map((c) => (
                 <div key={c.chunkId}>
                   [{c.citationNumber}] {c.sourceTitle}

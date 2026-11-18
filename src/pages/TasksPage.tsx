@@ -417,7 +417,7 @@ export function TasksPage({
             onSubmit={(e) => void handleSaveEdit(e)}
             style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '12px' }}>
               <div>
                 <label className="swiss-section-label" htmlFor={`edit-task-title-${task.id}`}>
                   Título
@@ -450,7 +450,7 @@ export function TasksPage({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '12px' }}>
               <div>
                 <label className="swiss-section-label" htmlFor={`edit-task-desc-${task.id}`}>
                   Detalle
@@ -543,9 +543,11 @@ export function TasksPage({
         />
 
         <div style={{ minWidth: 0 }}>
-          <div className="tasks-item-title">{task.title}</div>
+          <div className="tasks-item-title" title={task.title}>
+            {task.title}
+          </div>
           {task.description ? (
-            <div className="swiss-meta" style={{ marginTop: '3px' }}>
+            <div className="swiss-meta tasks-item-desc" title={task.description}>
               {task.description}
             </div>
           ) : null}
@@ -555,6 +557,7 @@ export function TasksPage({
           <button
             type="button"
             className="swiss-link tasks-item-course"
+            title={task.courseName}
             onClick={() => onSelectCourse(task.courseId)}
           >
             {task.courseName}
@@ -642,7 +645,7 @@ export function TasksPage({
       </div>
 
       <div className="swiss-grid">
-        <aside className="swiss-col-3">
+        <aside className="swiss-col-3" aria-label="Filtros de tareas">
           <div style={{ marginBottom: '28px' }}>
             <SwissSectionHeader title="Ver" />
           <div>
@@ -714,6 +717,7 @@ export function TasksPage({
                       }}
                     >
                       <span
+                        title={course.name}
                         style={{
                           minWidth: 0,
                           overflow: 'hidden',

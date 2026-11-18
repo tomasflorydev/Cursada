@@ -663,10 +663,13 @@ export function ExamsPage({
                     DÍAS · {formatExamDateShort(exam.examDate)}
                     {exam.examTime ? ` · ${exam.examTime}` : ''}
                   </div>
-                  <h2 className="exams-info-title">{exam.title}</h2>
+                  <h2 className="exams-info-title" title={exam.title}>
+                    {exam.title}
+                  </h2>
                   <div className="swiss-meta-md" style={{ marginTop: '6px' }}>
                     <SwissLinkButton
                       className="swiss-meta-md"
+                      title={exam.courseName}
                       onClick={() => onSelectCourse(exam.courseId)}
                     >
                       {exam.courseName}
@@ -853,7 +856,14 @@ export function ExamsPage({
                       </div>
 
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '15px' }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            overflowWrap: 'anywhere',
+                          }}
+                          title={exam.title}
+                        >
                           {exam.title}
                         </div>
                         <div className="swiss-meta">

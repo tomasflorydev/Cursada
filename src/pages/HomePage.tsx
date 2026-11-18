@@ -335,7 +335,9 @@ export function HomePage({
                     className="home-row"
                     onClick={() => onNavigateSection('tareas')}
                   >
-                    <span className="home-row-title home-row-course">{task.title}</span>
+                    <span className="home-row-title home-row-course" title={task.title}>
+                      {task.title}
+                    </span>
                     <span className="home-row-right">
                       {formatShortTaskDue(task.dueDate, refIso)}
                     </span>
@@ -377,7 +379,9 @@ export function HomePage({
                     <span className="home-row-day">
                       {DAY_SHORT_NAMES_ES[item.dayOfWeek]}
                     </span>
-                    <span className="home-row-course">{item.courseName}</span>
+                    <span className="home-row-course" title={item.courseName}>
+                      {item.courseName}
+                    </span>
                     <span className="home-row-right">{item.startTime}</span>
                   </button>
                 ))}
@@ -416,7 +420,10 @@ export function HomePage({
                       <span className="home-exam-days">{daysLeft}</span>
                       <span className="home-exam-meta">
                         <span className="home-exam-unit">{unitLabel}</span>
-                        <span className="home-exam-name">
+                        <span
+                          className="home-exam-name"
+                          title={`${exam.courseName} · ${EXAM_CATEGORY_LABELS[exam.category]}`}
+                        >
                           {exam.courseName} · {EXAM_CATEGORY_LABELS[exam.category]}
                         </span>
                         <span className="home-exam-date">

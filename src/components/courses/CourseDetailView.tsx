@@ -1076,7 +1076,12 @@ export function CourseDetailView({
 
   if (isLoading) {
     return (
-      <section className="swiss-grid" aria-label="Cargando materia">
+      <section
+        id="main-title"
+        tabIndex={-1}
+        className="swiss-grid"
+        aria-label="Cargando materia"
+      >
         <div className="swiss-col-12">
           <SwissLoadingBar text="Cargando cuaderno de materia…" />
         </div>
@@ -1087,6 +1092,9 @@ export function CourseDetailView({
   if (loadError || !course) {
     return (
       <section className="swiss-grid" aria-label="Error al cargar materia">
+        <h1 id="main-title" tabIndex={-1} className="visually-hidden">
+          Materia no disponible
+        </h1>
         <div className="swiss-col-12">
           <SwissErrorAlert message={loadError ?? 'No se encontró la materia.'} />
           <div style={{ marginTop: '16px' }}>
@@ -1231,7 +1239,17 @@ export function CourseDetailView({
                       </option>
                     ))}
                   </SwissSelect>
-                  <span className="swiss-meta" aria-live="polite">
+                  <span
+                    className="swiss-meta"
+                    aria-live="polite"
+                    title={saveStatusText}
+                    style={{
+                      maxWidth: '180px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {saveStatusText}
                   </span>
                 </span>

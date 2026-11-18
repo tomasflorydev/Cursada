@@ -505,7 +505,11 @@ export function ReportsPage({
           <div>
             {groupedReports.map((group) => (
               <div key={group.courseId} style={{ marginBottom: '18px' }}>
-                <div className="swiss-section-label" style={{ marginBottom: '6px' }}>
+                <div
+                  className="swiss-section-label reports-sidebar-course"
+                  style={{ marginBottom: '6px' }}
+                  title={group.courseName}
+                >
                   {group.courseName}
                 </div>
                 {group.items.map((rep) => {
@@ -522,7 +526,12 @@ export function ReportsPage({
                         setIsConfirmingDelete(false);
                       }}
                     >
-                      <span>{rep.title}</span>
+                      <span
+                        className="reports-sidebar-item-title"
+                        title={rep.title}
+                      >
+                        {rep.title}
+                      </span>
                       <span className="swiss-meta">
                         {formatRelativeAgeEs(rep.updatedAt)} · {rep.notesCount}{' '}
                         {rep.notesCount === 1 ? 'nota' : 'notas'}, {rep.pdfsCount}{' '}
@@ -549,11 +558,16 @@ export function ReportsPage({
             />
           ) : (
             <>
-              <div className="swiss-meta-md">
+              <div
+                className="swiss-meta-md reports-breadcrumb-course"
+                title={`Informes / ${selectedReport.courseName}`}
+              >
                 Informes / {selectedReport.courseName}
               </div>
 
-              <h2 className="reports-title">{selectedReport.title}</h2>
+              <h2 className="reports-title" title={selectedReport.title}>
+                {selectedReport.title}
+              </h2>
 
               <div className="reports-article-head">
                 <span className="swiss-meta-md">
@@ -747,7 +761,7 @@ export function ReportsPage({
                 className="reports-source-card"
                 onClick={() => handleCitationCardClick(citation)}
               >
-                <span className="reports-source-title">
+                <span className="reports-source-title" title={citation.title}>
                   <SwissCitationBadge index={citation.index} /> {citation.title}
                   {citation.pageLabel ? (
                     <span className="swiss-meta"> · {citation.pageLabel}</span>

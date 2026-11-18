@@ -518,12 +518,18 @@ export function CoursesPage({
                         <button
                           type="button"
                           className="courses-row-name"
+                          title={course.name}
                           onClick={() => onSelectCourse(course.id)}
                         >
                           {course.name}
                         </button>
                         {courseMetaParts.length > 0 ? (
-                          <div className="swiss-meta">{courseMetaParts.join(' · ')}</div>
+                          <div
+                            className="swiss-meta courses-row-meta"
+                            title={courseMetaParts.join(' · ')}
+                          >
+                            {courseMetaParts.join(' · ')}
+                          </div>
                         ) : null}
                       </div>
 
@@ -552,7 +558,10 @@ export function CoursesPage({
                                   ? 'en 1 día'
                                   : `en ${daysLeft} días`}
                             </span>
-                            <span className="courses-row-exam-sub">
+                            <span
+                              className="courses-row-exam-sub"
+                              title={`${formatShortExamDate(nextExam.examDate)} · ${nextExam.title}`}
+                            >
                               {formatShortExamDate(nextExam.examDate)} · {nextExam.title}
                             </span>
                           </>
@@ -672,34 +681,38 @@ export function CoursesPage({
               {archivedCourses.length === 0 ? (
                 <p className="swiss-meta-md">No tenés materias archivadas.</p>
               ) : (
-                <div className="courses-table">
+                <div className="courses-table" role="table" aria-label="Materias archivadas">
                   {archivedCourses.map((course, idx) => (
-                    <div key={course.id} className="courses-table-row">
-                      <span className="courses-row-idx">
+                    <div key={course.id} className="courses-table-row" role="row">
+                      <span className="courses-row-idx" role="cell">
                         {String(idx + 1).padStart(2, '0')}
                       </span>
-                      <div>
+                      <div className="courses-row-main" role="cell">
                         <button
                           type="button"
                           className="courses-row-name"
+                          title={course.name}
                           onClick={() => onSelectCourse(course.id)}
                         >
                           {course.name}
                         </button>
                         {formatTermDisplay(course.term) ? (
-                          <div className="swiss-meta">
+                          <div
+                            className="swiss-meta courses-row-meta"
+                            title={formatTermDisplay(course.term)}
+                          >
                             {formatTermDisplay(course.term)}
                           </div>
                         ) : null}
                       </div>
-                      <span className="swiss-meta">Archivada</span>
-                      <span className="courses-row-num">
+                      <span className="swiss-meta" role="cell">Archivada</span>
+                      <span className="courses-row-num" role="cell">
                         {notesByCourse[course.id] ?? 0}
                       </span>
-                      <span className="courses-row-num">
+                      <span className="courses-row-num" role="cell">
                         {pendingByCourse[course.id] ?? 0}
                       </span>
-                      <div className="courses-row-actions" style={{ gridColumn: 'span 2' }}>
+                      <div className="courses-row-actions" role="cell" style={{ gridColumn: 'span 2' }}>
                         <SwissButton
                           variant="secondary"
                           onClick={() => void handleToggleArchive(course)}

@@ -221,6 +221,27 @@ export function CourseNotebookSidebar({
     }
   }
 
+  function handleMenuTriggerKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    onOpenAndFocusFirst: () => void
+  ): void {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      event.stopPropagation();
+      onOpenAndFocusFirst();
+    }
+  }
+
+  function focusFirstItemInContainer(container: HTMLElement | null): void {
+    if (!container) return;
+    window.requestAnimationFrame(() => {
+      const firstBtn = container.querySelector<HTMLButtonElement>(
+        'button:not(:disabled)'
+      );
+      firstBtn?.focus();
+    });
+  }
+
   return (
     <aside className="notebook-notes-pane" aria-label="Notas de la materia">
       <div className="notebook-notes-top">
@@ -241,13 +262,28 @@ export function CourseNotebookSidebar({
                 setOpenNoteMenuId(null);
                 setIsCourseMenuOpen((prev) => !prev);
               }}
+              onKeyDown={(e) =>
+                handleMenuTriggerKeyDown(e, () => {
+                  setOpenNoteMenuId(null);
+                  setIsCourseMenuOpen(true);
+                  focusFirstItemInContainer(
+                    courseMenuWrapRef.current?.querySelector('.notebook-course-menu') as HTMLElement | null
+                  );
+                })
+              }
             >
               ···
             </button>
             <div
               id={courseMenuId}
               className={`notebook-menu notebook-course-menu ${isCourseMenuOpen ? 'is-open' : ''}`.trim()}
-              onKeyDown={handleMenuListKeyDown}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  setIsCourseMenuOpen(false);
+                  return;
+                }
+                handleMenuListKeyDown(e);
+              }}
             >
               {onEditCourse ? (
                 <button
@@ -365,9 +401,13 @@ export function CourseNotebookSidebar({
                   <button
                     type="button"
                     className={`notebook-note-item ${isSelected ? 'is-selected' : ''}`.trim()}
+                    aria-current={isSelected ? 'true' : undefined}
                     onClick={() => onSelectNote(note.id)}
                   >
-                    <span className="notebook-note-title">
+                    <span
+                      className="notebook-note-title"
+                      title={note.title || 'Nota sin título'}
+                    >
                       {note.title || 'Nota sin título'}
                     </span>
                     <span className="notebook-note-meta">
@@ -402,6 +442,18 @@ export function CourseNotebookSidebar({
                       aria-haspopup="menu"
                       aria-expanded={isNoteMenuOpen}
                       onClick={() => handleToggleNoteMenu(note.id)}
+                      onKeyDown={(e) =>
+                        handleMenuTriggerKeyDown(e, () => {
+                          if (openNoteMenuId !== note.id) {
+                            handleToggleNoteMenu(note.id);
+                          }
+                          focusFirstItemInContainer(
+                            noteMenuWrapRefs.current
+                              .get(note.id)
+                              ?.querySelector('.notebook-note-menu') as HTMLElement | null
+                          );
+                        })
+                      }
                     >
                       ···
                     </button>
@@ -409,7 +461,13 @@ export function CourseNotebookSidebar({
                     {shouldMountNoteMenu ? (
                       <div
                         className={`notebook-menu notebook-note-menu ${isNoteMenuOpen ? 'is-open' : ''} ${isNoteMenuOpen && flipNoteMenuUp ? 'is-above' : ''}`.trim()}
-                        onKeyDown={handleMenuListKeyDown}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Tab') {
+                            setOpenNoteMenuId(null);
+                            return;
+                          }
+                          handleMenuListKeyDown(e);
+                        }}
                       >
                         {isConfirmingDelete ? (
                           <>

@@ -246,6 +246,35 @@
     padding-top: 4px;
   }
 
+  @media (max-width: 1240px) {
+    .pomodoro-widget {
+      gap: 6px;
+      padding: 3px 8px;
+    }
+
+    .pomodoro-status-group {
+      gap: 6px;
+    }
+
+    .pomodoro-course-tag {
+      display: none;
+    }
+
+    .pomodoro-controls {
+      gap: 2px;
+      padding-left: 6px;
+    }
+
+    .pomodoro-btn {
+      padding: 2px 5px;
+      font-size: 11px;
+    }
+
+    .pomodoro-timer {
+      font-size: 14px;
+    }
+  }
+
   /* ==========================================================================
      EXAM STAGE PILLS (Todo / 1° Parcial / 2° Parcial / Final / Solo Fuentes / Solo Notas)
      ========================================================================== */

@@ -462,6 +462,34 @@
     -webkit-app-region: no-drag;
   }
 
+  .swiss-header-settings-btn {
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 1240px) {
+    .swiss-shell {
+      padding: 32px 28px 24px;
+    }
+
+    .swiss-header {
+      gap: 14px;
+    }
+
+    .swiss-header-right {
+      gap: 10px;
+    }
+
+    .swiss-nav {
+      gap: 16px;
+    }
+
+    .swiss-header-detail-meta {
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
   .swiss-main {
     flex: 1;
     display: flex;
@@ -1320,6 +1348,8 @@
     flex-direction: column;
     gap: 2px;
     padding-top: var(--space-1);
+    min-width: 0;
+    flex: 1;
   }
 
   .home-exam-unit {
@@ -1331,6 +1361,9 @@
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .home-exam-date {
@@ -1351,6 +1384,7 @@
     font-size: var(--font-size-md);
     line-height: 1.5;
     color: var(--soft);
+    overflow-wrap: anywhere;
   }
 
   .home-report-copy strong {
@@ -1450,6 +1484,11 @@
   }
 
   .courses-row-name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 2rem;
     font-weight: 800;
     letter-spacing: -0.03em;
@@ -1460,6 +1499,12 @@
     padding: 0;
     text-align: left;
     cursor: pointer;
+  }
+
+  .courses-row-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .courses-row-nextclass {
@@ -1480,12 +1525,16 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
   }
 
   .courses-row-exam-label {
     font-size: var(--font-size-md);
     font-weight: 600;
     color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .courses-row-exam-label.is-closest {
@@ -1496,6 +1545,9 @@
     font-size: 0.8125rem;
     color: var(--mut);
     font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .courses-row-actions {
@@ -2103,6 +2155,7 @@
     padding: 0;
     resize: none;
     overflow: hidden;
+    overflow-wrap: anywhere;
   }
 
   .notebook-body-textarea {
@@ -2134,13 +2187,16 @@
   .notebook-sources-list {
     display: flex;
     flex-direction: column;
+    max-height: 280px;
+    overflow-y: auto;
   }
 
   .notebook-source-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 6px 10px;
     padding: 9px 0;
     border-top: var(--rule-thin) solid var(--rule);
     font-size: 0.9375rem;
@@ -2150,7 +2206,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 0;
+    min-width: 120px;
     flex: 1;
   }
 
@@ -2158,6 +2214,29 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .notebook-source-actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .notebook-source-stage-select {
+    font-size: 11px;
+    background-color: var(--bg);
+    border: var(--rule-thin) solid var(--rule);
+    color: var(--soft);
+    padding: 1px 4px;
+    cursor: pointer;
+    transition: border-color var(--transition-fast);
+  }
+
+  .notebook-source-stage-select:hover:not(:disabled) {
+    border-color: var(--ink);
+    color: var(--ink);
   }
 
   .notebook-report-actions {
@@ -2265,6 +2344,11 @@
     font-size: 0.9375rem;
     line-height: 1.55;
     color: var(--soft);
+    overflow-wrap: anywhere;
+  }
+
+  .notebook-answer-citations {
+    overflow-wrap: anywhere;
   }
 
   .notebook-ask-form {
@@ -2899,6 +2983,12 @@
     font-weight: 600;
     line-height: 1.25;
     color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .tasks-item-desc {
+    margin-top: 3px;
+    overflow-wrap: anywhere;
   }
 
   .tasks-item-row.is-done .tasks-item-title {
@@ -2908,8 +2998,14 @@
   }
 
   .tasks-item-course {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.875rem;
     color: var(--mut);
+    text-align: left;
   }
 
   .tasks-item-due {
@@ -2951,7 +3047,7 @@
 
   .exams-item-row {
     display: grid;
-    grid-template-columns: 132px minmax(220px, 1.4fr) minmax(200px, 1.3fr) auto;
+    grid-template-columns: minmax(132px, auto) minmax(220px, 1.4fr) minmax(200px, 1.3fr) auto;
     align-items: center;
     gap: 24px;
     padding: 24px 0;
@@ -2972,7 +3068,7 @@
   }
 
   .exams-item-row.is-nearest .exams-days-big {
-    font-size: 150px;
+    font-size: clamp(88px, 8vw, 144px);
     color: var(--acc);
   }
 
@@ -2983,17 +3079,20 @@
     line-height: 1.1;
     color: var(--ink);
     margin-top: 4px;
+    overflow-wrap: anywhere;
   }
 
   .exams-topics-cell {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0;
   }
 
   .exams-topics-text {
     font-size: 0.9375rem;
     color: var(--soft);
+    overflow-wrap: anywhere;
   }
 
   /* ==========================================================================
@@ -3020,6 +3119,20 @@
     line-height: 1.05;
     color: var(--ink);
     margin-top: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .reports-sidebar-course,
+  .reports-sidebar-item-title {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reports-breadcrumb-course {
+    overflow-wrap: anywhere;
   }
 
   .reports-actions-bar {
