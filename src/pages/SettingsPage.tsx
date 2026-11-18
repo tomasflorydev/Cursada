@@ -58,7 +58,14 @@ export function SettingsPage({
     };
     const target = refMap[cat];
     if (target && typeof target.scrollIntoView === 'function') {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
     }
   }
 
@@ -71,46 +78,50 @@ export function SettingsPage({
   }
 
   return (
-    <section aria-labelledby="main-title" className="swiss-grid">
-      <aside className="swiss-col-3">
-        <h1
-          id="main-title"
-          tabIndex={-1}
-          className="swiss-screen-title"
-          style={{ marginBottom: '28px' }}
-        >
-          Ajustes
-        </h1>
+    <section aria-labelledby="main-title">
+      <div className="swiss-page-head">
+        <div className="swiss-page-head-left">
+          <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
+            Ajustes
+          </h1>
+          <p className="swiss-meta-md">
+            Preferencias locales, modelos de IA, respaldos y atajos
+          </p>
+        </div>
+      </div>
 
-        <nav aria-label="Categorías de ajustes">
-          {SETTINGS_CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              className={`swiss-list-row ${
-                activeCategory === cat.id ? 'is-selected' : ''
-              }`.trim()}
-              aria-current={activeCategory === cat.id ? 'true' : undefined}
-              onClick={() => handleSelectCategory(cat.id)}
-            >
-              <span>{cat.label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
+      <div className="swiss-grid">
+        <aside className="swiss-col-3">
+          <nav aria-label="Categorías de ajustes">
+            {SETTINGS_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`swiss-list-row ${
+                  activeCategory === cat.id ? 'is-selected' : ''
+                }`.trim()}
+                aria-current={activeCategory === cat.id ? 'true' : undefined}
+                onClick={() => handleSelectCategory(cat.id)}
+              >
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-      <div className="swiss-col-9">
-        <SettingsGeneralSection sectionRef={generalRef} />
-        <SettingsAiSection sectionRef={aiRef} />
-        <SettingsAppearanceSection
-          sectionRef={appearanceRef}
-          themeMode={themeMode}
-          onChangeThemeMode={onChangeThemeMode}
-          noteFontSize={effectiveNoteFontSize}
-          onChangeNoteFontSize={handleChangeNoteFontSize}
-        />
-        <SettingsDataSection sectionRef={dataRef} />
-        <SettingsShortcutsSection sectionRef={shortcutsRef} />
+        <div className="swiss-col-9">
+          <SettingsGeneralSection sectionRef={generalRef} />
+          <SettingsAiSection sectionRef={aiRef} />
+          <SettingsAppearanceSection
+            sectionRef={appearanceRef}
+            themeMode={themeMode}
+            onChangeThemeMode={onChangeThemeMode}
+            noteFontSize={effectiveNoteFontSize}
+            onChangeNoteFontSize={handleChangeNoteFontSize}
+          />
+          <SettingsDataSection sectionRef={dataRef} />
+          <SettingsShortcutsSection sectionRef={shortcutsRef} />
+        </div>
       </div>
     </section>
   );

@@ -283,7 +283,14 @@ export function HomePage({
     ? `Tu próxima clase es ${nextClass.courseName} ${nextClass.dayLabel} a las ${nextClass.startTime}.`
     : 'No tenés clases semanales cargadas.';
 
-  const footerCourses = useMemo(() => courses.slice(0, 5), [courses]);
+  const statusSummarySentence =
+    pendingTasks.length === 0 && reports.length === 0
+      ? 'No tenés tareas abiertas ni informes generados todavía.'
+      : pendingTasks.length === 0
+        ? `No tenés tareas abiertas y tenés ${reportsSummaryText}.`
+        : `Hoy ${tasksSummaryText} y ${reportsSummaryText}.`;
+
+  const footerCourses = useMemo(() => courses.slice(0, 6), [courses]);
 
   return (
     <div className="home-page">
@@ -301,7 +308,7 @@ export function HomePage({
             de {monthName}
           </p>
           <p className="home-summary">
-            {nextClassSummaryText} Hoy {tasksSummaryText} y {reportsSummaryText}.
+            {nextClassSummaryText} {statusSummarySentence}
           </p>
         </section>
 
@@ -328,7 +335,9 @@ export function HomePage({
                     className="home-row"
                     onClick={() => onNavigateSection('tareas')}
                   >
-                    <span className="home-row-title home-row-course">{task.title}</span>
+                    <span className="home-row-title home-row-course" title={task.title}>
+                      {task.title}
+                    </span>
                     <span className="home-row-right">
                       {formatShortTaskDue(task.dueDate, refIso)}
                     </span>
@@ -370,7 +379,9 @@ export function HomePage({
                     <span className="home-row-day">
                       {DAY_SHORT_NAMES_ES[item.dayOfWeek]}
                     </span>
-                    <span className="home-row-course">{item.courseName}</span>
+                    <span className="home-row-course" title={item.courseName}>
+                      {item.courseName}
+                    </span>
                     <span className="home-row-right">{item.startTime}</span>
                   </button>
                 ))}
@@ -409,7 +420,10 @@ export function HomePage({
                       <span className="home-exam-days">{daysLeft}</span>
                       <span className="home-exam-meta">
                         <span className="home-exam-unit">{unitLabel}</span>
-                        <span className="home-exam-name">
+                        <span
+                          className="home-exam-name"
+                          title={`${exam.courseName} · ${EXAM_CATEGORY_LABELS[exam.category]}`}
+                        >
                           {exam.courseName} · {EXAM_CATEGORY_LABELS[exam.category]}
                         </span>
                         <span className="home-exam-date">
@@ -424,8 +438,8 @@ export function HomePage({
             )}
           </section>
 
-          <section aria-label="Informe listo">
-            <SwissSectionHeader title="Informe listo" />
+          <section aria-label="Informes">
+            <SwissSectionHeader title="Informes" />
 
             <div className="home-report-block">
               {latestReport ? (
@@ -464,24 +478,45 @@ export function HomePage({
         </div>
       </div>
 
-      {/* Pie: Hasta 5 materias activas */}
+      {/* Sección inferior: Hasta 6 materias activas */}
       <footer className="home-footer" aria-label="Materias activas">
-        {footerCourses.map((course) => {
-          const count = notesCountByCourse[course.id] ?? 0;
-          return (
-            <button
-              key={course.id}
-              type="button"
-              className="home-footer-item"
-              onClick={() => onSelectCourse(course.id)}
+        <SwissSectionHeader
+          title={`Materias · ${courses.length}`}
+          right={
+            <SwissLinkButton
+              aria-label="Todas las materias"
+              onClick={() => onNavigateSection('materias')}
             >
-              <span className="home-footer-name">{course.name}</span>
-              <span className="home-footer-count">
-                {count === 1 ? '1 nota' : `${count} notas`}
-              </span>
-            </button>
-          );
-        })}
+              Todas →
+            </SwissLinkButton>
+          }
+        />
+
+        {footerCourses.length === 0 ? (
+          <p className="swiss-meta-md">No tenés materias activas.</p>
+        ) : (
+          <div className="home-footer-grid">
+            {footerCourses.map((course) => {
+              const count = notesCountByCourse[course.id] ?? 0;
+              return (
+                <button
+                  key={course.id}
+                  type="button"
+                  className="home-footer-item"
+                  title={course.name}
+                  onClick={() => onSelectCourse(course.id)}
+                >
+                  <span className="home-footer-name" title={course.name}>
+                    {course.name}
+                  </span>
+                  <span className="home-footer-count">
+                    {count === 1 ? '1 nota' : `${count} notas`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </footer>
     </div>
   );

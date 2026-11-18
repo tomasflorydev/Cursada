@@ -184,6 +184,8 @@ export function CourseDetailView({
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportProgressText, setReportProgressText] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [lastRequestedReportType, setLastRequestedReportType] =
+    useState<StudyReportType>('summary');
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
   // Ask sources chat state
@@ -669,22 +671,24 @@ export function CourseDetailView({
     });
   }
 
-  async function handleTogglePin(): Promise<void> {
-    if (!selectedNote) return;
+  async function handleTogglePin(noteId?: string): Promise<void> {
+    const targetId = noteId ?? selectedNote?.id;
+    if (!targetId) return;
     await flushPendingSave();
-    const updated = await cursadaClient.toggleNotePin(selectedNote.id);
+    const updated = await cursadaClient.toggleNotePin(targetId);
     setNotes((prev) =>
       sortNotes(prev.map((n) => (n.id === updated.id ? updated : n)))
     );
     showTransientNoteFeedback(updated.isPinned ? 'Nota fijada.' : 'Nota desfijada.');
   }
 
-  async function handleExportNote(): Promise<void> {
-    if (!selectedNote) return;
+  async function handleExportNote(noteId?: string): Promise<void> {
+    const targetId = noteId ?? selectedNote?.id;
+    if (!targetId) return;
     await flushPendingSave();
     const result = await cursadaClient.exportMarkdown({
       scope: 'note',
-      noteId: selectedNote.id,
+      noteId: targetId,
     });
     if (!result.canceled) {
       showTransientNoteFeedback('Nota exportada en Markdown.');
@@ -913,6 +917,7 @@ export function CourseDetailView({
 
   async function handleGenerateReport(reportType: StudyReportType): Promise<void> {
     if (!course) return;
+    setLastRequestedReportType(reportType);
     setReportError(null);
 
     const {
@@ -1071,7 +1076,12 @@ export function CourseDetailView({
 
   if (isLoading) {
     return (
-      <section className="swiss-grid" aria-label="Cargando materia">
+      <section
+        id="main-title"
+        tabIndex={-1}
+        className="swiss-grid"
+        aria-label="Cargando materia"
+      >
         <div className="swiss-col-12">
           <SwissLoadingBar text="Cargando cuaderno de materia…" />
         </div>
@@ -1082,6 +1092,9 @@ export function CourseDetailView({
   if (loadError || !course) {
     return (
       <section className="swiss-grid" aria-label="Error al cargar materia">
+        <h1 id="main-title" tabIndex={-1} className="visually-hidden">
+          Materia no disponible
+        </h1>
         <div className="swiss-col-12">
           <SwissErrorAlert message={loadError ?? 'No se encontró la materia.'} />
           <div style={{ marginTop: '16px' }}>
@@ -1128,7 +1141,7 @@ export function CourseDetailView({
 
   return (
     <section className={gridClassName} aria-labelledby="main-title">
-      {/* Panel izquierdo: Listado de notas + Red de conocimiento + Asistencia */}
+      {/* Panel izquierdo: Listado de notas + Red de conocimiento */}
       {isLeftSidebarOpen ? (
         <CourseNotebookSidebar
           course={course}
@@ -1141,8 +1154,8 @@ export function CourseDetailView({
           onCollapse={() => setIsLeftSidebarOpen(false)}
           onCreateNote={() => void handleCreateNote()}
           onSelectNote={(noteId) => void handleSelectNote(noteId)}
-          onTogglePin={() => void handleTogglePin()}
-          onExportNote={() => void handleExportNote()}
+          onTogglePin={(noteId) => void handleTogglePin(noteId)}
+          onExportNote={(noteId) => void handleExportNote(noteId)}
           onRequestDeleteNote={setConfirmDeleteNoteId}
           onConfirmDeleteNote={(noteId) => void handleConfirmDeleteNote(noteId)}
           onBackToCourses={() => onSelectCourse(null)}
@@ -1159,7 +1172,7 @@ export function CourseDetailView({
         />
       ) : (
         <aside
-          className="notebook-collapsed-rail"
+          className="notebook-collapsed-rail is-left"
           aria-label="Panel de notas colapsado"
         >
           <button
@@ -1199,14 +1212,18 @@ export function CourseDetailView({
           ) : (
             <>
               <div className="notebook-breadcrumb-row">
-                <span className="swiss-meta-md">
-                  {course.name} / {draftTitle.trim() || 'Sin título'}
+                <span
+                  className="swiss-meta-md notebook-breadcrumb-course"
+                  title={course.name}
+                >
+                  {course.name}
                 </span>
                 <span
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '12px',
+                    flexShrink: 0,
                   }}
                 >
                   <SwissSelect
@@ -1222,7 +1239,17 @@ export function CourseDetailView({
                       </option>
                     ))}
                   </SwissSelect>
-                  <span className="swiss-meta" aria-live="polite">
+                  <span
+                    className="swiss-meta"
+                    aria-live="polite"
+                    title={saveStatusText}
+                    style={{
+                      maxWidth: '180px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {saveStatusText}
                   </span>
                 </span>
@@ -1259,6 +1286,7 @@ export function CourseDetailView({
                 <SuperMarkdownEditor
                   noteId={selectedNote.id}
                   courseId={course.id}
+                  noteTitle={draftTitle}
                   content={draftContent}
                   onChangeContent={handleContentChange}
                   onSaveShortcut={() => void flushPendingSave()}
@@ -1324,6 +1352,7 @@ export function CourseDetailView({
           reportProgressText={reportProgressText}
           reportError={reportError}
           onGenerateReport={(type) => void handleGenerateReport(type)}
+          onRetryReport={() => void handleGenerateReport(lastRequestedReportType)}
           onCancelReport={handleCancelReport}
           onOpenSimulator={() => setIsSimulatorOpen(true)}
           latestReport={latestReport}
@@ -1342,7 +1371,7 @@ export function CourseDetailView({
         />
       ) : (
         <aside
-          className="notebook-collapsed-rail"
+          className="notebook-collapsed-rail is-right"
           aria-label="Panel de asistente IA colapsado"
         >
           <button

@@ -78,7 +78,7 @@
     align-items: flex-start;
     justify-content: center;
     padding: clamp(48px, 12vh, 112px) 16px 24px;
-    background-color: rgba(15, 20, 28, 0.45);
+    background-color: rgba(15, 20, 28, 0.5);
     overscroll-behavior: contain;
   }
 
@@ -89,7 +89,7 @@
     flex-direction: column;
     background-color: var(--bg-surface);
     color: var(--text-primary);
-    border: 1px solid var(--border-strong);
+    border: var(--rule-thin) solid var(--rule-header);
     border-radius: 0;
     box-shadow: none;
     overflow: hidden;
@@ -134,17 +134,39 @@
     color: var(--text-muted);
   }
 
-  .command-palette-input:focus {
+  .command-palette-input:focus:not(:focus-visible) {
     outline: none;
   }
 
   .command-palette-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-inline-size: 28px;
     min-block-size: 28px;
+    padding: 2px 6px;
+    border: var(--rule-thin) solid transparent;
+    border-radius: 0;
+    background: transparent;
     font-size: 1.1rem;
     line-height: 1;
     color: var(--text-muted);
+    cursor: pointer;
     flex-shrink: 0;
+    transition:
+      background-color var(--transition-fast, 120ms ease),
+      border-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease);
+  }
+
+  .command-palette-close-btn:hover {
+    color: var(--ink);
+    border-color: var(--rule);
+    background-color: var(--grid);
+  }
+
+  .command-palette-close-btn:active {
+    transform: translateY(1px);
   }
 
   /* Kind Filter Pills */
@@ -162,7 +184,7 @@
     min-block-size: 26px;
     padding: 3px 10px;
     border-radius: 0;
-    border: 1px solid var(--toggle-border);
+    border: var(--rule-thin) solid var(--rule);
     background: var(--toggle-inactive-bg);
     color: var(--toggle-inactive-fg);
     font-size: 0.8125rem;
@@ -170,9 +192,9 @@
     white-space: nowrap;
     cursor: pointer;
     transition:
-      background-color 120ms ease,
-      color 120ms ease,
-      border-color 120ms ease;
+      background-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease),
+      border-color var(--transition-fast, 120ms ease);
   }
 
   .command-palette-filter-pill:hover:not(.is-active) {
@@ -214,11 +236,19 @@
     color: var(--text-primary);
     text-align: start;
     cursor: pointer;
-    transition: background-color 100ms ease;
+    transition: background-color var(--transition-fast, 120ms ease);
   }
 
   .command-palette-item:hover:not(.is-active) {
     background-color: var(--bg-surface-subtle);
+  }
+
+  .command-palette-item:active {
+    opacity: 0.9;
+  }
+
+  .command-palette-item:focus-visible {
+    outline-offset: -2px;
   }
 
   .command-palette-item.is-active {
@@ -234,6 +264,14 @@
     width: 20px;
     height: 20px;
     flex-shrink: 0;
+  }
+
+  .course-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 0;
+    background-color: var(--course-dot);
   }
 
   .command-palette-action-glyph {

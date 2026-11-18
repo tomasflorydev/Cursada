@@ -1,6 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import {
   RangeSetBuilder,
+  StateEffect,
   StateField,
   type Extension,
   type Range,
@@ -102,6 +103,8 @@ export interface LivePreviewLineDescriptor {
   isTableHeader?: boolean;
   isTableSeparator?: boolean;
   tableBlockId?: number;
+  tableBlockStartLine?: number;
+  tableBlockEndLine?: number;
   mathLatex?: string;
   mathBlockId?: number;
   mathBlockStartLine?: number;
@@ -116,9 +119,13 @@ export interface LivePreviewLineDescriptor {
 export interface LivePreviewExtensionOptions {
   onToggleTaskLine?: (lineIndex: number) => void;
   onWikiLinkClick?: (targetTitle: string) => void;
+  /** Whether the editor starts focused (defaults to true in standalone state tests, false when mounted in UI). */
+  initialFocused?: boolean;
   /** Optional parser hook used in tests to verify single-pass state updates. */
   parseLines?: typeof parseLivePreviewLines;
 }
+
+export const setEditorFocusEffect = StateEffect.define<boolean>();
 
 const CALLOUT_LABELS: Record<CalloutKind, string> = {
   NOTE: 'Nota',
@@ -135,7 +142,7 @@ function isLikelyInlineMathInner(inner: string): boolean {
   if (!hasEdgeSpaces) {
     return true;
   }
-  return /[\\^_{}=+\-*/()[\]<>|]/.test(trimmed);
+  return /[\\^_{}=+\-*/()[\]<>]/.test(trimmed);
 }
 
 /** Parses non-overlapping inline Markdown, math, and WikiLink tokens within a single line slice. */
@@ -394,6 +401,18 @@ function isTableSeparatorLine(line: string): boolean {
   return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
 }
 
+function isPipeTableRowLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) {
+    return false;
+  }
+  if (isTableSeparatorLine(trimmed)) {
+    return false;
+  }
+  const inner = trimmed.slice(1, -1);
+  return inner.includes('|');
+}
+
 function splitTableRowCells(line: string): string[] {
   let trimmed = line.trim();
   if (trimmed.startsWith('|')) trimmed = trimmed.slice(1);
@@ -431,7 +450,6 @@ export function parseLivePreviewLines(
   let codeLanguage = '';
   let activeCallout: { type: CalloutKind; blockId: number } | null = null;
   let calloutSeq = 0;
-  let activeTableBlockId: number | null = null;
   let tableSeq = 0;
   let mathSeq = 0;
 
@@ -447,7 +465,6 @@ export function parseLivePreviewLines(
     const fenceMatch = /^(\s*)(`{3,}|~{3,})(.*)$/.exec(rawText);
     if (fenceMatch) {
       activeCallout = null;
-      activeTableBlockId = null;
       const markerChar = fenceMatch[2][0];
       if (!inCodeFence) {
         inCodeFence = true;
@@ -522,7 +539,6 @@ export function parseLivePreviewLines(
       trimmed.length > 4
     ) {
       activeCallout = null;
-      activeTableBlockId = null;
       mathSeq += 1;
       const latex = trimmed.slice(2, -2).trim();
       descriptors.push({
@@ -564,7 +580,6 @@ export function parseLivePreviewLines(
       }
       if (closeLineIdx !== -1) {
         activeCallout = null;
-        activeTableBlockId = null;
         mathSeq += 1;
         const blockId = mathSeq;
         const latex = rawLines
@@ -613,7 +628,6 @@ export function parseLivePreviewLines(
     const calloutHeaderMatch =
       /^(>\s*\[!(NOTE|WARNING|TIP|IMPORTANT)\]\s*)(.*)$/i.exec(rawText);
     if (calloutHeaderMatch) {
-      activeTableBlockId = null;
       calloutSeq += 1;
       const calloutType = calloutHeaderMatch[2].toUpperCase() as CalloutKind;
       const prefixLength = calloutHeaderMatch[1].length;
@@ -670,61 +684,79 @@ export function parseLivePreviewLines(
 
     activeCallout = null;
 
-    // 6. Tables (header + separator + rows)
+    // 6. Tables (GFM header + separator + rows, or pipe-delimited table rows)
     const nextLine = rawLines[i + 1];
-    if (
-      activeTableBlockId === null &&
+    const hasSeparatorSecondLine =
       rawText.includes('|') &&
       typeof nextLine === 'string' &&
-      isTableSeparatorLine(nextLine)
-    ) {
+      isTableSeparatorLine(nextLine);
+    const startsPipeTable = hasSeparatorSecondLine || isPipeTableRowLine(rawText);
+
+    if (startsPipeTable) {
       tableSeq += 1;
-      activeTableBlockId = tableSeq;
-      const cells = splitTableRowCells(rawText);
-      descriptors.push({
-        lineIndex: i,
-        rawText,
-        from,
-        to,
-        isActiveLine,
-        isBlockActive: isActiveLine,
-        kind: 'table_row',
-        prefixLength: 0,
-        tableCells: cells,
-        isTableHeader: true,
-        isTableSeparator: false,
-        tableBlockId: activeTableBlockId,
-        displayText: isActiveLine ? rawText : cells.join(' | '),
-        inlineTokens: parseInlineMarkdownTokens(rawText, from),
-      });
-      i += 1;
+      const blockId = tableSeq;
+      const tableStartLine = i;
+      let tableEndLine = i;
+
+      let j = i + 1;
+      while (j < rawLines.length) {
+        const candidate = rawLines[j];
+        if (
+          (j === i + 1 && hasSeparatorSecondLine) ||
+          isTableSeparatorLine(candidate) ||
+          (hasSeparatorSecondLine && candidate.includes('|')) ||
+          isPipeTableRowLine(candidate)
+        ) {
+          tableEndLine = j;
+          j += 1;
+        } else {
+          break;
+        }
+      }
+
+      let blockActive = false;
+      for (let k = tableStartLine; k <= tableEndLine; k += 1) {
+        if (activeLines.has(k)) {
+          blockActive = true;
+          break;
+        }
+      }
+
+      const rowCount = tableEndLine - tableStartLine + 1;
+      for (let k = tableStartLine; k <= tableEndLine; k += 1) {
+        const lineTxt = rawLines[k];
+        const lFrom = lineStarts[k];
+        const lTo = lFrom + lineTxt.length;
+        const lineActive = activeLines.has(k);
+        const isSep = isTableSeparatorLine(lineTxt);
+        const isHeader =
+          !isSep &&
+          k === tableStartLine &&
+          (hasSeparatorSecondLine || rowCount >= 2);
+        const cells = isSep ? [] : splitTableRowCells(lineTxt);
+        descriptors.push({
+          lineIndex: k,
+          rawText: lineTxt,
+          from: lFrom,
+          to: lTo,
+          isActiveLine: lineActive,
+          isBlockActive: blockActive,
+          kind: 'table_row',
+          prefixLength: 0,
+          tableCells: cells,
+          isTableHeader: isHeader,
+          isTableSeparator: isSep,
+          tableBlockId: blockId,
+          tableBlockStartLine: tableStartLine,
+          tableBlockEndLine: tableEndLine,
+          displayText: lineActive ? lineTxt : isSep ? '' : cells.join(' | '),
+          inlineTokens: isSep ? [] : parseInlineMarkdownTokens(lineTxt, lFrom),
+        });
+      }
+
+      i = tableEndLine + 1;
       continue;
     }
-
-    if (activeTableBlockId !== null && rawText.includes('|')) {
-      const isSep = isTableSeparatorLine(rawText);
-      const cells = isSep ? [] : splitTableRowCells(rawText);
-      descriptors.push({
-        lineIndex: i,
-        rawText,
-        from,
-        to,
-        isActiveLine,
-        isBlockActive: isActiveLine,
-        kind: 'table_row',
-        prefixLength: 0,
-        tableCells: cells,
-        isTableHeader: false,
-        isTableSeparator: isSep,
-        tableBlockId: activeTableBlockId,
-        displayText: isActiveLine ? rawText : isSep ? '' : cells.join(' | '),
-        inlineTokens: isSep ? [] : parseInlineMarkdownTokens(rawText, from),
-      });
-      i += 1;
-      continue;
-    }
-
-    activeTableBlockId = null;
 
     // 7. Blank line
     if (trimmed === '') {
@@ -745,11 +777,12 @@ export function parseLivePreviewLines(
     }
 
     // 8. Headings (# to ######)
-    const headingMatch = /^(#{1,6})(\s+)(.*)$/.exec(rawText);
+    const headingMatch = /^(\s*)(#{1,6})(\s+)(.*)$/.exec(rawText);
     if (headingMatch) {
-      const level = headingMatch[1].length as 1 | 2 | 3 | 4 | 5 | 6;
-      const prefixLength = headingMatch[1].length + headingMatch[2].length;
-      const body = headingMatch[3];
+      const level = headingMatch[2].length as 1 | 2 | 3 | 4 | 5 | 6;
+      const prefixLength =
+        headingMatch[1].length + headingMatch[2].length + headingMatch[3].length;
+      const body = headingMatch[4];
       const inlineTokens = parseInlineMarkdownTokens(body, from + prefixLength);
       descriptors.push({
         lineIndex: i,
@@ -1092,6 +1125,165 @@ class HorizontalRuleWidget extends WidgetType {
   }
 }
 
+function appendInlineTokensToDOM(
+  parent: HTMLElement,
+  tokens: LivePreviewInlineToken[],
+  view: EditorView,
+  onWikiLinkClick?: (targetTitle: string) => void
+): void {
+  for (const tok of tokens) {
+    switch (tok.type) {
+      case 'text': {
+        parent.appendChild(document.createTextNode(tok.text));
+        break;
+      }
+      case 'bold': {
+        const strong = document.createElement('strong');
+        strong.className = 'cm-live-preview-bold';
+        strong.textContent = tok.text;
+        parent.appendChild(strong);
+        break;
+      }
+      case 'italic': {
+        const em = document.createElement('em');
+        em.className = 'cm-live-preview-italic';
+        em.textContent = tok.text;
+        parent.appendChild(em);
+        break;
+      }
+      case 'code': {
+        const code = document.createElement('code');
+        code.className = 'cm-live-preview-code';
+        code.textContent = tok.text;
+        parent.appendChild(code);
+        break;
+      }
+      case 'math_inline': {
+        const span = document.createElement('span');
+        span.className = 'cm-live-preview-math-inline';
+        span.innerHTML = renderMathHtml(tok.latex, false);
+        parent.appendChild(span);
+        break;
+      }
+      case 'math_display': {
+        const div = document.createElement('div');
+        div.className = 'cm-live-preview-math-block';
+        div.innerHTML = renderMathHtml(tok.latex, true);
+        parent.appendChild(div);
+        break;
+      }
+      case 'wikilink': {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cm-live-preview-wikilink';
+        btn.setAttribute('data-wikilink-target', tok.target);
+        btn.textContent = tok.displayText;
+        btn.addEventListener('mousedown', (event) => {
+          if (onWikiLinkClick && !event.altKey) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        });
+        btn.addEventListener('click', (event) => {
+          if (onWikiLinkClick && !event.altKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            onWikiLinkClick(tok.target);
+            return;
+          }
+          view.focus();
+        });
+        parent.appendChild(btn);
+        break;
+      }
+    }
+  }
+}
+
+class TableWidget extends WidgetType {
+  readonly signature: string;
+
+  constructor(
+    readonly rows: LivePreviewLineDescriptor[],
+    readonly onWikiLinkClick?: (targetTitle: string) => void
+  ) {
+    super();
+    this.signature = rows.map((r) => `${r.from}:${r.rawText}`).join('\n');
+  }
+
+  eq(other: WidgetType): boolean {
+    return other instanceof TableWidget && other.signature === this.signature;
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const table = document.createElement('table');
+    table.className = 'cm-live-preview-table';
+
+    const headerRow = this.rows.find((r) => r.isTableHeader);
+    const dataRows = this.rows.filter(
+      (r) => !r.isTableHeader && !r.isTableSeparator
+    );
+
+    const bindRowEdit = (trEl: HTMLTableRowElement, sourcePos: number) => {
+      trEl.addEventListener('mousedown', (event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button')) {
+          return;
+        }
+        event.preventDefault();
+        view.focus();
+        view.dispatch({
+          selection: { anchor: Math.min(sourcePos, view.state.doc.length) },
+        });
+      });
+    };
+
+    if (headerRow && headerRow.tableCells) {
+      const thead = document.createElement('thead');
+      const tr = document.createElement('tr');
+      bindRowEdit(tr, headerRow.from);
+      for (const cellText of headerRow.tableCells) {
+        const th = document.createElement('th');
+        appendInlineTokensToDOM(
+          th,
+          parseInlineMarkdownTokens(cellText, 0),
+          view,
+          this.onWikiLinkClick
+        );
+        tr.appendChild(th);
+      }
+      thead.appendChild(tr);
+      table.appendChild(thead);
+    }
+
+    if (dataRows.length > 0) {
+      const tbody = document.createElement('tbody');
+      for (const dRow of dataRows) {
+        const tr = document.createElement('tr');
+        bindRowEdit(tr, dRow.from);
+        for (const cellText of dRow.tableCells ?? []) {
+          const td = document.createElement('td');
+          appendInlineTokensToDOM(
+            td,
+            parseInlineMarkdownTokens(cellText, 0),
+            view,
+            this.onWikiLinkClick
+          );
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+    }
+
+    return table;
+  }
+
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
+
 function getActiveLineSet(state: {
   doc: { lineAt: (pos: number) => { number: number } };
   selection: { ranges: ReadonlyArray<{ from: number; to: number }> };
@@ -1210,7 +1402,8 @@ function doesLineOverlapVisibleRanges(
 
 function buildMultiLineMathDecorations(
   state: EditorView['state'],
-  lines: LivePreviewLineDescriptor[]
+  lines: LivePreviewLineDescriptor[],
+  opts: LivePreviewExtensionOptions = {}
 ): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
 
@@ -1241,6 +1434,32 @@ function buildMultiLineMathDecorations(
       idx = line.mathBlockEndLine + 1;
       continue;
     }
+
+    if (
+      line.kind === 'table_row' &&
+      line.tableBlockStartLine !== undefined &&
+      line.tableBlockEndLine !== undefined &&
+      line.lineIndex === line.tableBlockStartLine &&
+      !line.isBlockActive
+    ) {
+      const startLineObj = state.doc.line(line.tableBlockStartLine + 1);
+      const endLineObj = state.doc.line(line.tableBlockEndLine + 1);
+      const tableRows = lines.slice(
+        line.tableBlockStartLine,
+        line.tableBlockEndLine + 1
+      );
+      builder.add(
+        startLineObj.from,
+        endLineObj.to,
+        Decoration.replace({
+          widget: new TableWidget(tableRows, opts.onWikiLinkClick),
+          block: true,
+        })
+      );
+      idx = line.tableBlockEndLine + 1;
+      continue;
+    }
+
     idx += 1;
   }
 
@@ -1288,6 +1507,11 @@ function buildViewPluginDecorations(
       ranges.push(
         Decoration.line({ class: 'cm-live-preview-math-source' }).range(line.from)
       );
+      continue;
+    }
+
+    if (line.kind === 'table_row' && !line.isBlockActive) {
+      // Inactive table blocks are replaced as a single <table class="cm-live-preview-table"> by multiLineMathField
       continue;
     }
 
@@ -1557,18 +1781,42 @@ export function createLivePreviewExtension(
   opts: LivePreviewExtensionOptions = {}
 ): Extension {
   const parseFn = opts.parseLines ?? parseLivePreviewLines;
+  const initialFocused = opts.initialFocused ?? true;
+
+  const editorFocusField = StateField.define<boolean>({
+    create() {
+      return initialFocused;
+    },
+    update(focused, tr) {
+      for (const effect of tr.effects) {
+        if (effect.is(setEditorFocusEffect)) {
+          return effect.value;
+        }
+      }
+      if (tr.selection) {
+        return true;
+      }
+      return focused;
+    },
+  });
 
   const parsedLinesField = StateField.define<ParsedLivePreviewState>({
     create(state) {
-      const activeLines = getActiveLineSet(state);
+      const isFocused = state.field(editorFocusField);
+      const activeLines = isFocused ? getActiveLineSet(state) : new Set<number>();
       return {
-        activeKey: serializeActiveLineSet(activeLines),
+        activeKey: isFocused ? serializeActiveLineSet(activeLines) : '__blur__',
         lines: parseFn(state.doc.toString(), activeLines),
       };
     },
     update(prev, tr) {
-      const activeLines = getActiveLineSet(tr.state);
-      const activeKey = serializeActiveLineSet(activeLines);
+      const isFocused = tr.state.field(editorFocusField);
+      const activeLines = isFocused
+        ? getActiveLineSet(tr.state)
+        : new Set<number>();
+      const activeKey = isFocused
+        ? serializeActiveLineSet(activeLines)
+        : '__blur__';
       if (!tr.docChanged && activeKey === prev.activeKey) {
         return prev;
       }
@@ -1583,7 +1831,8 @@ export function createLivePreviewExtension(
     create(state) {
       return buildMultiLineMathDecorations(
         state,
-        state.field(parsedLinesField).lines
+        state.field(parsedLinesField).lines,
+        opts
       );
     },
     update(value, tr) {
@@ -1595,7 +1844,7 @@ export function createLivePreviewExtension(
       if (prevParsed === nextParsed) {
         return value;
       }
-      return buildMultiLineMathDecorations(tr.state, nextParsed.lines);
+      return buildMultiLineMathDecorations(tr.state, nextParsed.lines, opts);
     },
     provide: (field) => EditorView.decorations.from(field),
   });
@@ -1633,5 +1882,26 @@ export function createLivePreviewExtension(
     }
   );
 
-  return [parsedLinesField, multiLineMathField, livePreviewPlugin];
+  const focusSyncHandlers = EditorView.domEventHandlers({
+    focus(_event, view) {
+      if (!view.state.field(editorFocusField, false)) {
+        view.dispatch({ effects: setEditorFocusEffect.of(true) });
+      }
+      return false;
+    },
+    blur(_event, view) {
+      if (view.state.field(editorFocusField, false)) {
+        view.dispatch({ effects: setEditorFocusEffect.of(false) });
+      }
+      return false;
+    },
+  });
+
+  return [
+    editorFocusField,
+    parsedLinesField,
+    multiLineMathField,
+    livePreviewPlugin,
+    focusSyncHandlers,
+  ];
 }

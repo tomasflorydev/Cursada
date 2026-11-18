@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { SourceWithChunks } from '../../types';
+import { SwissButton } from '../../ui';
 
 export interface SourcePreviewDialogProps {
   source: SourceWithChunks | null;
@@ -48,7 +49,6 @@ export function SourcePreviewDialog({
   return (
     <dialog
       ref={dialogRef}
-      open
       role="dialog"
       aria-modal="true"
       aria-label={source.title}
@@ -63,95 +63,51 @@ export function SourcePreviewDialog({
         }
       }}
     >
-      <div
-        className="cursada-modal-content"
-        style={{
-          maxWidth: '46rem',
-          maxHeight: '82vh',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}
-      >
+      <div className="cursada-modal-content source-preview-content">
         <header className="cursada-modal-header">
           <div>
             <h2 className="cursada-modal-title">{source.title}</h2>
-            <p
-              className="cursada-muted-text"
-              style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}
-            >
+            <p className="source-preview-meta">
               Tipo: {source.sourceType.toUpperCase()}
               {source.pageCount != null ? ` · ${source.pageCount} pág.` : ''}
               {` · ${source.chunkCount} fragmentos · Estado: ${source.indexingStatus}`}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div className="source-preview-actions">
             {source.indexingStatus === 'error' ? (
-              <button
-                type="button"
-                className="cursada-secondary-button"
+              <SwissButton
+                variant="secondary"
                 disabled={reindexingSourceId === source.id}
                 onClick={() => onReindexSource(source.id)}
               >
                 {reindexingSourceId === source.id ? 'Reindexando...' : 'Reindexar'}
-              </button>
+              </SwissButton>
             ) : null}
-            <button
-              type="button"
-              className="cursada-secondary-button"
-              onClick={onClose}
-            >
+            <SwissButton variant="tertiary" onClick={onClose}>
               Cerrar
-            </button>
+            </SwissButton>
           </div>
         </header>
 
         {source.indexingError ? (
-          <p className="cursada-inline-error" role="alert">
+          <p className="swiss-error" role="alert">
             Error de indexación: {source.indexingError}
           </p>
         ) : null}
 
-        <div
-          style={{
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-            paddingRight: '0.25rem',
-          }}
-        >
+        <div className="source-preview-body">
           {source.chunks.length > 0 ? (
             source.chunks.map((chunk) => (
-              <article
-                key={chunk.id}
-                style={{
-                  border: '1px solid var(--border-subtle, rgba(255,255,255,0.12))',
-                  borderRadius: '0.5rem',
-                  padding: '0.65rem 0.75rem',
-                }}
-              >
-                <div
-                  className="cursada-muted-text"
-                  style={{ fontSize: '0.78rem', marginBottom: '0.35rem' }}
-                >
+              <article key={chunk.id} className="source-chunk-card">
+                <div className="source-chunk-meta">
                   Fragmento #{chunk.chunkIndex + 1}
                   {chunk.pageNumber != null ? ` · Página ${chunk.pageNumber}` : ''}
                 </div>
-                <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                  {chunk.content}
-                </p>
+                <p className="source-chunk-copy">{chunk.content}</p>
               </article>
             ))
           ) : (
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                lineHeight: 1.5,
-                fontFamily: 'inherit',
-              }}
-            >
+            <pre className="source-raw-copy">
               {source.rawText || 'Sin texto extraído disponible.'}
             </pre>
           )}

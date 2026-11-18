@@ -434,7 +434,7 @@ export function ExamsPage({
         </div>
 
         <div className="swiss-page-actions">
-          <SwissButton variant="secondary" onClick={openCreateForm}>
+          <SwissButton variant="primary" onClick={openCreateForm}>
             + Nuevo examen
           </SwissButton>
         </div>
@@ -450,13 +450,8 @@ export function ExamsPage({
         <div
           role="status"
           aria-live="polite"
-          className="swiss-meta-md"
-          style={{
-            borderLeft: '4px solid var(--acc)',
-            padding: '8px 12px',
-            marginBottom: '20px',
-            color: 'var(--ink)',
-          }}
+          className="swiss-status-banner"
+          style={{ marginBottom: 'var(--space-5)' }}
         >
           {feedbackMsg}
         </div>
@@ -466,8 +461,8 @@ export function ExamsPage({
         <section
           aria-label={formMode === 'edit' ? 'Editar examen' : 'Nuevo examen'}
           style={{
-            borderTop: '3px solid var(--ink)',
-            borderBottom: '3px solid var(--ink)',
+            borderTop: 'var(--rule-thin) solid var(--rule)',
+            borderBottom: 'var(--rule-thin) solid var(--rule)',
             padding: '20px 0',
             marginBottom: '28px',
           }}
@@ -610,7 +605,7 @@ export function ExamsPage({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <SwissButton variant="secondary" onClick={closeForm}>
+              <SwissButton variant="tertiary" onClick={closeForm}>
                 Cancelar
               </SwissButton>
               <SwissButton
@@ -635,6 +630,7 @@ export function ExamsPage({
             title="No tenés exámenes próximos"
             description="Agendá tu próximo parcial, final o entrega evaluativa para seguir el conteo de días y armar guías de estudio."
             actionLabel="+ Nuevo examen"
+            actionVariant="primary"
             onAction={openCreateForm}
           />
         </div>
@@ -667,10 +663,13 @@ export function ExamsPage({
                     DÍAS · {formatExamDateShort(exam.examDate)}
                     {exam.examTime ? ` · ${exam.examTime}` : ''}
                   </div>
-                  <h2 className="exams-info-title">{exam.title}</h2>
+                  <h2 className="exams-info-title" title={exam.title}>
+                    {exam.title}
+                  </h2>
                   <div className="swiss-meta-md" style={{ marginTop: '6px' }}>
                     <SwissLinkButton
                       className="swiss-meta-md"
+                      title={exam.courseName}
                       onClick={() => onSelectCourse(exam.courseId)}
                     >
                       {exam.courseName}
@@ -764,7 +763,7 @@ export function ExamsPage({
                         {isSavingGrade ? 'Guardando…' : 'Guardar'}
                       </SwissButton>
                       <SwissButton
-                        variant="secondary"
+                        variant="tertiary"
                         onClick={() => setGradingExamId(null)}
                       >
                         Cancelar
@@ -795,7 +794,7 @@ export function ExamsPage({
                     </div>
                   ) : (
                     <SwissButton
-                      variant={isNearest ? 'primary' : 'secondary'}
+                      variant="secondary"
                       disabled={generatingExamId !== null}
                       onClick={() => void handleGenerateStudyGuide(exam)}
                     >
@@ -809,167 +808,171 @@ export function ExamsPage({
         </div>
       )}
 
-      <footer className="courses-footer">
-        <span className="swiss-meta-md">
-          Anteriores: {pastExams.length}
-          {overallAverage !== null
-            ? ` · Promedio general: ${overallAverage.toFixed(1)}`
-            : ''}
-        </span>
-        <SwissLinkButton onClick={() => setShowPastExams((prev) => !prev)}>
-          {showPastExams ? 'Ocultar anteriores' : 'Ver anteriores →'}
-        </SwissLinkButton>
-      </footer>
+      {pastExams.length > 0 ? (
+        <>
+          <footer className="courses-footer">
+            <span className="swiss-meta-md">
+              Anteriores: {pastExams.length}
+              {overallAverage !== null
+                ? ` · Promedio general: ${overallAverage.toFixed(1)}`
+                : ''}
+            </span>
+            <SwissLinkButton onClick={() => setShowPastExams((prev) => !prev)}>
+              {showPastExams ? 'Ocultar anteriores' : 'Ver anteriores →'}
+            </SwissLinkButton>
+          </footer>
 
-      {showPastExams ? (
-        <section
-          aria-label="Exámenes anteriores"
-          style={{ marginTop: '24px' }}
-        >
-          <SwissSectionHeader
-            title="Exámenes anteriores"
-            right={
-              overallAverage !== null
-                ? `Promedio general: ${overallAverage.toFixed(1)}`
-                : undefined
-            }
-          />
-          {pastExams.length === 0 ? (
-            <SwissEmptyState
-              title="No hay exámenes anteriores"
-              description="Cuando rindas o califiques un examen va a quedar registrado en este historial."
-            />
-          ) : (
-            <div>
-              {pastExams.map((exam) => {
-                const isGradingThis = gradingExamId === exam.id;
-                const isConfirmingDelete = confirmDeleteId === exam.id;
-                return (
-                  <div
-                    key={exam.id}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '120px minmax(0, 1.5fr) 120px auto',
-                      alignItems: 'center',
-                      gap: '20px',
-                      padding: '16px 0',
-                      borderTop: '1px solid var(--rule)',
-                    }}
-                  >
-                    <div className="swiss-meta-md">
-                      {formatExamDateShort(exam.examDate)}
-                    </div>
-
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '15px' }}>
-                        {exam.title}
-                      </div>
-                      <div className="swiss-meta">
-                        <SwissLinkButton
-                          className="swiss-meta"
-                          onClick={() => onSelectCourse(exam.courseId)}
-                        >
-                          {exam.courseName}
-                        </SwissLinkButton>
-                        {` · ${EXAM_CATEGORY_LABELS[exam.category]}`}
-                        {exam.location ? ` · ${exam.location}` : ''}
+          {showPastExams ? (
+            <section
+              aria-label="Exámenes anteriores"
+              style={{ marginTop: '24px' }}
+            >
+              <SwissSectionHeader
+                title="Exámenes anteriores"
+                right={
+                  overallAverage !== null
+                    ? `Promedio general: ${overallAverage.toFixed(1)}`
+                    : undefined
+                }
+              />
+              <div>
+                {pastExams.map((exam) => {
+                  const isGradingThis = gradingExamId === exam.id;
+                  const isConfirmingDelete = confirmDeleteId === exam.id;
+                  return (
+                    <div
+                      key={exam.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '120px minmax(0, 1.5fr) 120px auto',
+                        alignItems: 'center',
+                        gap: '20px',
+                        padding: '16px 0',
+                        borderTop: 'var(--rule-thin) solid var(--rule)',
+                      }}
+                    >
+                      <div className="swiss-meta-md">
+                        {formatExamDateShort(exam.examDate)}
                       </div>
 
-                      {isGradingThis ? (
-                        <form
-                          onSubmit={(e) => void handleSaveQuickGrade(e, exam.id)}
+                      <div style={{ minWidth: 0 }}>
+                        <div
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            marginTop: '8px',
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            overflowWrap: 'anywhere',
                           }}
+                          title={exam.title}
                         >
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            step="0.5"
-                            className="swiss-input"
-                            style={{ width: '110px' }}
-                            placeholder="Nota 1–10"
-                            aria-label={`Nota para ${exam.title}`}
-                            value={quickGradeValue}
-                            onChange={(e) => setQuickGradeValue(e.target.value)}
-                          />
-                          <SwissButton
-                            type="submit"
-                            variant="primary"
-                            disabled={isSavingGrade}
-                          >
-                            {isSavingGrade ? 'Guardando…' : 'Guardar'}
-                          </SwissButton>
-                          <SwissButton
-                            variant="secondary"
-                            onClick={() => setGradingExamId(null)}
-                          >
-                            Cancelar
-                          </SwissButton>
-                        </form>
-                      ) : null}
-                    </div>
-
-                    <div className="swiss-tabular" style={{ fontWeight: 600 }}>
-                      {exam.grade !== null ? `Nota: ${exam.grade.toFixed(1)}` : 'Sin nota'}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <SwissLinkButton
-                        className="swiss-meta"
-                        onClick={() => {
-                          setConfirmDeleteId(null);
-                          setGradingExamId(isGradingThis ? null : exam.id);
-                          setQuickGradeValue(
-                            exam.grade !== null ? String(exam.grade) : ''
-                          );
-                        }}
-                      >
-                        {exam.grade !== null ? 'Cambiar nota' : 'Cargar nota'}
-                      </SwissLinkButton>
-                      <SwissLinkButton
-                        className="swiss-meta"
-                        onClick={() => openEditForm(exam)}
-                      >
-                        Editar
-                      </SwissLinkButton>
-                      {isConfirmingDelete ? (
-                        <>
+                          {exam.title}
+                        </div>
+                        <div className="swiss-meta">
                           <SwissLinkButton
                             className="swiss-meta"
-                            onClick={() => void handleDeleteExam(exam.id)}
+                            onClick={() => onSelectCourse(exam.courseId)}
                           >
-                            Confirmar
+                            {exam.courseName}
                           </SwissLinkButton>
-                          <SwissLinkButton
-                            className="swiss-meta"
-                            onClick={() => setConfirmDeleteId(null)}
+                          {` · ${EXAM_CATEGORY_LABELS[exam.category]}`}
+                          {exam.location ? ` · ${exam.location}` : ''}
+                        </div>
+
+                        {isGradingThis ? (
+                          <form
+                            onSubmit={(e) => void handleSaveQuickGrade(e, exam.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              marginTop: '8px',
+                            }}
                           >
-                            Cancelar
-                          </SwissLinkButton>
-                        </>
-                      ) : (
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              step="0.5"
+                              className="swiss-input"
+                              style={{ width: '110px' }}
+                              placeholder="Nota 1–10"
+                              aria-label={`Nota para ${exam.title}`}
+                              value={quickGradeValue}
+                              onChange={(e) => setQuickGradeValue(e.target.value)}
+                            />
+                            <SwissButton
+                              type="submit"
+                              variant="primary"
+                              disabled={isSavingGrade}
+                            >
+                              {isSavingGrade ? 'Guardando…' : 'Guardar'}
+                            </SwissButton>
+                            <SwissButton
+                              variant="tertiary"
+                              onClick={() => setGradingExamId(null)}
+                            >
+                              Cancelar
+                            </SwissButton>
+                          </form>
+                        ) : null}
+                      </div>
+
+                      <div className="swiss-tabular" style={{ fontWeight: 600 }}>
+                        {exam.grade !== null ? `Nota: ${exam.grade.toFixed(1)}` : 'Sin nota'}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <SwissLinkButton
                           className="swiss-meta"
                           onClick={() => {
-                            setGradingExamId(null);
-                            setConfirmDeleteId(exam.id);
+                            setConfirmDeleteId(null);
+                            setGradingExamId(isGradingThis ? null : exam.id);
+                            setQuickGradeValue(
+                              exam.grade !== null ? String(exam.grade) : ''
+                            );
                           }}
                         >
-                          Eliminar
+                          {exam.grade !== null ? 'Cambiar nota' : 'Cargar nota'}
                         </SwissLinkButton>
-                      )}
+                        <SwissLinkButton
+                          className="swiss-meta"
+                          onClick={() => openEditForm(exam)}
+                        >
+                          Editar
+                        </SwissLinkButton>
+                        {isConfirmingDelete ? (
+                          <>
+                            <SwissLinkButton
+                              className="swiss-meta"
+                              onClick={() => void handleDeleteExam(exam.id)}
+                            >
+                              Confirmar
+                            </SwissLinkButton>
+                            <SwissLinkButton
+                              className="swiss-meta"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              Cancelar
+                            </SwissLinkButton>
+                          </>
+                        ) : (
+                          <SwissLinkButton
+                            className="swiss-meta"
+                            onClick={() => {
+                              setGradingExamId(null);
+                              setConfirmDeleteId(exam.id);
+                            }}
+                          >
+                            Eliminar
+                          </SwissLinkButton>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

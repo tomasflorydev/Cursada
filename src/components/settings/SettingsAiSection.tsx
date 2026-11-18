@@ -197,13 +197,7 @@ export function SettingsAiSection({ sectionRef }: SettingsAiSectionProps) {
         <div
           role="status"
           aria-live="polite"
-          className="swiss-meta-md"
-          style={{
-            borderLeft: '4px solid var(--ink)',
-            padding: '6px 12px',
-            marginBottom: '12px',
-            color: 'var(--ink)',
-          }}
+          className="swiss-status-banner is-neutral"
         >
           {aiNotice}
         </div>

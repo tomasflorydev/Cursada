@@ -8,7 +8,7 @@
      ========================================================================== */
   .backlinks-panel {
     margin-top: 24px;
-    border-top: 3px solid var(--ink);
+    border-top: var(--rule-thin) solid var(--rule);
     padding-top: 12px;
     display: flex;
     flex-direction: column;
@@ -42,6 +42,10 @@
 
   .backlinks-panel-toggle:hover .backlinks-panel-title {
     color: var(--acc);
+  }
+
+  .backlinks-panel-toggle:active {
+    opacity: 0.85;
   }
 
   .backlinks-panel-title {
@@ -82,7 +86,41 @@
     letter-spacing: 0.12em;
     color: var(--mut);
     padding-bottom: 6px;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: var(--rule-thin) solid var(--rule);
+  }
+
+  .backlinks-section-toggle {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .backlinks-section-toggle:hover {
+    color: var(--ink);
+  }
+
+  .backlinks-section-toggle:active {
+    opacity: 0.85;
+  }
+
+  .backlinks-section-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
   }
 
   .backlinks-list {
@@ -93,7 +131,7 @@
   }
 
   .backlinks-list-item {
-    border-bottom: 1px solid var(--rule);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .backlinks-item-btn {
@@ -112,8 +150,18 @@
     cursor: pointer;
   }
 
-  .backlinks-item-btn:hover {
+  .backlinks-item-btn:hover:not(:disabled) {
     color: var(--acc);
+  }
+
+  .backlinks-item-btn:active:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .backlinks-item-btn:disabled {
+    color: var(--mut);
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .backlinks-item-top {
@@ -131,6 +179,7 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .backlinks-item-status {
@@ -185,13 +234,13 @@
   dialog.obsidian-import-modal::backdrop {
     overflow: hidden;
     overscroll-behavior: contain;
-    background-color: rgba(15, 20, 28, 0.52);
+    background-color: rgba(15, 20, 28, 0.5);
   }
 
   .obsidian-import-modal {
     margin: auto;
     padding: 0;
-    border: 2px solid var(--ink);
+    border: var(--rule-thin) solid var(--rule-header);
     border-radius: 0;
     box-shadow: none;
     background-color: var(--bg);
@@ -219,7 +268,7 @@
     justify-content: space-between;
     gap: 16px;
     padding-bottom: 12px;
-    border-bottom: 3px solid var(--ink);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .obsidian-import-title {
@@ -274,6 +323,6 @@
     justify-content: flex-end;
     gap: 10px;
     padding-top: 14px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 }

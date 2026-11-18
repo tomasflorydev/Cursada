@@ -40,7 +40,7 @@ describe('Cursada Stage 0 & Task 1.1', () => {
       screen.getByRole('heading', { level: 2, name: 'Exámenes' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Informe listo' })
+      screen.getByRole('heading', { level: 2, name: 'Informes' })
     ).toBeInTheDocument();
 
     expect(screen.queryByText(/Clases de hoy/i)).not.toBeInTheDocument();

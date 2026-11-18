@@ -11,17 +11,20 @@ import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { cursadaClient } from '../lib/api/client';
 import { resetAllMocks } from '../lib/api/mockClient';
 import { mockGenerateStudyReport } from '../lib/api/mockReports';
+import { resetStoredReports } from '../lib/reportsStore';
 import { ReportsPage } from '../pages/ReportsPage';
 
 describe('CourseDetailView & ReportsPage Study Reports (migrated Swiss UI)', () => {
   beforeEach(() => {
     localStorage.clear();
     resetAllMocks();
+    resetStoredReports();
   });
 
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    resetStoredReports();
     localStorage.clear();
   });
 
@@ -141,5 +144,128 @@ describe('CourseDetailView & ReportsPage Study Reports (migrated Swiss UI)', () 
     expect(within(assistantPane).getByRole('alert')).toHaveTextContent(
       /cancelada/i
     );
+  });
+
+  it('groups AI context chips into Alcance and Origen and verifies empty, generating, result (copy/export/regenerate) and error (retry) states', async () => {
+    const clipboardWriteSpy = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: clipboardWriteSpy },
+    });
+    if (!URL.createObjectURL) {
+      Object.defineProperty(URL, 'createObjectURL', {
+        writable: true,
+        value: vi.fn(() => 'blob:report-md'),
+      });
+    }
+    if (!URL.revokeObjectURL) {
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        writable: true,
+        value: vi.fn(),
+      });
+    }
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL');
+
+    let rejectFirstAttempt!: (err: Error) => void;
+    vi.spyOn(cursadaClient, 'listStudyReports').mockResolvedValueOnce([]);
+    const generateSpy = vi
+      .spyOn(cursadaClient, 'generateStudyReport')
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectFirstAttempt = reject;
+          })
+      )
+      .mockImplementation(async (input) => mockGenerateStudyReport(input));
+
+    render(<CourseDetailView courseId="ing-soft-1" onSelectCourse={vi.fn()} />);
+
+    const assistantPane = await screen.findByLabelText(
+      'Asistente e informes con IA'
+    );
+
+    // 1. Two labeled chip groups: Alcance and Origen
+    const filterGroup = within(assistantPane).getByRole('group', {
+      name: 'Filtrar contexto de IA por instancia',
+    });
+    expect(within(filterGroup).getByText('Alcance')).toBeInTheDocument();
+    expect(within(filterGroup).getByText('Origen')).toBeInTheDocument();
+    expect(
+      within(filterGroup).getByRole('button', { name: '1° Parcial' })
+    ).toBeInTheDocument();
+    expect(
+      within(filterGroup).getByRole('button', { name: '2° Parcial' })
+    ).toBeInTheDocument();
+    expect(
+      within(filterGroup).getByRole('button', { name: 'Final' })
+    ).toBeInTheDocument();
+
+    // 2. Empty state initially
+    expect(
+      within(assistantPane).getByTestId('assistant-report-empty')
+    ).toHaveTextContent(/Sin informe generado todavía/i);
+
+    // 3. Generating state + failure -> Error state with Reintentar
+    fireEvent.click(
+      within(assistantPane).getByRole('button', { name: 'Guía de estudio' })
+    );
+    expect(
+      await within(assistantPane).findByTestId('assistant-report-generating')
+    ).toBeInTheDocument();
+
+    rejectFirstAttempt(new Error('No se pudo conectar con Ollama local.'));
+
+    const errorState = await within(assistantPane).findByTestId(
+      'assistant-report-error'
+    );
+    expect(within(errorState).getByRole('alert')).toHaveTextContent(
+      /No se pudo conectar con Ollama local\./i
+    );
+
+    // 4. Retry button retries the same reportType ('study_guide') and transitions to Result state
+    fireEvent.click(
+      within(errorState).getByRole('button', {
+        name: 'Reintentar generación de informe',
+      })
+    );
+
+    const resultState = await within(assistantPane).findByTestId(
+      'assistant-report-result'
+    );
+    expect(generateSpy).toHaveBeenCalledTimes(2);
+    expect(generateSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        courseId: 'ing-soft-1',
+        reportType: 'study_guide',
+      })
+    );
+
+    // Copy action
+    fireEvent.click(
+      within(resultState).getByRole('button', { name: 'Copiar informe' })
+    );
+    await waitFor(() => {
+      expect(clipboardWriteSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      await within(resultState).findByText(/Copiado al portapapeles\./i)
+    ).toBeInTheDocument();
+
+    // Export action
+    fireEvent.click(
+      within(resultState).getByRole('button', { name: 'Exportar informe' })
+    );
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    expect(
+      await within(resultState).findByText(/Exportado en Markdown\./i)
+    ).toBeInTheDocument();
+
+    // Regenerate action
+    fireEvent.click(
+      within(resultState).getByRole('button', { name: 'Regenerar informe' })
+    );
+    await waitFor(() => {
+      expect(generateSpy).toHaveBeenCalledTimes(3);
+    });
   });
 });

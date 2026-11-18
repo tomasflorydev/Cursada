@@ -201,7 +201,7 @@ describe('Phase 3: Exams CRUD, Average Calculation, Calendar Overlay, and Live H
     ).toBeInTheDocument();
 
     // Latest report section
-    const reportSection = screen.getByRole('region', { name: 'Informe listo' });
+    const reportSection = screen.getByRole('region', { name: 'Informes' });
     expect(
       within(reportSection).getByText(/Resumen para el parcial de Base de Datos/i)
     ).toBeInTheDocument();

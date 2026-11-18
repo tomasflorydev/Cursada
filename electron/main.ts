@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { getAppDatabase, initAppDatabase } from './db/database.js';
 import { registerAllIpcHandlers } from './ipc/handlers.js';
 import { createElectronNotificationDispatcher } from './ipc/notificationHandlers.js';
+import { setupApplicationMenu } from './menu.js';
 import {
   getDevCspDirectives,
   isAllowedAppNavigation,
@@ -201,6 +202,7 @@ void app
     initAppDatabase();
     registerAllIpcHandlers();
     configureSessionSecurity(originOptions);
+    setupApplicationMenu('Cursada');
 
     const iconPath = resolveAppIconPath();
     if (process.platform === 'darwin' && iconPath && app.dock) {

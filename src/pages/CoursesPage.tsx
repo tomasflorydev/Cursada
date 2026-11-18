@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { CourseDetailView } from '../components/courses/CourseDetailView';
 import { CourseFormModal } from '../components/courses/CourseFormModal';
 import { DeleteCourseDialog } from '../components/courses/DeleteCourseDialog';
@@ -93,10 +100,14 @@ function formatNextClassLabel(course: CourseWithSchedules, now: Date): string {
   return `${DAY_SHORT_NAMES_ES[best.dayOfWeek]} ${best.startTime}`;
 }
 
+function formatTermDisplay(term: string): string {
+  return term.trim().replace(/\b2ndo\b/gi, '2do');
+}
+
 function getCommonTermLabel(courses: CourseWithSchedules[]): string {
   const counts = new Map<string, number>();
   for (const c of courses) {
-    const t = c.term.trim();
+    const t = formatTermDisplay(c.term);
     if (!t) continue;
     counts.set(t, (counts.get(t) ?? 0) + 1);
   }
@@ -132,8 +143,52 @@ export function CoursesPage({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseWithSchedules | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<CourseDeleteImpact | null>(null);
+  const [openMenuCourseId, setOpenMenuCourseId] = useState<string | null>(null);
 
   const lastCreateRequestVersionRef = useRef<number>(0);
+  const menuTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const openMenuRef = useRef<HTMLDivElement | null>(null);
+  const focusMenuOnOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!openMenuCourseId) {
+      return;
+    }
+
+    if (focusMenuOnOpenRef.current) {
+      focusMenuOnOpenRef.current = false;
+      const firstItem = openMenuRef.current?.querySelector<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)'
+      );
+      firstItem?.focus();
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest(`[data-course-menu="${openMenuCourseId}"]`)) {
+        return;
+      }
+      setOpenMenuCourseId(null);
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        const trigger = menuTriggerRefs.current[openMenuCourseId];
+        setOpenMenuCourseId(null);
+        trigger?.focus();
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('click', handleOutsideClick);
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+    };
+  }, [openMenuCourseId]);
 
   useEffect(() => {
     const hasNewCreateRequest =
@@ -289,6 +344,65 @@ export function CoursesPage({
     onCoursesChanged?.();
   }
 
+  function handleMenuTriggerKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    courseId: string,
+    isOpen: boolean
+  ): void {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isOpen) {
+        const firstItem = openMenuRef.current?.querySelector<HTMLButtonElement>(
+          '[role="menuitem"]:not(:disabled)'
+        );
+        firstItem?.focus();
+      } else {
+        focusMenuOnOpenRef.current = true;
+        setOpenMenuCourseId(courseId);
+      }
+    }
+  }
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
+    if (event.key === 'Tab') {
+      setOpenMenuCourseId(null);
+      return;
+    }
+
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)'
+      )
+    );
+    if (items.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    let nextIndex = 0;
+    if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = items.length - 1;
+    } else if (event.key === 'ArrowDown') {
+      nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+    } else {
+      nextIndex =
+        currentIndex < 0
+          ? items.length - 1
+          : (currentIndex - 1 + items.length) % items.length;
+    }
+    items[nextIndex]?.focus();
+  }
+
   return (
     <>
       {selectedCourseId !== null ? (
@@ -324,7 +438,7 @@ export function CoursesPage({
             </div>
 
             <div className="swiss-page-actions">
-              <SwissButton variant="secondary" onClick={handleOpenCreate}>
+              <SwissButton variant="primary" onClick={handleOpenCreate}>
                 + Nueva materia
               </SwissButton>
             </div>
@@ -335,6 +449,7 @@ export function CoursesPage({
                 title="No tenés materias activas"
                 description="Creá una materia para organizar tus notas, fuentes, tareas y próximos exámenes."
                 actionLabel="+ Nueva materia"
+                actionVariant="primary"
                 onAction={handleOpenCreate}
               />
             ) : (
@@ -373,14 +488,25 @@ export function CoursesPage({
                   const daysLeft = nextExam
                     ? Math.max(0, diffCalendarDays(nextExam.examDate, todayIso))
                     : null;
+                  const isMenuOpen = openMenuCourseId === course.id;
+                  const menuId = `course-actions-menu-${course.id}`;
+                  const triggerId = `course-actions-trigger-${course.id}`;
+                  const courseMetaParts = [
+                    course.professor.trim(),
+                    formatTermDisplay(course.term),
+                  ].filter(Boolean);
 
                   return (
                     <div
                       key={course.id}
-                      className="courses-table-row"
+                      className={`courses-table-row ${isMenuOpen ? 'is-menu-open' : ''}`.trim()}
                       role="row"
                       onClick={(e) => {
-                        if ((e.target as HTMLElement).closest('button')) return;
+                        if (
+                          (e.target as HTMLElement).closest('.courses-row-menu, button')
+                        ) {
+                          return;
+                        }
                         onSelectCourse(course.id);
                       }}
                     >
@@ -388,37 +514,23 @@ export function CoursesPage({
                         {indexText}
                       </span>
 
-                      <div role="cell">
+                      <div className="courses-row-main" role="cell">
                         <button
                           type="button"
                           className="courses-row-name"
+                          title={course.name}
                           onClick={() => onSelectCourse(course.id)}
                         >
                           {course.name}
                         </button>
-                        <div className="swiss-meta">
-                          {course.professor.trim() ? `${course.professor.trim()} · ` : ''}
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            onClick={() => handleOpenEdit(course)}
+                        {courseMetaParts.length > 0 ? (
+                          <div
+                            className="swiss-meta courses-row-meta"
+                            title={courseMetaParts.join(' · ')}
                           >
-                            Editar
-                          </SwissLinkButton>
-                          {' · '}
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            onClick={() => void handleToggleArchive(course)}
-                          >
-                            Archivar
-                          </SwissLinkButton>
-                          {' · '}
-                          <SwissLinkButton
-                            className="swiss-link-sm"
-                            onClick={() => void handleRequestDelete(course.id)}
-                          >
-                            Eliminar
-                          </SwissLinkButton>
-                        </div>
+                            {courseMetaParts.join(' · ')}
+                          </div>
+                        ) : null}
                       </div>
 
                       <span className="courses-row-nextclass" role="cell">
@@ -446,7 +558,10 @@ export function CoursesPage({
                                   ? 'en 1 día'
                                   : `en ${daysLeft} días`}
                             </span>
-                            <span className="courses-row-exam-sub">
+                            <span
+                              className="courses-row-exam-sub"
+                              title={`${formatShortExamDate(nextExam.examDate)} · ${nextExam.title}`}
+                            >
                               {formatShortExamDate(nextExam.examDate)} · {nextExam.title}
                             </span>
                           </>
@@ -456,9 +571,89 @@ export function CoursesPage({
                       </div>
 
                       <div className="courses-row-actions" role="cell">
+                        <div
+                          className="courses-row-menu-wrap"
+                          data-course-menu={course.id}
+                        >
+                          <button
+                            ref={(el) => {
+                              menuTriggerRefs.current[course.id] = el;
+                            }}
+                            id={triggerId}
+                            type="button"
+                            className={`swiss-btn-tertiary is-sm courses-row-menu-trigger ${isMenuOpen ? 'is-open' : ''}`.trim()}
+                            aria-label={`Acciones de ${course.name}`}
+                            aria-haspopup="menu"
+                            aria-expanded={isMenuOpen}
+                            aria-controls={isMenuOpen ? menuId : undefined}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isMenuOpen && e.detail === 0) {
+                                focusMenuOnOpenRef.current = true;
+                              }
+                              setOpenMenuCourseId(isMenuOpen ? null : course.id);
+                            }}
+                            onKeyDown={(e) =>
+                              handleMenuTriggerKeyDown(e, course.id, isMenuOpen)
+                            }
+                          >
+                            <span aria-hidden="true">···</span>
+                          </button>
+
+                          {isMenuOpen ? (
+                            <div
+                              ref={openMenuRef}
+                              id={menuId}
+                              role="menu"
+                              aria-labelledby={triggerId}
+                              className="courses-row-menu"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={handleMenuKeyDown}
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="courses-row-menu-item"
+                                onClick={() => {
+                                  setOpenMenuCourseId(null);
+                                  handleOpenEdit(course);
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="courses-row-menu-item"
+                                onClick={() => {
+                                  setOpenMenuCourseId(null);
+                                  void handleToggleArchive(course);
+                                }}
+                              >
+                                {course.status === 'active' ? 'Archivar' : 'Activar'}
+                              </button>
+                              <hr className="courses-row-menu-sep" />
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="courses-row-menu-item is-danger"
+                                onClick={() => {
+                                  setOpenMenuCourseId(null);
+                                  void handleRequestDelete(course.id);
+                                }}
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+
                         <SwissLinkButton
                           aria-label={`Abrir ${course.name}`}
-                          onClick={() => onSelectCourse(course.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectCourse(course.id);
+                          }}
                         >
                           →
                         </SwissLinkButton>
@@ -486,32 +681,38 @@ export function CoursesPage({
               {archivedCourses.length === 0 ? (
                 <p className="swiss-meta-md">No tenés materias archivadas.</p>
               ) : (
-                <div className="courses-table">
+                <div className="courses-table" role="table" aria-label="Materias archivadas">
                   {archivedCourses.map((course, idx) => (
-                    <div key={course.id} className="courses-table-row">
-                      <span className="courses-row-idx">
+                    <div key={course.id} className="courses-table-row" role="row">
+                      <span className="courses-row-idx" role="cell">
                         {String(idx + 1).padStart(2, '0')}
                       </span>
-                      <div>
+                      <div className="courses-row-main" role="cell">
                         <button
                           type="button"
                           className="courses-row-name"
+                          title={course.name}
                           onClick={() => onSelectCourse(course.id)}
                         >
                           {course.name}
                         </button>
-                        {course.term.trim() ? (
-                          <div className="swiss-meta">{course.term.trim()}</div>
+                        {formatTermDisplay(course.term) ? (
+                          <div
+                            className="swiss-meta courses-row-meta"
+                            title={formatTermDisplay(course.term)}
+                          >
+                            {formatTermDisplay(course.term)}
+                          </div>
                         ) : null}
                       </div>
-                      <span className="swiss-meta">Archivada</span>
-                      <span className="courses-row-num">
+                      <span className="swiss-meta" role="cell">Archivada</span>
+                      <span className="courses-row-num" role="cell">
                         {notesByCourse[course.id] ?? 0}
                       </span>
-                      <span className="courses-row-num">
+                      <span className="courses-row-num" role="cell">
                         {pendingByCourse[course.id] ?? 0}
                       </span>
-                      <div className="courses-row-actions" style={{ gridColumn: 'span 2' }}>
+                      <div className="courses-row-actions" role="cell" style={{ gridColumn: 'span 2' }}>
                         <SwissButton
                           variant="secondary"
                           onClick={() => void handleToggleArchive(course)}
@@ -519,7 +720,7 @@ export function CoursesPage({
                           Restaurar
                         </SwissButton>
                         <SwissButton
-                          variant="secondary"
+                          variant="tertiary"
                           onClick={() => void handleRequestDelete(course.id)}
                         >
                           Eliminar

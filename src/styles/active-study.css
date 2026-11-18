@@ -10,17 +10,45 @@
     align-items: center;
     gap: 10px;
     padding: 4px 10px;
-    border: 2px solid var(--ink);
+    border: var(--rule-thin) solid var(--rule);
     border-radius: 0;
     background-color: var(--bg);
     color: var(--ink);
     -webkit-app-region: no-drag;
   }
 
+  .pomodoro-widget.is-compact {
+    padding: 3px 8px;
+    gap: 6px;
+  }
+
+  .pomodoro-widget.is-running {
+    border-color: var(--acc);
+  }
+
+  .pomodoro-compact-group,
   .pomodoro-status-group {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
+  }
+
+  .pomodoro-compact-group {
+    gap: 6px;
+  }
+
+  .pomodoro-timer-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .pomodoro-timer-toggle:hover .pomodoro-timer {
+    color: var(--soft);
   }
 
   .pomodoro-phase {
@@ -43,13 +71,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .pomodoro-rounds {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--mut);
-    font-variant-numeric: tabular-nums;
-  }
-
   .pomodoro-course-tag {
     max-width: 140px;
     overflow: hidden;
@@ -58,7 +79,7 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--soft);
-    border-left: 1px solid var(--rule);
+    border-left: var(--rule-thin) solid var(--rule);
     padding-left: 8px;
   }
 
@@ -66,12 +87,12 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    border-left: 1px solid var(--rule);
+    border-left: var(--rule-thin) solid var(--rule);
     padding-left: 8px;
   }
 
   .pomodoro-btn {
-    border: 1px solid transparent;
+    border: var(--rule-thin) solid transparent;
     border-radius: 0;
     background: transparent;
     color: var(--ink);
@@ -82,23 +103,45 @@
     line-height: 1.2;
   }
 
-  .pomodoro-btn:hover {
-    color: var(--acc);
+  .pomodoro-play-btn {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+
+  .pomodoro-btn:hover:not(:disabled) {
+    color: var(--ink);
+    background-color: var(--grid);
     border-color: var(--rule);
   }
 
-  .pomodoro-btn.is-primary {
+  .pomodoro-btn:active:not(:disabled),
+  .pomodoro-timer-toggle:active,
+  .pomodoro-notice-dismiss:active {
+    opacity: 0.82;
+    transform: translateY(1px);
+  }
+
+  .pomodoro-btn:disabled {
+    color: var(--mut);
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .pomodoro-btn.is-running {
     background-color: var(--acc);
     color: var(--on-acc);
     border-color: var(--acc);
   }
 
-  .pomodoro-btn.is-primary:hover {
-    filter: brightness(0.92);
+  .pomodoro-btn.is-running:hover:not(:disabled) {
+    filter: brightness(0.94);
+    background-color: var(--acc);
     color: var(--on-acc);
+    border-color: var(--acc);
   }
 
-  .pomodoro-btn.is-active {
+  .pomodoro-btn.is-active,
+  .pomodoro-btn.is-active:hover:not(:disabled) {
     background-color: var(--toggle-active-bg);
     color: var(--toggle-active-fg);
     border-color: var(--toggle-active-bg);
@@ -160,8 +203,12 @@
   }
 
   .pomodoro-popover-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
     padding-bottom: 8px;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .pomodoro-form-grid {
@@ -188,7 +235,7 @@
     justify-content: space-between;
     gap: 10px;
     padding-top: 6px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .pomodoro-popover-actions {
@@ -199,18 +246,65 @@
     padding-top: 4px;
   }
 
+  @media (max-width: 1240px) {
+    .pomodoro-widget {
+      gap: 6px;
+      padding: 3px 8px;
+    }
+
+    .pomodoro-status-group {
+      gap: 6px;
+    }
+
+    .pomodoro-course-tag {
+      display: none;
+    }
+
+    .pomodoro-controls {
+      gap: 2px;
+      padding-left: 6px;
+    }
+
+    .pomodoro-btn {
+      padding: 2px 5px;
+      font-size: 11px;
+    }
+
+    .pomodoro-timer {
+      font-size: 14px;
+    }
+  }
+
   /* ==========================================================================
      EXAM STAGE PILLS (Todo / 1° Parcial / 2° Parcial / Final / Solo Fuentes / Solo Notas)
      ========================================================================== */
+  .stage-filter-groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .stage-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .stage-filter-group-label {
+    font-size: var(--font-size-xs);
+    color: var(--mut);
+  }
+
+  .stage-filter-pills,
   .stage-filter-row {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 12px;
   }
 
   .stage-pill {
-    border: 2px solid var(--toggle-border);
+    border: var(--rule-thin) solid var(--rule);
     border-radius: 0;
     background-color: var(--toggle-inactive-bg);
     color: var(--toggle-inactive-fg);
@@ -219,12 +313,25 @@
     font-weight: 600;
     cursor: pointer;
     line-height: 1.25;
-    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+    transition:
+      background-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease),
+      border-color var(--transition-fast, 120ms ease);
   }
 
-  .stage-pill:hover:not(.is-active) {
+  .stage-pill:hover:not(.is-active):not(:disabled) {
     background-color: var(--grid);
+    border-color: var(--ink);
     color: var(--toggle-inactive-fg);
+  }
+
+  .stage-pill:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .stage-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .stage-pill.is-active {
@@ -236,14 +343,14 @@
   .exam-stage-pills {
     display: inline-flex;
     flex-wrap: wrap;
-    border: 2px solid var(--toggle-border);
+    border: var(--rule-thin) solid var(--rule);
     border-radius: 0;
     background-color: var(--toggle-inactive-bg);
   }
 
   .exam-stage-pill {
     border: 0;
-    border-right: 1px solid var(--toggle-border);
+    border-right: var(--rule-thin) solid var(--rule);
     border-radius: 0;
     background-color: var(--toggle-inactive-bg);
     color: var(--toggle-inactive-fg);
@@ -252,15 +359,33 @@
     font-weight: 600;
     cursor: pointer;
     line-height: 1.25;
+    transition:
+      background-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease);
   }
 
   .exam-stage-pill:last-child {
     border-right: 0;
   }
 
-  .exam-stage-pill:hover:not(.is-active) {
+  .exam-stage-pill:hover:not(.is-active):not(:disabled) {
     background-color: var(--grid);
     color: var(--toggle-inactive-fg);
+  }
+
+  .exam-stage-pill:active:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .exam-stage-pill:focus-visible {
+    outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .exam-stage-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .exam-stage-pill.is-active {
@@ -345,7 +470,7 @@
     flex-direction: column;
     gap: 6px;
     padding-top: 10px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-config-row {
@@ -370,7 +495,7 @@
     flex-direction: column;
     gap: 10px;
     padding-top: 10px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-record-fields {
@@ -396,7 +521,7 @@
     flex-direction: column;
     gap: 8px;
     padding-top: 10px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-records-list {
@@ -413,7 +538,7 @@
     justify-content: space-between;
     gap: 10px;
     padding: 8px 0;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .attendance-record-row:first-child {
@@ -465,7 +590,7 @@
   .simulator-modal-dialog {
     width: min(820px, calc(100vw - 32px));
     max-height: calc(100vh - 40px);
-    border: 3px solid var(--ink);
+    border: var(--rule-thin) solid var(--rule-header);
     border-radius: 0;
     background-color: var(--bg);
     color: var(--ink);
@@ -486,7 +611,7 @@
     justify-content: space-between;
     gap: 16px;
     padding-bottom: 14px;
-    border-bottom: 3px solid var(--ink);
+    border-bottom: var(--rule-thin) solid var(--rule);
   }
 
   .simulator-header-copy {
@@ -624,10 +749,24 @@
     cursor: pointer;
     font-size: 14px;
     line-height: 1.45;
+    transition: border-color var(--transition-fast, 120ms ease), background-color var(--transition-fast, 120ms ease);
   }
 
-  .simulator-option-row:hover {
+  .simulator-option-row:hover:not(:has(input:disabled)) {
     border-color: var(--ink);
+  }
+
+  .simulator-option-row:active:not(:has(input:disabled)) {
+    opacity: 0.9;
+  }
+
+  .simulator-option-row:has(input:focus-visible) {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+
+  .simulator-option-row:has(input:disabled) {
+    cursor: default;
   }
 
   .simulator-option-row.is-selected {
@@ -677,7 +816,7 @@
     flex-direction: column;
     gap: 8px;
     padding: 12px 14px;
-    border-top: 1px solid var(--rule);
+    border-top: var(--rule-thin) solid var(--rule);
     background-color: var(--grid);
   }
 
@@ -706,7 +845,7 @@
     justify-content: space-between;
     gap: 12px;
     padding-top: 14px;
-    border-top: 2px solid var(--ink);
+    border-top: var(--rule-thin) solid var(--rule);
   }
 
   .simulator-footer-actions {

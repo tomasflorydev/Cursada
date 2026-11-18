@@ -404,21 +404,32 @@ export function ReportsPage({
   }
 
   return (
-    <section aria-labelledby="main-title" className="swiss-grid">
-      <h1 id="main-title" tabIndex={-1} className="visually-hidden">
-        Informes
-      </h1>
+    <section aria-labelledby="main-title">
+      <div className="swiss-page-head">
+        <div className="swiss-page-head-left">
+          <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
+            Informes
+          </h1>
+          <p className="swiss-meta-md">
+            {reports.length}{' '}
+            {reports.length === 1 ? 'informe guardado' : 'informes guardados'}
+          </p>
+        </div>
 
-      {/* Izquierda (3 cols): Lista de informes agrupada por materia */}
-      <aside className="swiss-col-3" aria-label="Listado de informes">
-        <SwissSectionHeader
-          title={`Informes · ${reports.length}`}
-          right={
-            <SwissLinkButton onClick={() => setIsCreateOpen((v) => !v)}>
-              + Nuevo
-            </SwissLinkButton>
-          }
-        />
+        <div className="swiss-page-actions">
+          <SwissButton
+            variant="primary"
+            onClick={() => setIsCreateOpen((v) => !v)}
+          >
+            + Nuevo informe
+          </SwissButton>
+        </div>
+      </div>
+
+      <div className="swiss-grid">
+        {/* Izquierda (3 cols): Lista de informes agrupada por materia */}
+        <aside className="swiss-col-3" aria-label="Listado de informes">
+          <SwissSectionHeader title={`Informes · ${reports.length}`} />
 
         {isCreateOpen ? (
           <form
@@ -472,7 +483,7 @@ export function ReportsPage({
                 {isCreating ? 'Generando…' : 'Generar'}
               </SwissButton>
               <SwissButton
-                variant="secondary"
+                variant="tertiary"
                 disabled={isCreating}
                 onClick={() => {
                   setIsCreateOpen(false);
@@ -494,7 +505,11 @@ export function ReportsPage({
           <div>
             {groupedReports.map((group) => (
               <div key={group.courseId} style={{ marginBottom: '18px' }}>
-                <div className="swiss-section-label" style={{ marginBottom: '6px' }}>
+                <div
+                  className="swiss-section-label reports-sidebar-course"
+                  style={{ marginBottom: '6px' }}
+                  title={group.courseName}
+                >
                   {group.courseName}
                 </div>
                 {group.items.map((rep) => {
@@ -511,7 +526,12 @@ export function ReportsPage({
                         setIsConfirmingDelete(false);
                       }}
                     >
-                      <span>{rep.title}</span>
+                      <span
+                        className="reports-sidebar-item-title"
+                        title={rep.title}
+                      >
+                        {rep.title}
+                      </span>
                       <span className="swiss-meta">
                         {formatRelativeAgeEs(rep.updatedAt)} · {rep.notesCount}{' '}
                         {rep.notesCount === 1 ? 'nota' : 'notas'}, {rep.pdfsCount}{' '}
@@ -538,11 +558,16 @@ export function ReportsPage({
             />
           ) : (
             <>
-              <div className="swiss-meta-md">
+              <div
+                className="swiss-meta-md reports-breadcrumb-course"
+                title={`Informes / ${selectedReport.courseName}`}
+              >
                 Informes / {selectedReport.courseName}
               </div>
 
-              <h2 className="reports-title">{selectedReport.title}</h2>
+              <h2 className="reports-title" title={selectedReport.title}>
+                {selectedReport.title}
+              </h2>
 
               <div className="reports-article-head">
                 <span className="swiss-meta-md">
@@ -574,7 +599,7 @@ export function ReportsPage({
                     Exportar PDF
                   </SwissButton>
                   <SwissButton
-                    variant="primary"
+                    variant="secondary"
                     disabled={isRegenerating || isDeleting}
                     onClick={() => void handleRegenerate()}
                   >
@@ -583,7 +608,7 @@ export function ReportsPage({
                   {isConfirmingDelete ? (
                     <>
                       <SwissButton
-                        variant="secondary"
+                        variant="primary"
                         disabled={isDeleting}
                         aria-label="Confirmar eliminación"
                         onClick={() => void handleDeleteReport()}
@@ -591,7 +616,7 @@ export function ReportsPage({
                         {isDeleting ? 'Eliminando…' : 'Confirmar eliminación'}
                       </SwissButton>
                       <SwissButton
-                        variant="secondary"
+                        variant="tertiary"
                         disabled={isDeleting}
                         onClick={() => setIsConfirmingDelete(false)}
                       >
@@ -600,7 +625,7 @@ export function ReportsPage({
                     </>
                   ) : (
                     <SwissButton
-                      variant="secondary"
+                      variant="tertiary"
                       aria-label="Eliminar informe"
                       disabled={isRegenerating || isDeleting}
                       onClick={() => setIsConfirmingDelete(true)}
@@ -736,7 +761,7 @@ export function ReportsPage({
                 className="reports-source-card"
                 onClick={() => handleCitationCardClick(citation)}
               >
-                <span className="reports-source-title">
+                <span className="reports-source-title" title={citation.title}>
                   <SwissCitationBadge index={citation.index} /> {citation.title}
                   {citation.pageLabel ? (
                     <span className="swiss-meta"> · {citation.pageLabel}</span>
@@ -748,6 +773,7 @@ export function ReportsPage({
           </div>
         )}
       </aside>
+      </div>
 
       {selectedReport ? (
         <PracticeExamSimulatorModal
