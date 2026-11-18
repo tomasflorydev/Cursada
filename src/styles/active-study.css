@@ -108,10 +108,23 @@
     font-size: 11px;
   }
 
-  .pomodoro-btn:hover {
+  .pomodoro-btn:hover:not(:disabled) {
     color: var(--ink);
     background-color: var(--grid);
     border-color: var(--rule);
+  }
+
+  .pomodoro-btn:active:not(:disabled),
+  .pomodoro-timer-toggle:active,
+  .pomodoro-notice-dismiss:active {
+    opacity: 0.82;
+    transform: translateY(1px);
+  }
+
+  .pomodoro-btn:disabled {
+    color: var(--mut);
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .pomodoro-btn.is-running {
@@ -120,14 +133,15 @@
     border-color: var(--acc);
   }
 
-  .pomodoro-btn.is-running:hover {
-    filter: brightness(0.92);
+  .pomodoro-btn.is-running:hover:not(:disabled) {
+    filter: brightness(0.94);
     background-color: var(--acc);
     color: var(--on-acc);
     border-color: var(--acc);
   }
 
-  .pomodoro-btn.is-active {
+  .pomodoro-btn.is-active,
+  .pomodoro-btn.is-active:hover:not(:disabled) {
     background-color: var(--toggle-active-bg);
     color: var(--toggle-active-fg);
     border-color: var(--toggle-active-bg);
@@ -270,13 +284,25 @@
     font-weight: 600;
     cursor: pointer;
     line-height: 1.25;
-    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+    transition:
+      background-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease),
+      border-color var(--transition-fast, 120ms ease);
   }
 
-  .stage-pill:hover:not(.is-active) {
+  .stage-pill:hover:not(.is-active):not(:disabled) {
     background-color: var(--grid);
     border-color: var(--ink);
     color: var(--toggle-inactive-fg);
+  }
+
+  .stage-pill:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .stage-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .stage-pill.is-active {
@@ -304,15 +330,33 @@
     font-weight: 600;
     cursor: pointer;
     line-height: 1.25;
+    transition:
+      background-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease);
   }
 
   .exam-stage-pill:last-child {
     border-right: 0;
   }
 
-  .exam-stage-pill:hover:not(.is-active) {
+  .exam-stage-pill:hover:not(.is-active):not(:disabled) {
     background-color: var(--grid);
     color: var(--toggle-inactive-fg);
+  }
+
+  .exam-stage-pill:active:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .exam-stage-pill:focus-visible {
+    outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .exam-stage-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .exam-stage-pill.is-active {
@@ -676,10 +720,24 @@
     cursor: pointer;
     font-size: 14px;
     line-height: 1.45;
+    transition: border-color var(--transition-fast, 120ms ease), background-color var(--transition-fast, 120ms ease);
   }
 
-  .simulator-option-row:hover {
+  .simulator-option-row:hover:not(:has(input:disabled)) {
     border-color: var(--ink);
+  }
+
+  .simulator-option-row:active:not(:has(input:disabled)) {
+    opacity: 0.9;
+  }
+
+  .simulator-option-row:has(input:focus-visible) {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+
+  .simulator-option-row:has(input:disabled) {
+    cursor: default;
   }
 
   .simulator-option-row.is-selected {

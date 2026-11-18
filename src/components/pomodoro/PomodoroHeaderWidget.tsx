@@ -69,6 +69,8 @@ export function PomodoroHeaderWidget({
   const [lastNotice, setLastNotice] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const configBtnRef = useRef<HTMLButtonElement | null>(null);
+  const focusInputRef = useRef<HTMLInputElement | null>(null);
   const onNotifyRef = useRef(onNotify);
   onNotifyRef.current = onNotify;
 
@@ -87,7 +89,9 @@ export function PomodoroHeaderWidget({
   }, []);
 
   useEffect(() => {
-    if (!isSettingsOpen) {
+    if (isSettingsOpen) {
+      focusInputRef.current?.focus();
+    } else {
       setFocusDraft(String(state.settings.focusMinutes));
       setShortDraft(String(state.settings.shortBreakMinutes));
       setLongDraft(String(state.settings.longBreakMinutes));
@@ -118,6 +122,7 @@ export function PomodoroHeaderWidget({
       if (event.key === 'Escape') {
         if (isSettingsOpen) {
           setIsSettingsOpen(false);
+          configBtnRef.current?.focus();
         } else if (!state.isRunning) {
           setIsExpanded(false);
         }
@@ -251,6 +256,7 @@ export function PomodoroHeaderWidget({
               Reiniciar
             </button>
             <button
+              ref={configBtnRef}
               type="button"
               className={`pomodoro-btn ${isSettingsOpen ? 'is-active' : ''}`.trim()}
               aria-expanded={isSettingsOpen}
@@ -340,6 +346,7 @@ export function PomodoroHeaderWidget({
                   Enfoque (min)
                 </label>
                 <input
+                  ref={focusInputRef}
                   id={focusInputId}
                   type="number"
                   min={1}

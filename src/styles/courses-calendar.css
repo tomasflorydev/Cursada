@@ -175,6 +175,13 @@
     border-color: var(--ink);
   }
 
+  .course-form-input:disabled,
+  .course-form-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background-color: var(--grid);
+  }
+
   .course-form-input:focus-visible,
   .course-form-select:focus-visible {
     outline: 2px solid var(--accent-primary);
@@ -458,7 +465,7 @@
 
   .calendar-month-cell.is-outside-month {
     background-color: var(--bg-canvas);
-    opacity: 0.55;
+    color: var(--mut);
   }
 
   .calendar-month-cell-header {

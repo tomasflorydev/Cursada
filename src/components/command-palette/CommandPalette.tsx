@@ -52,8 +52,10 @@ export function CommandPalette({
   onSelectTarget,
 }: CommandPaletteProps) {
   const baseId = useId();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const [query, setQuery] = useState<string>('');
   const [kindFilter, setKindFilter] = useState<CommandPaletteItemKind | 'all'>('all');
@@ -68,9 +70,17 @@ export function CommandPalette({
       setKindFilter('all');
       setActiveIndex(0);
       setLoadError(null);
+      if (previousFocusRef.current?.isConnected) {
+        previousFocusRef.current.focus();
+      }
+      previousFocusRef.current = null;
       return;
     }
 
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     let active = true;
     setQuery('');
     setKindFilter('all');
@@ -165,6 +175,26 @@ export function CommandPalette({
       return;
     }
 
+    if (event.key === 'Tab' && dialogRef.current) {
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+      return;
+    }
+
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       if (filteredItems.length > 0) {
@@ -211,6 +241,7 @@ export function CommandPalette({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Paleta de búsqueda rápida"
@@ -246,7 +277,7 @@ export function CommandPalette({
           />
           <button
             type="button"
-            className="ghost-action-button command-palette-close-btn"
+            className="command-palette-close-btn"
             aria-label="Cerrar paleta de búsqueda"
             onClick={onClose}
           >

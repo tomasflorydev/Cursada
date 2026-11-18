@@ -44,6 +44,10 @@
     color: var(--acc);
   }
 
+  .backlinks-panel-toggle:active {
+    opacity: 0.85;
+  }
+
   .backlinks-panel-title {
     font-size: 0.75rem;
     font-weight: 600;
@@ -107,6 +111,10 @@
     color: var(--ink);
   }
 
+  .backlinks-section-toggle:active {
+    opacity: 0.85;
+  }
+
   .backlinks-section-count {
     display: inline-flex;
     align-items: center;
@@ -142,8 +150,18 @@
     cursor: pointer;
   }
 
-  .backlinks-item-btn:hover {
+  .backlinks-item-btn:hover:not(:disabled) {
     color: var(--acc);
+  }
+
+  .backlinks-item-btn:active:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .backlinks-item-btn:disabled {
+    color: var(--mut);
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .backlinks-item-top {
@@ -161,6 +179,7 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .backlinks-item-status {
