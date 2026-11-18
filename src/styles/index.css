@@ -112,6 +112,8 @@
     --heading-h3-size: 1.125rem;
     --border-thin: 1px;
     --border-strong-width: 2px;
+    --nav-underline-offset: 6px;
+    --nav-underline-thick: 3px;
 
     --gutter: 28px;
     --gutter-home: 24px;
@@ -333,57 +335,47 @@
     align-items: center;
   }
 
-  .swiss-nav-btn {
-    display: inline-flex;
-    align-items: center;
-    background: transparent;
-    border: 0;
-    padding: 4px 0;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    line-height: 1.25;
-    color: var(--ink);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .swiss-nav-btn:hover {
-    color: var(--acc);
-  }
-
-  .swiss-nav-btn.is-active {
-    text-decoration: underline;
-    text-underline-offset: 6px;
-    text-decoration-thickness: 3px;
-    text-decoration-color: var(--acc);
-  }
-
+  .swiss-nav-btn,
   .swiss-header-settings-btn {
     display: inline-flex;
     align-items: center;
     background: transparent;
     border: 0;
-    padding: 4px 0;
-    font-size: 0.9375rem;
+    padding: var(--space-1) 0;
+    font-size: var(--font-size-md);
     font-weight: 500;
     line-height: 1.25;
-    color: var(--mut);
+    color: var(--soft);
+    text-decoration: none;
     cursor: pointer;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     -webkit-app-region: no-drag;
   }
 
-  .swiss-header-settings-btn:hover {
-    color: var(--acc);
+  :is(.swiss-nav-btn, .swiss-header-settings-btn):hover:not(
+      :is(.is-active, [aria-current='page'])
+    ) {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: var(--nav-underline-offset);
+    text-decoration-thickness: var(--border-thin);
+    text-decoration-color: var(--rule);
   }
 
-  .swiss-header-settings-btn.is-active {
+  :is(.swiss-nav-btn, .swiss-header-settings-btn):is(
+      .is-active,
+      [aria-current='page']
+    ),
+  :is(.swiss-nav-btn, .swiss-header-settings-btn):is(
+      .is-active,
+      [aria-current='page']
+    ):hover {
     color: var(--ink);
     font-weight: 600;
     text-decoration: underline;
-    text-underline-offset: 6px;
-    text-decoration-thickness: 3px;
+    text-underline-offset: var(--nav-underline-offset);
+    text-decoration-thickness: var(--nav-underline-thick);
     text-decoration-color: var(--acc);
   }
 
