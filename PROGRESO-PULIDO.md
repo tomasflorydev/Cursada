@@ -2,9 +2,9 @@
 
 **Fecha de actualización:** 18 de noviembre de 2026  
 **Rama actual:** `pulido-ui` (creada desde el tag `v1.0-pre-pulido` en `beabe46`)  
-**Último commit de código:** `14ad256` — `test(pulido): aceptar token --space-8 en contrato CSS tras merge de 2A y 2C`  
-**Etapa actual:** Etapa 2 (Fase 3: Pantallas) completada — avanzando hacia Etapa 3 (Panel de informes IA) y Etapa 4  
-**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 182 tests en verde) · `npm run build` OK (0 errores).
+**Último commit de código:** `59902e7` — `ui(informes-ia): separar chips en alcance y origen y pulir cuatro estados del panel`  
+**Etapa actual:** Etapa 3 (Panel de informes IA) completada — avanzando hacia Etapa 4 (Fase 4: Detalles finos e integración)  
+**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 183 tests en verde) · `npm run build` OK (0 errores).
 
 ---
 
@@ -90,22 +90,31 @@
    - **Layout editorial sin cajas y lectura centrada**: paneles de `CourseDetailView` sin bordes exteriores gruesos, unidos mediante líneas verticales finas a toda la altura; simplificado el breadcrumb (`course.name` sin repetir título), ocultado el H1 inicial duplicado en Live Preview cuando coincide con `draftTitle` y limitada la columna de lectura a `70ch` centrada al colapsar paneles laterales.
    - **Compatibilidad tras merges (`14ad256`)**: actualizado `UIEditorialOverhaul.test.tsx` para aceptar el token `var(--space-8)` además del literal `32px`.
 
+### Etapa 3 — Panel de Informes IA (100% completada)
+
+- **Chips agrupados por Alcance y Origen (`CourseAssistantSidebar.tsx`, `active-study.css`)** — Commit `59902e7` (`ui(informes-ia): separar chips en alcance y origen y pulir cuatro estados del panel`)
+  - Se organizaron los filtros en dos grupos con etiqueta `swiss-section-label`: **Alcance** (`Todo`, `1° Parcial`, `2° Parcial`, `Final`) y **Origen** (`Solo Fuentes`, `Solo Notas`), permitiendo combinar alcance por parcial/final con filtro de fuentes o notas.
+- **Cuatro estados del panel de informes verificados con mocks/fixtures (`CourseReportGenerator.test.tsx`)**:
+  - **Vacío (`assistant-report-empty`)**: guía clara indicando las fuentes activas listas para sintetizar.
+  - **Generando (`assistant-report-generating`)**: barra `SwissLoadingBar` con progreso y botón `Cancelar`.
+  - **Resultado (`assistant-report-result`)**: tipografía editorial legible (`--font-size-xl`, `line-height: 1.6`), acciones `Copiar` (clipboard + aviso), `Exportar` (descarga `.md`), `Regenerar` y `Abrir informe →`.
+  - **Error (`assistant-report-error`)**: `SwissErrorAlert` claro y botón `Reintentar` que relanza el último `StudyReportType` solicitado.
+
 ---
 
 ## 2. Estado de Etapas
 
 - **Etapa 0 — Cierre visual de Fase 1 (COMPLETADA).**
 - **Etapa 1 — Fase 2: Fundaciones de diseño (COMPLETADA).**
-- **Etapa 2 — Fase 3: Pantallas en paralelo (COMPLETADA):**
-  - Mergeados y verificados en orden `pulido-ui-2a`, `pulido-ui-2b` y `pulido-ui-2c`; worktrees y ramas temporales removidos.
-  - Verificación completa: `npm run typecheck` (0 errores), `npm test` (40 archivos, 182 tests en verde), `npm run build` OK.
+- **Etapa 2 — Fase 3: Pantallas en paralelo (COMPLETADA).**
+- **Etapa 3 — Panel de informes IA (COMPLETADA):**
+  - Verificación completa: `npm run typecheck` (0 errores), `npm test` (40 archivos, 183 tests en verde), `npm run build` OK.
 
 ---
 
 ## 3. Qué falta (en orden de prioridad)
 
-1. **Etapa 3 — Panel de informes IA (en ejecución).**
-2. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final.**
+1. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final (en ejecución).**
 
 ---
 
@@ -129,4 +138,4 @@
 
 ## 6. Próximo Paso
 
-Ejecutar **Etapa 3 (Panel de informes IA)** y luego **Etapa 4 (Detalles finos, accesibilidad y auditoría final)** sin generar capturas adicionales.
+Completar **Etapa 4 (Fase 4: Detalles finos, accesibilidad, casos extremos, logo/ícono/favicon y revisor final de solo lectura)** sin capturas adicionales y entregar el resumen final al Product Owner.
