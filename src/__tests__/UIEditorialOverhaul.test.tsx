@@ -219,7 +219,7 @@ describe('Swiss Editorial & Minimal Neo-Brutalist UI Overhaul', () => {
       expect(indexCss).toContain('font-size: 16px;');
       expect(indexCss).toContain('.swiss-header {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;');
       expect(indexCss).toContain('.swiss-header-right {\n    display: flex;\n    align-items: center;');
-      expect(indexCss).toContain('gap: 32px;');
+      expect(indexCss).toMatch(/gap:\s*(?:32px|var\(--space-8\));/);
       expect(indexCss).toContain('padding: 24px;\n    border: 1px solid var(--ink);');
 
       // Editorial citations: transparent background, neutral ink, subtle underline
