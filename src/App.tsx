@@ -119,7 +119,7 @@ export function App() {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
     root.setAttribute('data-theme', themeMode);
     if (meta) {
-      meta.content = themeMode === 'system' ? 'light dark' : themeMode;
+      meta.content = themeMode === 'system' ? 'dark light' : themeMode;
     }
     try {
       localStorage.setItem('color-scheme', themeMode);

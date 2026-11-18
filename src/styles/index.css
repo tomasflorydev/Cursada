@@ -341,6 +341,7 @@
     display: block;
     height: 100%;
     width: auto;
+    aspect-ratio: 78 / 68;
   }
 
   .swiss-nav {

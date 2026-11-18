@@ -7,7 +7,7 @@ try {
   document.documentElement.setAttribute('data-theme', theme);
   var meta = document.querySelector('meta[name="color-scheme"]');
   if (meta) {
-    meta.content = theme === 'system' ? 'light dark' : theme;
+    meta.content = theme === 'system' ? 'dark light' : theme;
   }
   var storedNoteSize = localStorage.getItem('cursada-note-size');
   if (
