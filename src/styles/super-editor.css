@@ -386,11 +386,11 @@
 
   .super-editor-toolbar {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 8px 0 10px;
+    gap: var(--space-2);
+    padding: 6px 0 8px;
     border-top: 1px solid var(--rule);
     border-bottom: 1px solid var(--rule);
     background-color: var(--bg);
@@ -400,23 +400,53 @@
 
   .super-editor-toolbar-actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 6px;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .super-editor-toolbar-actions::-webkit-scrollbar {
+    display: none;
   }
 
   .super-editor-toolbar-item {
     position: relative;
     display: inline-flex;
     align-items: center;
+    flex-shrink: 0;
   }
 
-  .super-editor-toolbar-btn {
-    padding: 4px 10px;
+  .super-editor-toolbar .super-editor-toolbar-btn {
+    padding: 4px 8px;
+    border: var(--rule-thin) solid transparent;
+    background: transparent;
+    color: var(--soft);
     font-size: var(--font-size-xs);
     font-weight: 600;
     border-radius: 0;
     box-shadow: none;
+    white-space: nowrap;
+  }
+
+  .super-editor-toolbar .super-editor-toolbar-btn:hover:not(:disabled),
+  .super-editor-toolbar .super-editor-toolbar-btn:focus-visible {
+    border-color: var(--rule);
+    background-color: var(--grid);
+    color: var(--ink);
+  }
+
+  .super-editor-toolbar > .swiss-segmented {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .super-editor-toolbar > .swiss-segmented .swiss-segmented-btn {
+    padding: 4px 10px;
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
   }
 
   .super-editor-tooltip {
@@ -487,6 +517,8 @@
   .super-editor-codemirror-host {
     min-height: 320px;
     width: 100%;
+    max-width: 70ch;
+    margin-inline: auto;
     background-color: var(--bg);
     color: var(--soft);
   }
@@ -530,7 +562,14 @@
     font-family: var(--font-sans);
     font-size: var(--note-body-size);
     line-height: 1.6;
-    max-width: 680px;
+    width: 100%;
+    max-width: 70ch;
+    margin-inline: auto;
+  }
+
+  .cm-line.is-duplicate-h1,
+  .live-preview-line.is-duplicate-h1 {
+    display: none;
   }
 
   .live-preview-empty-hint {

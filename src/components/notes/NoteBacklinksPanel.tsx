@@ -24,7 +24,9 @@ export function NoteBacklinksPanel({
   onOpenOrCreateWikiLink,
 }: NoteBacklinksPanelProps) {
   const panelBodyId = useId();
+  const backlinksBodyId = useId();
   const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
+  const [isBacklinksExpanded, setIsBacklinksExpanded] = useState<boolean>(defaultExpanded);
   const [summary, setSummary] = useState<NoteLinksSummary>(() =>
     linksSummaryOverride ?? {
       noteId,
@@ -193,41 +195,59 @@ export function NoteBacklinksPanel({
 
               <div className="backlinks-section">
                 <h3 className="backlinks-section-heading">
-                  Backlinks (Notas que enlazan acá)
+                  <button
+                    type="button"
+                    className="backlinks-section-toggle"
+                    aria-expanded={isBacklinksExpanded}
+                    aria-controls={backlinksBodyId}
+                    onClick={() => setIsBacklinksExpanded((prev) => !prev)}
+                  >
+                    <span>Backlinks (Notas que enlazan acá)</span>
+                    <span className="backlinks-section-count">
+                      <span>{backlinksCount}</span>
+                      <span aria-hidden="true">
+                        {isBacklinksExpanded ? '▾' : '›'}
+                      </span>
+                    </span>
+                  </button>
                 </h3>
-                {backlinksCount === 0 ? (
-                  <p className="backlinks-empty-copy">
-                    Ningún otro apunte enlaza a esta nota todavía.
-                  </p>
-                ) : (
-                  <ul className="backlinks-list">
-                    {summary.backlinks.map((link) => (
-                      <li key={link.id} className="backlinks-list-item">
-                        <button
-                          type="button"
-                          className="backlinks-item-btn"
-                          onClick={() =>
-                            onOpenNote(link.sourceNoteId, link.sourceCourseId)
-                          }
-                        >
-                          <span className="backlinks-item-top">
-                            <span className="backlinks-item-name">
-                              {link.sourceNoteTitle}
-                            </span>
-                            <span className="backlinks-item-status">
-                              {link.sourceCourseName}
-                            </span>
-                          </span>
-                          {link.contextSnippet ? (
-                            <span className="backlinks-item-snippet">
-                              {link.contextSnippet}
-                            </span>
-                          ) : null}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {isBacklinksExpanded ? (
+                  <div id={backlinksBodyId}>
+                    {backlinksCount === 0 ? (
+                      <p className="backlinks-empty-copy">
+                        Ningún otro apunte enlaza a esta nota todavía.
+                      </p>
+                    ) : (
+                      <ul className="backlinks-list">
+                        {summary.backlinks.map((link) => (
+                          <li key={link.id} className="backlinks-list-item">
+                            <button
+                              type="button"
+                              className="backlinks-item-btn"
+                              onClick={() =>
+                                onOpenNote(link.sourceNoteId, link.sourceCourseId)
+                              }
+                            >
+                              <span className="backlinks-item-top">
+                                <span className="backlinks-item-name">
+                                  {link.sourceNoteTitle}
+                                </span>
+                                <span className="backlinks-item-status">
+                                  {link.sourceCourseName}
+                                </span>
+                              </span>
+                              {link.contextSnippet ? (
+                                <span className="backlinks-item-snippet">
+                                  {link.contextSnippet}
+                                </span>
+                              ) : null}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
           )}

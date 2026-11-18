@@ -10,6 +10,7 @@ import type {
 } from '../../types/domain';
 import { SwissButton, SwissErrorAlert, SwissLinkButton, SwissSelect } from '../../ui';
 import { COURSE_COLOR_OPTIONS } from './courseColors';
+import { CourseAttendancePanel } from './CourseAttendancePanel';
 
 export interface CourseFormModalProps {
   isOpen: boolean;
@@ -449,6 +450,17 @@ export function CourseFormModal({
             </SwissButton>
           </footer>
         </form>
+
+        {initialCourse ? (
+          <div
+            style={{
+              borderTop: 'var(--rule-thin) solid var(--rule)',
+              paddingTop: '16px',
+            }}
+          >
+            <CourseAttendancePanel courseId={initialCourse.id} />
+          </div>
+        ) : null}
       </div>
     </dialog>
   );

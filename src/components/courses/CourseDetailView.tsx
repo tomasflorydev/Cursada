@@ -669,22 +669,24 @@ export function CourseDetailView({
     });
   }
 
-  async function handleTogglePin(): Promise<void> {
-    if (!selectedNote) return;
+  async function handleTogglePin(noteId?: string): Promise<void> {
+    const targetId = noteId ?? selectedNote?.id;
+    if (!targetId) return;
     await flushPendingSave();
-    const updated = await cursadaClient.toggleNotePin(selectedNote.id);
+    const updated = await cursadaClient.toggleNotePin(targetId);
     setNotes((prev) =>
       sortNotes(prev.map((n) => (n.id === updated.id ? updated : n)))
     );
     showTransientNoteFeedback(updated.isPinned ? 'Nota fijada.' : 'Nota desfijada.');
   }
 
-  async function handleExportNote(): Promise<void> {
-    if (!selectedNote) return;
+  async function handleExportNote(noteId?: string): Promise<void> {
+    const targetId = noteId ?? selectedNote?.id;
+    if (!targetId) return;
     await flushPendingSave();
     const result = await cursadaClient.exportMarkdown({
       scope: 'note',
-      noteId: selectedNote.id,
+      noteId: targetId,
     });
     if (!result.canceled) {
       showTransientNoteFeedback('Nota exportada en Markdown.');
@@ -1128,7 +1130,7 @@ export function CourseDetailView({
 
   return (
     <section className={gridClassName} aria-labelledby="main-title">
-      {/* Panel izquierdo: Listado de notas + Red de conocimiento + Asistencia */}
+      {/* Panel izquierdo: Listado de notas + Red de conocimiento */}
       {isLeftSidebarOpen ? (
         <CourseNotebookSidebar
           course={course}
@@ -1141,8 +1143,8 @@ export function CourseDetailView({
           onCollapse={() => setIsLeftSidebarOpen(false)}
           onCreateNote={() => void handleCreateNote()}
           onSelectNote={(noteId) => void handleSelectNote(noteId)}
-          onTogglePin={() => void handleTogglePin()}
-          onExportNote={() => void handleExportNote()}
+          onTogglePin={(noteId) => void handleTogglePin(noteId)}
+          onExportNote={(noteId) => void handleExportNote(noteId)}
           onRequestDeleteNote={setConfirmDeleteNoteId}
           onConfirmDeleteNote={(noteId) => void handleConfirmDeleteNote(noteId)}
           onBackToCourses={() => onSelectCourse(null)}
@@ -1159,7 +1161,7 @@ export function CourseDetailView({
         />
       ) : (
         <aside
-          className="notebook-collapsed-rail"
+          className="notebook-collapsed-rail is-left"
           aria-label="Panel de notas colapsado"
         >
           <button
@@ -1199,14 +1201,18 @@ export function CourseDetailView({
           ) : (
             <>
               <div className="notebook-breadcrumb-row">
-                <span className="swiss-meta-md">
-                  {course.name} / {draftTitle.trim() || 'Sin título'}
+                <span
+                  className="swiss-meta-md notebook-breadcrumb-course"
+                  title={course.name}
+                >
+                  {course.name}
                 </span>
                 <span
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '12px',
+                    flexShrink: 0,
                   }}
                 >
                   <SwissSelect
@@ -1259,6 +1265,7 @@ export function CourseDetailView({
                 <SuperMarkdownEditor
                   noteId={selectedNote.id}
                   courseId={course.id}
+                  noteTitle={draftTitle}
                   content={draftContent}
                   onChangeContent={handleContentChange}
                   onSaveShortcut={() => void flushPendingSave()}
@@ -1342,7 +1349,7 @@ export function CourseDetailView({
         />
       ) : (
         <aside
-          className="notebook-collapsed-rail"
+          className="notebook-collapsed-rail is-right"
           aria-label="Panel de asistente IA colapsado"
         >
           <button

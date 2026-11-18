@@ -48,7 +48,9 @@ export function SwissHeader({
           >
             ← Inicio
           </button>
-          <span className="swiss-header-detail-course">{courseDetail.name}</span>
+          <span className="swiss-header-detail-course" title={courseDetail.name}>
+            {courseDetail.name}
+          </span>
         </div>
         <div className="swiss-header-right">
           <div className="swiss-header-detail-meta">{courseDetail.summary}</div>
