@@ -508,20 +508,23 @@
     color: var(--ink);
     letter-spacing: -0.03em;
     line-height: 1.18;
+    text-decoration: none;
+  }
+
+  .cm-live-preview-heading * {
+    text-decoration: none !important;
   }
 
   .cm-live-preview-h1 {
-    font-size: 30px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--rule);
+    font-size: var(--heading-h1-size);
   }
 
   .cm-live-preview-h2 {
-    font-size: 23px;
+    font-size: var(--heading-h2-size);
   }
 
   .cm-live-preview-h3 {
-    font-size: 18px;
+    font-size: var(--heading-h3-size);
   }
 
   .cm-live-preview-bold {

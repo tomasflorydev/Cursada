@@ -107,6 +107,9 @@
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-md: 0.9375rem;
+    --heading-h1-size: 1.875rem;
+    --heading-h2-size: 1.4375rem;
+    --heading-h3-size: 1.125rem;
     --border-thin: 1px;
     --border-strong-width: 2px;
 

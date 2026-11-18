@@ -1,6 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import {
   RangeSetBuilder,
+  StateEffect,
   StateField,
   type Extension,
   type Range,
@@ -118,9 +119,13 @@ export interface LivePreviewLineDescriptor {
 export interface LivePreviewExtensionOptions {
   onToggleTaskLine?: (lineIndex: number) => void;
   onWikiLinkClick?: (targetTitle: string) => void;
+  /** Whether the editor starts focused (defaults to true in standalone state tests, false when mounted in UI). */
+  initialFocused?: boolean;
   /** Optional parser hook used in tests to verify single-pass state updates. */
   parseLines?: typeof parseLivePreviewLines;
 }
+
+export const setEditorFocusEffect = StateEffect.define<boolean>();
 
 const CALLOUT_LABELS: Record<CalloutKind, string> = {
   NOTE: 'Nota',
@@ -772,11 +777,12 @@ export function parseLivePreviewLines(
     }
 
     // 8. Headings (# to ######)
-    const headingMatch = /^(#{1,6})(\s+)(.*)$/.exec(rawText);
+    const headingMatch = /^(\s*)(#{1,6})(\s+)(.*)$/.exec(rawText);
     if (headingMatch) {
-      const level = headingMatch[1].length as 1 | 2 | 3 | 4 | 5 | 6;
-      const prefixLength = headingMatch[1].length + headingMatch[2].length;
-      const body = headingMatch[3];
+      const level = headingMatch[2].length as 1 | 2 | 3 | 4 | 5 | 6;
+      const prefixLength =
+        headingMatch[1].length + headingMatch[2].length + headingMatch[3].length;
+      const body = headingMatch[4];
       const inlineTokens = parseInlineMarkdownTokens(body, from + prefixLength);
       descriptors.push({
         lineIndex: i,
@@ -1775,18 +1781,42 @@ export function createLivePreviewExtension(
   opts: LivePreviewExtensionOptions = {}
 ): Extension {
   const parseFn = opts.parseLines ?? parseLivePreviewLines;
+  const initialFocused = opts.initialFocused ?? true;
+
+  const editorFocusField = StateField.define<boolean>({
+    create() {
+      return initialFocused;
+    },
+    update(focused, tr) {
+      for (const effect of tr.effects) {
+        if (effect.is(setEditorFocusEffect)) {
+          return effect.value;
+        }
+      }
+      if (tr.selection) {
+        return true;
+      }
+      return focused;
+    },
+  });
 
   const parsedLinesField = StateField.define<ParsedLivePreviewState>({
     create(state) {
-      const activeLines = getActiveLineSet(state);
+      const isFocused = state.field(editorFocusField);
+      const activeLines = isFocused ? getActiveLineSet(state) : new Set<number>();
       return {
-        activeKey: serializeActiveLineSet(activeLines),
+        activeKey: isFocused ? serializeActiveLineSet(activeLines) : '__blur__',
         lines: parseFn(state.doc.toString(), activeLines),
       };
     },
     update(prev, tr) {
-      const activeLines = getActiveLineSet(tr.state);
-      const activeKey = serializeActiveLineSet(activeLines);
+      const isFocused = tr.state.field(editorFocusField);
+      const activeLines = isFocused
+        ? getActiveLineSet(tr.state)
+        : new Set<number>();
+      const activeKey = isFocused
+        ? serializeActiveLineSet(activeLines)
+        : '__blur__';
       if (!tr.docChanged && activeKey === prev.activeKey) {
         return prev;
       }
@@ -1852,5 +1882,26 @@ export function createLivePreviewExtension(
     }
   );
 
-  return [parsedLinesField, multiLineMathField, livePreviewPlugin];
+  const focusSyncHandlers = EditorView.domEventHandlers({
+    focus(_event, view) {
+      if (!view.state.field(editorFocusField, false)) {
+        view.dispatch({ effects: setEditorFocusEffect.of(true) });
+      }
+      return false;
+    },
+    blur(_event, view) {
+      if (view.state.field(editorFocusField, false)) {
+        view.dispatch({ effects: setEditorFocusEffect.of(false) });
+      }
+      return false;
+    },
+  });
+
+  return [
+    editorFocusField,
+    parsedLinesField,
+    multiLineMathField,
+    livePreviewPlugin,
+    focusSyncHandlers,
+  ];
 }

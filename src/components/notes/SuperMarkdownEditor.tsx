@@ -138,6 +138,9 @@ const swissCodeMirrorTheme = EditorView.theme({
   '.cm-line': {
     padding: '1px 0',
   },
+  '.cm-line span:not(.cm-live-preview-task-text):not(.cm-live-preview-wikilink)': {
+    textDecoration: 'none',
+  },
   '.cm-cursor, .cm-dropCursor': {
     borderLeftWidth: '2px',
     borderLeftColor: 'var(--acc)',
@@ -562,6 +565,7 @@ export function SuperMarkdownEditor({
       const initialLiveExt =
         editorMode === 'live'
           ? createLivePreviewExtension({
+              initialFocused: false,
               onWikiLinkClick: (target) => onOpenWikiLinkRef.current?.(target),
             })
           : [];
@@ -694,6 +698,7 @@ export function SuperMarkdownEditor({
     const ext =
       editorMode === 'live'
         ? createLivePreviewExtension({
+            initialFocused: view.hasFocus,
             onWikiLinkClick: (target) => onOpenWikiLinkRef.current?.(target),
           })
         : [];
