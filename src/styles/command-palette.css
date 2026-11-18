@@ -134,7 +134,7 @@
     color: var(--text-muted);
   }
 
-  .command-palette-input:focus {
+  .command-palette-input:focus:not(:focus-visible) {
     outline: none;
   }
 
@@ -192,9 +192,9 @@
     white-space: nowrap;
     cursor: pointer;
     transition:
-      background-color 120ms ease,
-      color 120ms ease,
-      border-color 120ms ease;
+      background-color var(--transition-fast, 120ms ease),
+      color var(--transition-fast, 120ms ease),
+      border-color var(--transition-fast, 120ms ease);
   }
 
   .command-palette-filter-pill:hover:not(.is-active) {
@@ -264,6 +264,14 @@
     width: 20px;
     height: 20px;
     flex-shrink: 0;
+  }
+
+  .course-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 0;
+    background-color: var(--course-dot);
   }
 
   .command-palette-action-glyph {

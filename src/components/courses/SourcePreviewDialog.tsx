@@ -49,7 +49,6 @@ export function SourcePreviewDialog({
   return (
     <dialog
       ref={dialogRef}
-      open
       role="dialog"
       aria-modal="true"
       aria-label={source.title}

@@ -1786,7 +1786,11 @@
 
   .notebook-note-menu-trigger {
     opacity: 0;
-    transition: opacity 100ms ease, color 100ms ease, border-color 100ms ease, background-color 100ms ease;
+    transition:
+      opacity var(--transition-fast),
+      color var(--transition-fast),
+      border-color var(--transition-fast),
+      background-color var(--transition-fast);
   }
 
   .notebook-note-row:hover .notebook-note-menu-trigger,
@@ -1838,7 +1842,7 @@
     opacity: 0;
     pointer-events: none;
     transform: translateY(-2px);
-    transition: opacity 100ms ease, transform 100ms ease;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
   }
 
   .notebook-menu.is-above {
@@ -2333,7 +2337,7 @@
     text-decoration-color: var(--mut);
     text-underline-offset: 4px;
     text-decoration-thickness: 1px;
-    transition: text-decoration-color 150ms ease, color 150ms ease;
+    transition: text-decoration-color var(--transition-fast), color var(--transition-fast);
   }
 
   .notebook-last-report-excerpt a:hover,

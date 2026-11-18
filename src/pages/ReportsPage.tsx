@@ -599,7 +599,7 @@ export function ReportsPage({
                     Exportar PDF
                   </SwissButton>
                   <SwissButton
-                    variant="primary"
+                    variant="secondary"
                     disabled={isRegenerating || isDeleting}
                     onClick={() => void handleRegenerate()}
                   >
