@@ -31,6 +31,7 @@ import {
 } from '../../lib/editor/editorShortcuts';
 import {
   createLivePreviewExtension,
+  parseInlineMarkdownTokens,
   parseLivePreviewLines,
   toggleTaskLineInMarkdown,
   type CalloutKind,
@@ -969,7 +970,13 @@ export function SuperMarkdownEditor({
                 <thead>
                   <tr>
                     {headerRow.tableCells.map((cell, cIdx) => (
-                      <th key={`th-${line.lineIndex}-${cIdx}`}>{cell}</th>
+                      <th key={`th-${line.lineIndex}-${cIdx}`}>
+                        {renderInlineTokens(
+                          parseInlineMarkdownTokens(cell, 0),
+                          `th-tok-${line.lineIndex}-${cIdx}`,
+                          onOpenWikiLink
+                        )}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -979,7 +986,13 @@ export function SuperMarkdownEditor({
                   {dataRows.map((dRow) => (
                     <tr key={`tr-${dRow.lineIndex}`}>
                       {(dRow.tableCells ?? []).map((cell, cIdx) => (
-                        <td key={`td-${dRow.lineIndex}-${cIdx}`}>{cell}</td>
+                        <td key={`td-${dRow.lineIndex}-${cIdx}`}>
+                          {renderInlineTokens(
+                            parseInlineMarkdownTokens(cell, 0),
+                            `td-tok-${dRow.lineIndex}-${cIdx}`,
+                            onOpenWikiLink
+                          )}
+                        </td>
                       ))}
                     </tr>
                   ))}

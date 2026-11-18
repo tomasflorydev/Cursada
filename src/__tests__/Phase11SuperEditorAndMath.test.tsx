@@ -400,6 +400,9 @@ describe('Phase 11: Offline LaTeX Math, CodeMirror 6 Live Preview & Configurable
           '$$',
           '\\sum_{i=1}^n x_i',
           '$$',
+          '| A | 0 | 1 |',
+          '| --- | --- | --- |',
+          '| B | 1 | 0 |',
         ].join('\n');
 
         render(<ControlledSuperEditor initialContent={md} />);
@@ -417,6 +420,9 @@ describe('Phase 11: Offline LaTeX Math, CodeMirror 6 Live Preview & Configurable
           expect(cmHost.querySelector('.katex-display')).not.toBeNull();
           expect(
             cmHost.querySelector('.cm-live-preview-task-checkbox')
+          ).not.toBeNull();
+          expect(
+            cmHost.querySelector('table.cm-live-preview-table')
           ).not.toBeNull();
         });
 

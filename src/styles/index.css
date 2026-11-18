@@ -104,6 +104,11 @@
     --font-display: 'Archivo', Helvetica, Arial, sans-serif;
     --font-mono: Menlo, monospace;
     --note-body-size: 18px;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-md: 0.9375rem;
+    --border-thin: 1px;
+    --border-strong-width: 2px;
 
     --gutter: 28px;
     --gutter-home: 24px;
