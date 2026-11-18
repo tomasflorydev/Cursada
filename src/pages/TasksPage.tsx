@@ -619,19 +619,32 @@ export function TasksPage({
     groupedTasks.thisWeek.length > 0 || groupedTasks.later.length > 0;
 
   return (
-    <section aria-labelledby="main-title" className="swiss-grid">
-      <aside className="swiss-col-3">
-        <h1
-          id="main-title"
-          tabIndex={-1}
-          className="swiss-screen-title"
-          style={{ marginBottom: '28px' }}
-        >
-          Tareas
-        </h1>
+    <section aria-labelledby="main-title">
+      <header className="swiss-page-head">
+        <div className="swiss-page-head-left">
+          <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
+            Tareas
+          </h1>
+          <p className="swiss-meta-md">
+            {viewCounts.open} {viewCounts.open === 1 ? 'abierta' : 'abiertas'} ·{' '}
+            {viewCounts.today} para hoy · {viewCounts.week} esta semana
+          </p>
+        </div>
 
-        <div style={{ marginBottom: '28px' }}>
-          <SwissSectionHeader title="Ver" />
+        <div className="swiss-page-actions">
+          <SwissButton
+            variant="primary"
+            onClick={() => quickAddInputRef.current?.focus()}
+          >
+            + Nueva tarea
+          </SwissButton>
+        </div>
+      </header>
+
+      <div className="swiss-grid">
+        <aside className="swiss-col-3">
+          <div style={{ marginBottom: '28px' }}>
+            <SwissSectionHeader title="Ver" />
           <div>
             {filterOptions.map((opt) => (
               <button
@@ -936,7 +949,8 @@ export function TasksPage({
               }
             />
           )
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </section>
   );

@@ -404,21 +404,32 @@ export function ReportsPage({
   }
 
   return (
-    <section aria-labelledby="main-title" className="swiss-grid">
-      <h1 id="main-title" tabIndex={-1} className="visually-hidden">
-        Informes
-      </h1>
+    <section aria-labelledby="main-title">
+      <header className="swiss-page-head">
+        <div className="swiss-page-head-left">
+          <h1 id="main-title" tabIndex={-1} className="swiss-screen-title">
+            Informes
+          </h1>
+          <p className="swiss-meta-md">
+            {reports.length}{' '}
+            {reports.length === 1 ? 'informe guardado' : 'informes guardados'}
+          </p>
+        </div>
 
-      {/* Izquierda (3 cols): Lista de informes agrupada por materia */}
-      <aside className="swiss-col-3" aria-label="Listado de informes">
-        <SwissSectionHeader
-          title={`Informes · ${reports.length}`}
-          right={
-            <SwissLinkButton onClick={() => setIsCreateOpen((v) => !v)}>
-              + Nuevo
-            </SwissLinkButton>
-          }
-        />
+        <div className="swiss-page-actions">
+          <SwissButton
+            variant="primary"
+            onClick={() => setIsCreateOpen((v) => !v)}
+          >
+            + Nuevo informe
+          </SwissButton>
+        </div>
+      </header>
+
+      <div className="swiss-grid">
+        {/* Izquierda (3 cols): Lista de informes agrupada por materia */}
+        <aside className="swiss-col-3" aria-label="Listado de informes">
+          <SwissSectionHeader title={`Informes · ${reports.length}`} />
 
         {isCreateOpen ? (
           <form
@@ -748,6 +759,7 @@ export function ReportsPage({
           </div>
         )}
       </aside>
+      </div>
 
       {selectedReport ? (
         <PracticeExamSimulatorModal
