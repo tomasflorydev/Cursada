@@ -2,9 +2,9 @@
 
 **Fecha de actualización:** 18 de noviembre de 2026  
 **Rama actual:** `pulido-ui` (creada desde el tag `v1.0-pre-pulido` en `beabe46`)  
-**Último commit de código:** `7b31549` — `ui(menu): traducir menú nativo de macOS al español`  
-**Etapa actual:** Etapa 0 (Cierre visual de Fase 1) completada — esperando confirmación para Etapa 1 (Fase 2)  
-**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 182 tests en verde) · `npm run build` OK (0 warnings).
+**Último commit de código:** `2437447` — `ui(titulos): usar div en encabezado interno para mantener unico landmark banner`  
+**Etapa actual:** Etapa 1 (Fase 2: Fundaciones de diseño) completada — esperando confirmación para Etapa 2 (Fase 3)  
+**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 182 tests en verde) · `npm run build` OK (0 errores).
 
 ---
 
@@ -38,28 +38,58 @@
 7. **Menú nativo de macOS en español** — Commit `7b31549` (`ui(menu): traducir menú nativo de macOS al español`)
    - Se creó `electron/menu.ts` (`buildSpanishMenuTemplate` y `setupApplicationMenu`) con los menús `Cursada`, `Archivo`, `Edición`, `Ver` y `Ventana` íntegramente en español y se conectó en `electron/main.ts`.
 
+### Fase 2 — Fundaciones de diseño (Etapa 1: 100% completada en 6 commits atómicos)
+
+1. **Reglas horizontales y menor intensidad en modo oscuro** — Commit `bf7292a` (`ui(reglas): definir --rule-thick y --rule-thin y atenuar reglas en modo oscuro`)
+   - Tokens `--rule-thick: 2px` y `--rule-thin: 1px`; `--rule-thick` aplicado únicamente bajo `.swiss-header` (con `--rule-header`) y `--rule-thin` para divisores internos, secciones, tablas, formularios y modales.
+   - En oscuro se atenuaron `--rule` (`rgba(236, 236, 231, 0.22)`), `--rule-header` (`rgba(236, 236, 231, 0.55)`) y `--grid` (`rgba(236, 236, 231, 0.14)`). En claro: `--rule: rgba(17, 17, 17, 0.22)`, `--rule-header: #111111`, `--grid: rgba(17, 17, 17, 0.12)`.
+
+2. **Botones en tres niveles (`primary`, `secondary`, `tertiary`)** — Commit `ff4f11a` (`ui(botones): implementar tres niveles de botones y unificar jerarquia en toda la app`)
+   - `SwissButton` (`src/ui/Primitives.tsx`) ahora soporta `variant?: 'primary' | 'secondary' | 'tertiary'` y `size?: 'sm' | 'md'`.
+   - Primario: relleno coral (`--acc`) reservado a una sola acción principal por pantalla (`+ Nueva materia`, `+ Nuevo examen`, `+ Nueva tarea`, `+ Nuevo informe`, confirmar/generar/guardar).
+   - Secundario: borde fino (`var(--rule-thin) solid var(--rule)`) con hover sutil (`border-color: var(--ink)`, fondo `--grid`). Los botones por fila de `Exámenes` (`Generar guía de estudio`) pasaron todos a secundario.
+   - Terciario: solo texto (`--soft`) con borde transparente y hover sutil (`--grid`), aplicado en barra del editor (`SuperMarkdownEditor`), botones secundarios de cancelar/cerrar y acciones discretas.
+   - Migrados los `<button className="cursada-secondary-button">` huérfanos en `SourcePreviewDialog.tsx` a `<SwissButton>`.
+
+3. **Widget de Enfoque (Pomodoro) compacto y coral solo en estado activo** — Commit `2d35c9a` (`ui(enfoque): compactar widget en reposo y reservar coral para estado activo`)
+   - En reposo compacto (`25:00 ▶`), ocupa ~90px y deja visible `Ajustes` incluso en ventana chica (`1100×640`).
+   - Se quitó el ambiguo `1/4` del header y se movió como `Bloque actual: N de M` al encabezado del popover de configuración.
+   - Al hacer clic en el reloj o en `▶` (o mientras corre), despliega `ENFOQUE 25:00 | materia | Pausar/Iniciar Saltar Reiniciar Config ▾`. El color coral (`--acc`) queda reservado exclusivamente a `.pomodoro-widget.is-running`.
+
+4. **Estructura de títulos unificada** — Commits `9c73080` y `2437447`
+   - `Tareas`, `Informes` y `Ajustes` ahora comparten el encabezado a todo lo ancho (`.swiss-page-head` con título `56px`, subtítulo y acción principal) arriba de `.swiss-grid`, alineado con `Materias`, `Exámenes` y `Calendario`.
+   - Uso de `<div className="swiss-page-head">` en esas tres vistas para preservar un único landmark `role="banner"` (`SwissHeader`).
+
+5. **Inventario y consolidación de tokens y componentes** — Commit `453e4b6` (`ui(sistema): consolidar tokens, inputs, chips, tarjetas y modales duplicados`)
+   - **Lo que existía**: `SwissButton` (2 niveles), `SwissLinkButton`, `SwissCheckbox`, `SwissSwitch`, `SwissSegmented`, `SwissSelect`, `SwissSectionHeader`, `SwissProgressBar`, `SwissCitationBadge`, `SwissTitleUnderline`, `SwissLoadingBar`, `SwissErrorAlert`, `SwissEmptyState`; estilos inline repetidos para avisos de estado; `SourcePreviewDialog` con `borderRadius: '0.5rem'` inline; 10+ clases legacy huérfanas en `courses-calendar.css`; bordes de `2px`/`3px` en inputs, chips y 4 modales distintos.
+   - **Lo que faltaba**: nivel `tertiary` y `size="sm"` en `SwissButton`; tokens `--rule-thick`, `--rule-thin`, `--rule-header`, `--font-size-base`, `--font-size-lg`, `--font-size-xl`, `--font-size-screen`, `--space-7`, `--space-8`; componente/clase reutilizable para banners de estado (`.swiss-status-banner`); clases limpias para `SourcePreviewDialog`.
+   - **Lo que se consolidó**:
+     - Inputs y selects (`.swiss-input`, `.swiss-select`, `.field-*`, `.course-form-*`, `.tasks-quickadd-bar`) unificados con borde `var(--rule-thin) solid var(--rule)` y hover `--ink`.
+     - Chips y segmentados (`.swiss-segmented`, `.stage-pill`, `.exam-stage-pills`, `.command-palette-filter-pill`) unificados con `var(--rule-thin) solid var(--rule)`, manteniendo inversión blanco/negro en `.is-active`.
+     - Banners de estado consolidados en `.swiss-status-banner` / `.is-neutral` (`CalendarPage`, `ExamsPage`, `SettingsAiSection`, `SettingsDataSection`).
+     - `SourcePreviewDialog` migrado a `.source-preview-*` / `.source-chunk-card` sin `border-radius`.
+     - Eliminadas clases legacy huérfanas en `courses-calendar.css` (`.danger-button`, `.danger-outline-button`, `.ghost-action-button.is-danger`, `.course-overview-card`, `.course-status-pill`, `.course-tabs-bar`, `.course-tab-button`, `.course-schedule-card`, `.calendar-exam-card`, `.calendar-task-card`).
+     - 4 modales (`.cursada-modal-dialog`, `.obsidian-import-modal`, `.simulator-modal-dialog`, `.command-palette-dialog`) unificados con `border: var(--rule-thin) solid var(--rule-header)` y backdrop `rgba(15, 20, 28, 0.5)`.
+
 ---
 
 ## 2. Estado de Etapas
 
-- **Etapa 0 — Cierre visual de Fase 1 (COMPLETADA):**
-  - Verificación completa en `pulido-ui`: `npm run typecheck` (0 errores), `npm test` (40 archivos, 182 tests en verde) y `npm run build` OK.
-  - Generadas las 48 capturas comparativas **antes (`v1.0-pre-pulido`) vs. después (`pulido-ui`)** en modo oscuro y claro, y en ventana chica (`1100×640`) y maximizada (`1440×900`) sobre `Inicio`, `Materias`, `Exámenes`, `Calendario` y `Materia / Editor` (encabezados, tooltip de barra y tabla en Live Preview), sin tocar la base SQLite real del usuario.
-  - Observación visual menor registrada en la captura de tabla (`1440×900`, 3 paneles abiertos): la primera columna de tablas de 4 columnas puede envolver una palabra larga (`Concepto`) por el ancho acotado del panel central antes de Etapa 2C (donde se amplía el área de lectura y se quitan cajas gruesas).
+- **Etapa 0 — Cierre visual de Fase 1 (COMPLETADA).**
+- **Etapa 1 — Fase 2: Fundaciones de diseño (COMPLETADA, esperando confirmación):**
+  - Verificación completa: `npm run typecheck` (0 errores), `npm test` (40 archivos, 182 tests en verde), `npm run build` OK.
+  - Generadas 28 capturas post-Etapa 1 en oscuro y claro (`1100×640` y `1440×900`) sobre `Inicio`, `Materias`, `Tareas`, `Exámenes`, `Calendario`, `Ajustes` y `Enfoque activo`.
 
 ---
 
 ## 3. Qué falta (en orden de prioridad)
 
-1. **Etapa 1 — Fase 2: Fundaciones de diseño (pendiente de confirmación para iniciar):**
-   - 2.1 Reglas horizontales (`--rule-thick` bajo header, `--rule-thin` para el resto) y menor intensidad del blanco en modo oscuro.
-   - 2.2 Tres niveles de botones (`Primario`, `Secundario` con borde fino, `Terciario` solo texto con hover sutil) unificados en toda la app.
-   - 2.3 Compactar el widget de Enfoque (Pomodoro) en reposo (`25:00 ▶`), desplegando controles al hacer click o mientras corre, aclarando/quitando `1/4` y reservando coral para el estado activo.
-   - 2.4 Estructura de títulos unificada (`Tareas` alineada con `Materias`, `Exámenes` y `Calendario`).
-   - 2.5 Inventario y consolidación de tokens y componentes duplicados (`botones`, `inputs`, `tarjetas`, `chips`, `modales`).
-2. **Etapa 2 — Fase 3: Pantallas en paralelo (`Materias e Inicio`, `Calendario`, `Vista de materia`).**
-3. **Etapa 3 — Panel de informes IA.**
-4. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final.**
+1. **Etapa 2 — Fase 3: Pantallas en paralelo (pendiente de confirmación para lanzar 3 agentes en worktrees):**
+   - Agente 2A (`pulido-ui-2a`): `Materias` e `Inicio`.
+   - Agente 2B (`pulido-ui-2b`): `Calendario`.
+   - Agente 2C (`pulido-ui-2c`): `Vista de materia` (`CourseDetailView`, panel izquierdo, barra y columna del editor).
+2. **Etapa 3 — Panel de informes IA (secuencial, tras mergear 2C).**
+3. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final.**
 
 ---
 
@@ -67,7 +97,9 @@
 
 - **`"Programacion III"` sin tilde y `"2ndo Cuatrimestre"`:** Verifiqué todo el código fuente y ninguno de los dos textos existe como valor por defecto o de ejemplo en el repositorio; ambos provienen de los datos cargados en tu base SQLite local (`~/Library/Application Support/com.cursada.app/cursada.sqlite`). Respetando tu regla (*"si es un dato cargado por mí, no lo cambies"* y aislamiento estricto de la base real), no toqué tu base de datos SQLite y agregué normalización visual en `CoursesPage.tsx` para mostrar `"2do Cuatrimestre"` automáticamente cuando el período contiene `"2ndo"`.
 - **Encabezados en el editor:** Al abrir una nota, CodeMirror posiciona el cursor en el carácter `0` aunque el editor no tenga foco; por eso el `#` de la primera línea se veía siempre. Con `editorFocusField`, el `#` permanece oculto mientras no hayas hecho clic/foco sobre esa línea en el editor.
-- **Sin dudas bloqueantes para Fase 1.**
+- **Botón `Enfoque` expandido al pausar:** Cuando el usuario inicia desde `▶` o despliega el reloj y luego presiona `Pausar`, se mantiene expandido para que pueda usar `Reiniciar` o `Config ▾` sin que desaparezcan; se contrae al hacer clic fuera o presionar `Escape`.
+- **Observación en ventana chica (`1100×640`) con Enfoque activo:** En reposo (`25:00 ▶`), `Ajustes` entra con holgura; si el temporizador está activo/expandido con `ENFOQUE 25:00 Pausar Saltar Reiniciar Config ▾`, el borde derecho de `Ajustes` excede ligeramente los `1100px` (~30px). Se puede ajustar el espaciado del header en Etapa 4 si querés mantenerlo visible también expandido a `1100px`.
+- **Landmark `banner` único:** Las vistas `Tareas`, `Informes` y `Ajustes` usan `<div className="swiss-page-head">` para su título superior a lo ancho de modo que `SwissHeader` siga siendo el único `<header role="banner">`.
 
 ---
 
@@ -75,10 +107,9 @@
 
 - **`"Programacion III"` en código fuente:** No se reprodujo en el código ni en los datos de ejemplo (`sampleData.ts` / `mockCourses.ts`), ya que es un registro de usuario en la base local.
 - **Menú nativo de macOS en español:** Verificado a nivel de unidad (`buildSpanishMenuTemplate` en `src/__tests__/notificationsAndPackaging.test.ts`); la barra de menú del SO fuera de la ventana de contenido no aparece en capturas de `webContents.capturePage()`.
-- **Capturas comparativas de Fase 1:** Completadas las 48 capturas (`before` vs `after`, oscuro/claro, `1100×640` y `1440×900`) sobre todas las vistas modificadas.
 
 ---
 
 ## 6. Próximo Paso
 
-Aguardar confirmación del Product Owner sobre el cierre de **Etapa 0 (Fase 1)** para iniciar **Etapa 1 — Fase 2: Fundaciones de diseño** (en modo secuencial, tocando tokens y componentes compartidos).
+Aguardar confirmación del Product Owner sobre el cierre de **Etapa 1 (Fase 2: Fundaciones de diseño)** para lanzar en paralelo los 3 agentes de la **Etapa 2 — Fase 3: Pantallas** (`2A: Materias e Inicio`, `2B: Calendario`, `2C: Vista de materia`).
