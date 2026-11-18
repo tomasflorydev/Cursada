@@ -1,9 +1,10 @@
 # Progreso del Pulido de UI — Cursada
 
-**Fecha de pausa:** 18 de noviembre de 2026  
+**Fecha de actualización:** 18 de noviembre de 2026  
 **Rama actual:** `pulido-ui` (creada desde el tag `v1.0-pre-pulido` en `beabe46`)  
 **Último commit de código:** `7b31549` — `ui(menu): traducir menú nativo de macOS al español`  
-**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 suites, 182 tests en verde) · `npm run build` OK (0 warnings).
+**Etapa actual:** Etapa 0 (Cierre visual de Fase 1) completada — esperando confirmación para Etapa 1 (Fase 2)  
+**Estado de compilación y tests:** `npm run typecheck` OK (0 errores) · `npm test` OK (40 archivos, 182 tests en verde) · `npm run build` OK (0 warnings).
 
 ---
 
@@ -39,26 +40,26 @@
 
 ---
 
-## 2. Qué estaba haciendo al pausar y en qué estado quedó
+## 2. Estado de Etapas
 
-- Estaba cerrando el punto 7 de la **Fase 1** (`electron/menu.ts` + `electron/main.ts` + test en `src/__tests__/notificationsAndPackaging.test.ts`).
-- `npm run typecheck`, `npm test` y `npm run build` terminaron en verde y el cambio quedó commiteado limpiamente en `7b31549`.
-- Las capturas **antes** de la Fase 1 ya fueron generadas (30 capturas en oscuro/claro × chico/mediano/maximizado). Falta únicamente correr el script de capturas **después** de la Fase 1 (`after`) y presentar la comparativa visual antes/después para tu validación antes de pasar a la Fase 2.
+- **Etapa 0 — Cierre visual de Fase 1 (COMPLETADA):**
+  - Verificación completa en `pulido-ui`: `npm run typecheck` (0 errores), `npm test` (40 archivos, 182 tests en verde) y `npm run build` OK.
+  - Generadas las 48 capturas comparativas **antes (`v1.0-pre-pulido`) vs. después (`pulido-ui`)** en modo oscuro y claro, y en ventana chica (`1100×640`) y maximizada (`1440×900`) sobre `Inicio`, `Materias`, `Exámenes`, `Calendario` y `Materia / Editor` (encabezados, tooltip de barra y tabla en Live Preview), sin tocar la base SQLite real del usuario.
+  - Observación visual menor registrada en la captura de tabla (`1440×900`, 3 paneles abiertos): la primera columna de tablas de 4 columnas puede envolver una palabra larga (`Concepto`) por el ancho acotado del panel central antes de Etapa 2C (donde se amplía el área de lectura y se quitan cajas gruesas).
 
 ---
 
 ## 3. Qué falta (en orden de prioridad)
 
-1. **Cierre visual de Fase 1 (inmediato al retomar):**
-   - Ejecutar la captura de pantallas post-Fase 1 (`after`) en modo oscuro y claro (tamaños chico, mediano y maximizado) y mostrarte la comparativa antes/después junto con la validación de la Fase 1.
-2. **Fase 2 — Jerarquía y Consistencia (tras tu confirmación de Fase 1):**
-   - 2.1 Tres niveles de botones (`Primario`, `Secundario` con borde fino, `Terciario` solo texto) en toda la app.
-   - 2.2 Compactar el widget de Enfoque (Pomodoro) del header en reposo (`25:00 ▶`), desplegando controles al interactuar o correr, aclarando/quitando `1/4` y reservando el coral para el estado activo.
-   - 2.3 Reglas horizontales con dos tokens de grosor (`--rule-thick` bajo header, `--rule-thin` para el resto) y menor opacidad en modo oscuro.
-   - 2.4 Unificar la estructura de títulos de página (`Tareas` alineada con `Materias`, `Exámenes` y `Calendario`).
-   - 2.5 Inventario y consolidación de tokens y componentes (`botones`, `inputs`, `tarjetas`, `chips`, `modales`).
-3. **Fase 3 — Pantallas (`Materias`, `Inicio`, `Calendario`, `Vista de materia`, `Panel de informes IA`).**
-4. **Fase 4 — Detalles Finos (estados de interacción, accesibilidad AA/teclado/`prefers-reduced-motion`, transiciones, casos extremos de truncado/elipsis e íconos/marca).**
+1. **Etapa 1 — Fase 2: Fundaciones de diseño (pendiente de confirmación para iniciar):**
+   - 2.1 Reglas horizontales (`--rule-thick` bajo header, `--rule-thin` para el resto) y menor intensidad del blanco en modo oscuro.
+   - 2.2 Tres niveles de botones (`Primario`, `Secundario` con borde fino, `Terciario` solo texto con hover sutil) unificados en toda la app.
+   - 2.3 Compactar el widget de Enfoque (Pomodoro) en reposo (`25:00 ▶`), desplegando controles al hacer click o mientras corre, aclarando/quitando `1/4` y reservando coral para el estado activo.
+   - 2.4 Estructura de títulos unificada (`Tareas` alineada con `Materias`, `Exámenes` y `Calendario`).
+   - 2.5 Inventario y consolidación de tokens y componentes duplicados (`botones`, `inputs`, `tarjetas`, `chips`, `modales`).
+2. **Etapa 2 — Fase 3: Pantallas en paralelo (`Materias e Inicio`, `Calendario`, `Vista de materia`).**
+3. **Etapa 3 — Panel de informes IA.**
+4. **Etapa 4 — Fase 4: Detalles finos, accesibilidad, casos extremos, íconos y auditoría final.**
 
 ---
 
@@ -73,16 +74,11 @@
 ## 5. Cosas no verificadas o que no se reprodujeron
 
 - **`"Programacion III"` en código fuente:** No se reprodujo en el código ni en los datos de ejemplo (`sampleData.ts` / `mockCourses.ts`), ya que es un registro de usuario en la base local.
-- **Capturas `after` de Fase 1:** Las capturas `before` ya están guardadas; las capturas `after` quedaron listas para ejecutarse como primer paso al retomar debido a la pausa solicitada.
+- **Menú nativo de macOS en español:** Verificado a nivel de unidad (`buildSpanishMenuTemplate` en `src/__tests__/notificationsAndPackaging.test.ts`); la barra de menú del SO fuera de la ventana de contenido no aparece en capturas de `webContents.capturePage()`.
+- **Capturas comparativas de Fase 1:** Completadas las 48 capturas (`before` vs `after`, oscuro/claro, `1100×640` y `1440×900`) sobre todas las vistas modificadas.
 
 ---
 
-## 6. Cómo retomar (Prompt exacto)
+## 6. Próximo Paso
 
-Pegame este prompt para continuar exactamente desde donde dejamos:
-
-```text
-Retomemos el pulido de UI de Cursada leyendo PROGRESO-PULIDO.md en la rama `pulido-ui`.
-1. Ejecutá las capturas post-Fase 1 (`after`) en modo oscuro y claro (ventana chica, mediana y maximizada) y mostrame la comparativa antes/después junto con el resumen de cierre de la Fase 1 y el `git log --oneline`.
-2. Esperá mi confirmación antes de empezar la Fase 2.
-```
+Aguardar confirmación del Product Owner sobre el cierre de **Etapa 0 (Fase 1)** para iniciar **Etapa 1 — Fase 2: Fundaciones de diseño** (en modo secuencial, tocando tokens y componentes compartidos).
