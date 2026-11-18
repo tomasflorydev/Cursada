@@ -85,6 +85,36 @@
     border-bottom: var(--rule-thin) solid var(--rule);
   }
 
+  .backlinks-section-toggle {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .backlinks-section-toggle:hover {
+    color: var(--ink);
+  }
+
+  .backlinks-section-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
   .backlinks-list {
     list-style: none;
     padding: 0;

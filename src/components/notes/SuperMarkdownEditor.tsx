@@ -5,8 +5,16 @@ import {
   CURSADA_CODE_LANGUAGES,
   computeMinimalTextDiff,
 } from '../../lib/editor/codeMirrorLanguages';
-import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
+import { Compartment, EditorState, Prec, type Extension } from '@codemirror/state';
+import {
+  Decoration,
+  EditorView,
+  ViewPlugin,
+  keymap,
+  placeholder as cmPlaceholder,
+  type DecorationSet,
+  type ViewUpdate,
+} from '@codemirror/view';
 import {
   Fragment,
   useCallback,
@@ -53,6 +61,7 @@ export interface SuperMarkdownNoteOption {
 export interface SuperMarkdownEditorProps {
   noteId: string;
   courseId: string;
+  noteTitle?: string;
   content: string;
   onChangeContent: (nextContent: string) => void;
   onSaveShortcut?: () => void;
@@ -268,6 +277,132 @@ function renderInlineTokens(
   });
 }
 
+function inlineTokensPlainText(tokens: LivePreviewInlineToken[]): string {
+  return tokens
+    .map((tok) => {
+      switch (tok.type) {
+        case 'text':
+        case 'bold':
+        case 'italic':
+        case 'code':
+          return tok.text;
+        case 'math_inline':
+        case 'math_display':
+          return tok.latex;
+        case 'wikilink':
+          return tok.displayText;
+      }
+    })
+    .join('');
+}
+
+function findFirstNonEmptyLineIndex(
+  lines: LivePreviewLineDescriptor[]
+): number {
+  for (let idx = 0; idx < lines.length; idx += 1) {
+    if (lines[idx].kind !== 'blank' && lines[idx].rawText.trim() !== '') {
+      return lines[idx].lineIndex;
+    }
+  }
+  return -1;
+}
+
+function isDuplicateLeadingH1(
+  line: LivePreviewLineDescriptor,
+  firstNonEmptyLineIndex: number,
+  noteTitle?: string
+): boolean {
+  if (!noteTitle || line.lineIndex !== firstNonEmptyLineIndex) {
+    return false;
+  }
+  if (line.kind !== 'heading' || line.headingLevel !== 1 || line.isActiveLine) {
+    return false;
+  }
+  const normalizedTitle = noteTitle.trim().toLowerCase();
+  if (!normalizedTitle) {
+    return false;
+  }
+  const normalizedHeading = (line.displayText || '').trim().toLowerCase();
+  return normalizedHeading === normalizedTitle;
+}
+
+function createDuplicateH1Extension(noteTitle?: string): Extension {
+  const normalizedTitle = (noteTitle ?? '').trim().toLowerCase();
+  if (!normalizedTitle) {
+    return [];
+  }
+
+  const computeDecorations = (view: EditorView): DecorationSet => {
+    const doc = view.state.doc;
+    let firstNonEmptyLineNum = -1;
+    for (let ln = 1; ln <= doc.lines; ln += 1) {
+      if (doc.line(ln).text.trim() !== '') {
+        firstNonEmptyLineNum = ln;
+        break;
+      }
+    }
+    if (firstNonEmptyLineNum === -1) {
+      return Decoration.none;
+    }
+
+    const lineObj = doc.line(firstNonEmptyLineNum);
+    const headingMatch = /^\s*#\s+(.*)$/.exec(lineObj.text);
+    if (!headingMatch) {
+      return Decoration.none;
+    }
+
+    const headingPlain = inlineTokensPlainText(
+      parseInlineMarkdownTokens(headingMatch[1], 0)
+    )
+      .trim()
+      .toLowerCase();
+    if (headingPlain !== normalizedTitle) {
+      return Decoration.none;
+    }
+
+    if (view.hasFocus) {
+      for (const range of view.state.selection.ranges) {
+        const startLine = doc.lineAt(range.from).number;
+        const endLine = doc.lineAt(range.to).number;
+        if (
+          firstNonEmptyLineNum >= startLine &&
+          firstNonEmptyLineNum <= endLine
+        ) {
+          return Decoration.none;
+        }
+      }
+    }
+
+    return Decoration.set([
+      Decoration.line({ class: 'is-duplicate-h1' }).range(lineObj.from),
+    ]);
+  };
+
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+
+      constructor(view: EditorView) {
+        this.decorations = computeDecorations(view);
+      }
+
+      update(update: ViewUpdate) {
+        if (
+          update.docChanged ||
+          update.selectionSet ||
+          update.focusChanged ||
+          update.viewportChanged
+        ) {
+          this.decorations = computeDecorations(update.view);
+        }
+      }
+    },
+    {
+      decorations: (value) => value.decorations,
+    }
+  );
+}
+
 /**
  * Super-Editor Markdown component with CodeMirror 6 Live Preview,
  * offline KaTeX-compatible LaTeX math, configurable shortcuts, and [[WikiLink]] autocomplete.
@@ -275,6 +410,7 @@ function renderInlineTokens(
 export function SuperMarkdownEditor({
   noteId,
   courseId,
+  noteTitle,
   content,
   onChangeContent,
   onSaveShortcut,
@@ -356,12 +492,15 @@ export function SuperMarkdownEditor({
   const cmHostRef = useRef<HTMLDivElement | null>(null);
   const cmViewRef = useRef<EditorView | null>(null);
   const liveCompartmentRef = useRef<Compartment>(new Compartment());
+  const duplicateH1CompartmentRef = useRef<Compartment>(new Compartment());
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isSyncingRef = useRef<boolean>(false);
 
   // Latest refs so CodeMirror event handlers always observe fresh props/callbacks
   const contentRef = useRef(content);
   contentRef.current = content;
+  const noteTitleRef = useRef(noteTitle);
+  noteTitleRef.current = noteTitle;
   const shortcutsRef = useRef(shortcuts);
   shortcutsRef.current = shortcuts;
   const onChangeContentRef = useRef(onChangeContent);
@@ -617,12 +756,17 @@ export function SuperMarkdownEditor({
 
     try {
       const liveComp = liveCompartmentRef.current;
+      const duplicateH1Comp = duplicateH1CompartmentRef.current;
       const initialLiveExt =
         editorMode === 'live'
           ? createLivePreviewExtension({
               initialFocused: false,
               onWikiLinkClick: (target) => onOpenWikiLinkRef.current?.(target),
             })
+          : [];
+      const initialDuplicateH1Ext =
+        editorMode === 'live'
+          ? createDuplicateH1Extension(noteTitleRef.current)
           : [];
 
       const keyboardHandlerExt = Prec.highest(
@@ -713,6 +857,7 @@ export function SuperMarkdownEditor({
           cmPlaceholder(placeholder),
           swissCodeMirrorTheme,
           liveComp.of(initialLiveExt),
+          duplicateH1Comp.of(initialDuplicateH1Ext),
           keyboardHandlerExt,
           EditorView.updateListener.of((update) => {
             if (update.docChanged && !isSyncingRef.current) {
@@ -761,6 +906,17 @@ export function SuperMarkdownEditor({
       effects: liveCompartmentRef.current.reconfigure(ext),
     });
   }, [editorMode]);
+
+  // Reconfigure duplicate-H1 suppression when mode or note title changes
+  useEffect(() => {
+    const view = cmViewRef.current;
+    if (!view) return;
+    const dupExt =
+      editorMode === 'live' ? createDuplicateH1Extension(noteTitle) : [];
+    view.dispatch({
+      effects: duplicateH1CompartmentRef.current.reconfigure(dupExt),
+    });
+  }, [editorMode, noteTitle]);
 
   // Synchronize external content updates into CodeMirror using minimal incremental diffs
   useEffect(() => {
@@ -861,6 +1017,11 @@ export function SuperMarkdownEditor({
     [useFallbackEditor, editorMode, content, activeLineIndex]
   );
 
+  const firstNonEmptyPreviewLineIndex = useMemo(
+    () => findFirstNonEmptyLineIndex(previewLines),
+    [previewLines]
+  );
+
   function renderFallbackLivePreview(): ReactNode {
     const nodes: ReactNode[] = [];
     let i = 0;
@@ -880,6 +1041,13 @@ export function SuperMarkdownEditor({
             {line.rawText || '\u00A0'}
           </div>
         );
+        i += 1;
+        continue;
+      }
+
+      if (
+        isDuplicateLeadingH1(line, firstNonEmptyPreviewLineIndex, noteTitle)
+      ) {
         i += 1;
         continue;
       }
